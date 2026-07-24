@@ -44,7 +44,7 @@ export function AdminSettings() {
 
   const activeCount   = mockOrgUsers.filter(u => u.organizationId === currentOrg.id && u.status === 'active').length
   const storageUsed   = DocumentService.totalUsed(currentOrg.id)
-  const storageQuota  = STORAGE_BYTES[plan]
+  void STORAGE_BYTES[plan]
   const userLimit     = PLAN_USER_LIMITS[plan]
 
   function update(field: string, val: string) {

@@ -22,7 +22,7 @@ function profileToUser(p: ProfileRow, orgId: string): User {
     country: p.country ?? undefined,
     language: p.language,
     role: '',
-    status: p.status,
+    status: p.status as User['status'],
     createdAt: p.created_at,
   }
 }
@@ -41,7 +41,7 @@ function orgRowToOrganization(r: OrganizationRow): Organization {
     language: r.language,
     sector: r.sector,
     size: r.size,
-    plan: r.plan,
+    plan: r.plan as Organization['plan'],
     createdAt: r.created_at,
   }
 }
@@ -50,8 +50,8 @@ function subRowToSubscription(r: SubscriptionRow): Subscription {
   return {
     id: r.id,
     organizationId: r.organization_id,
-    plan: r.plan,
-    status: r.status,
+    plan: r.plan as Subscription['plan'],
+    status: r.status as Subscription['status'],
     currency: r.currency,
     amount: r.amount,
     trialEndsAt: r.trial_ends_at,
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentOrg(orgRowToOrganization(orgRow))
         if (subRow) {
           setCurrentSubscription(subRowToSubscription(subRow))
-          setStorageQuotaBytes(STORAGE_BYTES[subRow.plan])
+          setStorageQuotaBytes(STORAGE_BYTES[subRow.plan as keyof typeof STORAGE_BYTES] ?? STORAGE_BYTES.starter)
         }
       } catch {
         // Network error or RLS denied — keep mock fallback

@@ -131,6 +131,7 @@ export interface Event {
   endAt: string
   participants: string[]
   createdById: string
+  createdAt: string
   status: EventStatus
   modifiedAt?: string
   cancelReason?: string

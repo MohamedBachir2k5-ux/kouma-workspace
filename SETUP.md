@@ -72,7 +72,34 @@ Dans le **SQL Editor** de Supabase, exécuter dans l'ordre :
 -- Contenu de : supabase/migrations/002_schema_additions.sql
 ```
 
-### Étape C — Charger les données TEST (optionnel)
+### Étape C — Créer les comptes nommés via l'Admin API
+
+Le seed SQL ne peut pas créer des comptes GoTrue authentifiables. Il faut les
+créer via l'Admin API **avant** d'exécuter le seed :
+
+```bash
+# Remplacer <SERVICE_ROLE_KEY> par la clé service_role du projet TEST
+# (Settings → API → service_role — ne jamais l'exposer côté client)
+
+curl -X POST https://vmdikkxnaubavzzfmtco.supabase.co/auth/v1/admin/users \
+  -H "apikey: <SERVICE_ROLE_KEY>" \
+  -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test-sarl.com","password":"TestKouma2025!","email_confirm":true,"user_metadata":{"firstname":"Admin","lastname":"SARL"}}'
+
+curl -X POST https://vmdikkxnaubavzzfmtco.supabase.co/auth/v1/admin/users \
+  -H "apikey: <SERVICE_ROLE_KEY>" \
+  -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@isolation-org.com","password":"IsolationTest2025!","email_confirm":true,"user_metadata":{"firstname":"Isolé","lastname":"Test"}}'
+```
+
+Ou depuis le Dashboard Supabase : **Authentication → Users → Invite user**.
+
+> Ces deux comptes doivent exister dans `auth.users` avant l'étape D.
+> Le seed échoue explicitement s'ils sont absents.
+
+### Étape D — Charger les données TEST (optionnel)
 
 ```sql
 -- Uniquement sur l'environnement TEST, jamais sur PROD
@@ -84,9 +111,8 @@ Le seed crée :
 - 4 équipes avec membres et permissions
 - Documents, messages, audit logs
 - Organisation d'isolation pour tester le RLS cross-org
-- Comptes de test (voir fin du fichier seed.sql)
 
-### Étape D — Configurer les variables
+### Étape E — Configurer les variables
 
 Copier l'URL et la clé `anon` du nouveau projet dans `.env.local`.
 
@@ -131,8 +157,12 @@ git ls-files | grep env  # doit retourner uniquement .env.example
 
 ## Comptes de test disponibles (Supabase TEST uniquement)
 
-| Email | Mot de passe | Rôle |
-|---|---|---|
-| `admin@test-sarl.com` | `TestKouma2025!` | Admin TEST SARL |
-| `user1@test-sarl.com` | `TestKouma2025!` | Membre standard |
-| `user@isolation-org.com` | `IsolationTest2025!` | Autre organisation (test RLS) |
+| Email | Mot de passe | Rôle | Peut se connecter |
+|---|---|---|---|
+| `admin@test-sarl.com` | `TestKouma2025!` | Admin TEST SARL | ✅ (créé via Admin API) |
+| `user@isolation-org.com` | `IsolationTest2025!` | Admin org isolation (test RLS) | ✅ (créé via Admin API) |
+| `user1@test-sarl.com` … `user100@test-sarl.com` | — | Membres générés TEST SARL | ❌ (insérés via SQL, non authentifiables via GoTrue) |
+
+> Les membres générés (`user1` à `user100`) existent comme données dans `profiles` et
+> `organization_members` mais ne peuvent pas s'authentifier. Ils servent uniquement à
+> simuler un plan Starter à 101 membres (dépassement de quota).
