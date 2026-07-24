@@ -29,6 +29,7 @@ export interface User {
   phone?: string
   role: string
   department?: string
+  jobTitle?: string
   avatarUrl?: string
   country?: string
   language?: string
@@ -195,6 +196,12 @@ export type AuditAction =
   | 'document_deleted'
   | 'subscription_changed'
   | 'permission_changed'
+  | 'admin_promoted'
+  | 'admin_demoted'
+  | 'recovery_initiated'
+  | 'recovery_key_accessed'
+  | 'recovery_completed'
+  | 'breakglass_used'
 
 export interface AuditLog {
   id: string

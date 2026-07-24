@@ -1,7 +1,8 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { MessageSquare, FileText, Calendar, Users, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 import { Avatar } from '../ui/Avatar'
 import { NotificationBell } from '../ui/NotificationBell'
 
@@ -20,6 +21,10 @@ const NAV_ITEMS = [
 export function AppLayout() {
   const { t } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
+  const { checking } = useRequireAuth('/connexion/utilisateur')
+  const navigate = useNavigate()
+
+  if (checking) return null
 
   return (
     <div className="flex flex-col h-dvh bg-bg">
@@ -73,7 +78,7 @@ export function AppLayout() {
             <div className="flex items-center gap-2 px-1 mb-1">
               <NotificationBell variant="dark" />
             </div>
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-navy-light cursor-pointer transition-colors">
+            <div onClick={() => navigate('/app/profil')} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-navy-light cursor-pointer transition-colors">
               <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} id={currentUser.id} size="sm" />
               <div className="min-w-0">
                 <div className="text-white text-sm font-medium truncate">{currentUser.firstName} {currentUser.lastName}</div>

@@ -1,10 +1,14 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Users, HardDrive, MessageSquare, FileText, UserCheck, UserX, Activity, TrendingUp } from 'lucide-react'
-import { mockOrgUsers, mockChannels } from '../../lib/mock'
 import { useAuth } from '../../contexts/AuthContext'
 import { AuditService } from '../../services/audit.service'
 import { DocumentService } from '../../services/document.service'
+import { UserService } from '../../services/user.service'
+import { MessageService } from '../../services/message.service'
 import { Avatar } from '../../components/ui/Avatar'
 import { formatFileSize, relativeDay } from '../../lib/utils'
+import type { User, AuditLog, Document } from '../../lib/types'
 
 const ACTION_ICON: Record<string, typeof UserCheck> = {
   user_joined:          UserCheck,
@@ -35,13 +39,22 @@ const ACTION_COLOR: Record<string, string> = {
 export function AdminDashboard() {
   const { currentOrg, storageQuotaBytes } = useAuth()
 
-  const orgUsers      = mockOrgUsers.filter(u => u.organizationId === currentOrg.id)
-  const activeUsers   = orgUsers.filter(u => u.status === 'active')
-  const suspended     = orgUsers.filter(u => u.status === 'suspended')
-  const storageUsed   = DocumentService.totalUsed(currentOrg.id)
-  const docs          = DocumentService.list(currentOrg.id)
-  const orgChannels   = mockChannels.filter(c => c.organizationId === currentOrg.id)
-  const recentLogs    = AuditService.getRecent(currentOrg.id, 4)
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
+  const [docs, setDocs] = useState<Document[]>([])
+  const [storageUsed, setStorageUsed] = useState(0)
+  const [recentLogs, setRecentLogs] = useState<AuditLog[]>([])
+  const [convCount, setConvCount] = useState(0)
+
+  useEffect(() => {
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+    DocumentService.list(currentOrg.id).then(setDocs)
+    DocumentService.totalUsed(currentOrg.id).then(setStorageUsed)
+    AuditService.getRecent(currentOrg.id, 4).then(setRecentLogs)
+    MessageService.countConversations(currentOrg.id).then(setConvCount)
+  }, [currentOrg.id])
+
+  const activeUsers  = orgUsers.filter(u => u.status === 'active')
+  const suspended    = orgUsers.filter(u => u.status === 'suspended')
 
   const stats = [
     {
@@ -60,7 +73,7 @@ export function AdminDashboard() {
     },
     {
       label: 'Conversations',
-      value: String(orgChannels.length),
+      value: String(convCount),
       sub: 'Tous canaux confondus',
       icon: MessageSquare,
       color: 'bg-success/10 text-success',
@@ -100,7 +113,7 @@ export function AdminDashboard() {
         <div className="bg-surface rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-ink">Utilisateurs récents</h2>
-            <a href="/admin/utilisateurs" className="text-xs text-indigo hover:underline font-medium">Voir tout</a>
+            <Link to="/admin/utilisateurs" className="text-xs text-indigo hover:underline font-medium">Voir tout</Link>
           </div>
           <div className="space-y-3">
             {orgUsers.slice(0, 5).map(user => (
@@ -122,11 +135,11 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* Recent activity from audit log */}
+        {/* Recent activity */}
         <div className="bg-surface rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-ink">Activité récente</h2>
-            <a href="/admin/journal" className="text-xs text-indigo hover:underline font-medium">Journal complet</a>
+            <Link to="/admin/journal" className="text-xs text-indigo hover:underline font-medium">Journal complet</Link>
           </div>
           <div className="space-y-4">
             {recentLogs.map(log => {
@@ -156,16 +169,16 @@ export function AdminDashboard() {
           <h2 className="text-sm font-bold text-ink mb-4">Actions rapides</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Générer un lien invitation', href: '/admin/utilisateurs', icon: UserCheck },
-              { label: 'Ajouter un département',     href: '/admin/departements', icon: TrendingUp },
-              { label: 'Voir le stockage',            href: '/admin/stockage',    icon: HardDrive },
-              { label: "Journal d'activité",          href: '/admin/journal',     icon: Activity },
-            ].map(({ label, href, icon: Icon }) => (
-              <a key={label} href={href}
+              { label: 'Générer un lien invitation', to: '/admin/utilisateurs', icon: UserCheck },
+              { label: 'Ajouter un département',     to: '/admin/departements', icon: TrendingUp },
+              { label: 'Voir le stockage',            to: '/admin/stockage',    icon: HardDrive },
+              { label: "Journal d'activité",          to: '/admin/journal',     icon: Activity },
+            ].map(({ label, to, icon: Icon }) => (
+              <Link key={label} to={to}
                 className="flex flex-col gap-2 p-3 rounded-xl border border-border hover:border-indigo/30 hover:bg-bg transition-all">
                 <Icon size={16} className="text-indigo" />
                 <span className="text-xs font-medium text-ink leading-snug">{label}</span>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -188,7 +201,7 @@ export function AdminDashboard() {
                 </div>
                 <div className="h-1.5 bg-bg rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${color}`}
-                    style={{ width: `${Math.min(100, (value / total) * 100)}%` }} />
+                    style={{ width: `${Math.min(100, total > 0 ? (value / total) * 100 : 0)}%` }} />
                 </div>
               </div>
             ))}

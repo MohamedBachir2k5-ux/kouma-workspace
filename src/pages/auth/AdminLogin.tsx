@@ -1,20 +1,38 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { AuthService } from '../../services/auth.service'
+import { KeyService } from '../../services/key.service'
+import { OrganizationService } from '../../services/organization.service'
 
 export function AdminLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email || password.length < 4) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
-    navigate('/admin/tableau-de-bord')
+    setError(null)
+
+    const { userId, error: authError } = await AuthService.signIn({ email, password })
+    if (authError || !userId) {
+      setError(authError ?? 'Identifiants incorrects.')
+      setLoading(false)
+      return
+    }
+
+    // Load E2E keys into session (best-effort — don't block login if missing)
+    const orgRow = await OrganizationService.getForUser(userId)
+    if (orgRow) {
+      await KeyService.loadUserKeys(userId, password, orgRow.id)
+    }
+
+    navigate('/admin/tableau-de-bord', { replace: true })
   }
 
   return (
@@ -81,6 +99,10 @@ export function AdminLogin() {
             </div>
           </div>
 
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -90,8 +112,8 @@ export function AdminLogin() {
           </button>
         </form>
 
-        <p className="mt-8 text-center text-xs text-faint">
-          Accès réservé à l'administrateur de l'organisation.
+        <p className="mt-5 text-center text-xs text-faint">
+          <Link to="/recuperation/admin" className="text-indigo hover:underline">Mot de passe oublié ?</Link>
         </p>
       </div>
     </div>

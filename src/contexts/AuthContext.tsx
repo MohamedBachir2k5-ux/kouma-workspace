@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User, Organization, Subscription } from '../lib/types'
 import { mockUser, MOCK_ORG, MOCK_SUBSCRIPTION, mockStorageQuotaBytes } from '../lib/mock'
 import { STORAGE_BYTES } from '../config/pricing'
@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { AuthService } from '../services/auth.service'
 import { OrganizationService } from '../services/organization.service'
 import { UserService } from '../services/user.service'
+import { SessionService } from '../services/session.service'
 import type { ProfileRow, OrganizationRow, SubscriptionRow } from '../lib/database.types'
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ interface AuthContextValue {
   currentSubscription: Subscription
   storageQuotaBytes: number
   loading: boolean
+  currentSessionId: string | null
   signOut: () => Promise<void>
 }
 
@@ -93,15 +95,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentOrg, setCurrentOrg] = useState<Organization>(MOCK_ORG)
   const [currentSubscription, setCurrentSubscription] = useState<Subscription>(MOCK_SUBSCRIPTION)
   const [storageQuotaBytes, setStorageQuotaBytes] = useState(mockStorageQuotaBytes)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      // Dev mode without Supabase credentials — keep mock data
       setLoading(false)
       return
     }
 
-    async function hydrateFromSession(userId: string) {
+    async function hydrateFromSession(userId: string, isNewLogin = false) {
       try {
         const [profile, orgRow] = await Promise.all([
           UserService.getById(userId),
@@ -118,6 +121,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCurrentSubscription(subRowToSubscription(subRow))
           setStorageQuotaBytes(STORAGE_BYTES[subRow.plan as keyof typeof STORAGE_BYTES] ?? STORAGE_BYTES.starter)
         }
+
+        // Register session on new login
+        if (isNewLogin) {
+          const sessionId = await SessionService.register(userId)
+          setCurrentSessionId(sessionId)
+
+          // Heartbeat every 5 minutes
+          if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+          if (sessionId) {
+            heartbeatRef.current = setInterval(() => {
+              SessionService.heartbeat(sessionId)
+            }, 5 * 60 * 1000)
+          }
+        }
       } catch {
         // Network error or RLS denied — keep mock fallback
       } finally {
@@ -125,10 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Check existing session immediately
+    // Check existing session immediately (not a new login — no new session record)
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
-        hydrateFromSession(data.session.user.id)
+        hydrateFromSession(data.session.user.id, false)
       } else {
         setLoading(false)
       }
@@ -138,21 +155,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = AuthService.onAuthChange((userId) => {
       if (userId) {
         setLoading(true)
-        hydrateFromSession(userId)
+        hydrateFromSession(userId, true)
       } else {
         setCurrentUser(mockUser)
         setCurrentOrg(MOCK_ORG)
         setCurrentSubscription(MOCK_SUBSCRIPTION)
         setStorageQuotaBytes(mockStorageQuotaBytes)
+        setCurrentSessionId(null)
+        if (heartbeatRef.current) clearInterval(heartbeatRef.current)
         setLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+    }
   }, [])
 
   async function signOut() {
     if (isSupabaseConfigured()) {
+      if (currentSessionId) await SessionService.deleteSession(currentSessionId)
       await AuthService.signOut()
     }
     window.location.href = '/connexion'
@@ -165,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentSubscription,
       storageQuotaBytes,
       loading,
+      currentSessionId,
       signOut,
     }}>
       {children}

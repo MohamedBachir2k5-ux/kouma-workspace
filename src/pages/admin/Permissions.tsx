@@ -1,22 +1,47 @@
+import { useState, useEffect } from 'react'
 import { Info, Users, ShieldCheck } from 'lucide-react'
-import { mockTeams, mockOrgUsers } from '../../lib/mock'
+import { TeamService } from '../../services/team.service'
 import { PermissionService } from '../../services/permission.service'
+import { UserService } from '../../services/user.service'
 import { useAuth } from '../../contexts/AuthContext'
+import type { Team, User } from '../../lib/types'
 
 const TEAM_PERMS: { key: string; label: string; desc: string }[] = [
-  { key: 'invite_members',    label: 'Inviter',    desc: 'Inviter de nouveaux membres dans l\'équipe' },
-  { key: 'manage_documents',  label: 'Documents',  desc: 'Gérer les documents de l\'espace équipe' },
-  { key: 'manage_events',     label: 'Agenda',     desc: 'Créer et modifier les événements' },
-  { key: 'admin_space',       label: 'Administrer',desc: 'Modifier les paramètres de l\'équipe' },
+  { key: 'invite_members',   label: 'Inviter',    desc: "Inviter de nouveaux membres dans l'équipe" },
+  { key: 'manage_documents', label: 'Documents',  desc: "Gérer les documents de l'espace équipe" },
+  { key: 'manage_events',    label: 'Agenda',     desc: 'Créer et modifier les événements' },
+  { key: 'admin_space',      label: 'Administrer',desc: "Modifier les paramètres de l'équipe" },
 ]
-
-function getResponsable(id: string) {
-  return mockOrgUsers.find(u => u.id === id)
-}
 
 export function AdminPermissions() {
   const { currentOrg } = useAuth()
-  const orgTeams = mockTeams.filter(t => t.organizationId === currentOrg.id)
+  const [teams, setTeams] = useState<Team[]>([])
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
+  const [permsMap, setPermsMap] = useState<Record<string, Record<string, boolean>>>({})
+
+  useEffect(() => {
+    async function load() {
+      const [loadedTeams, loadedUsers] = await Promise.all([
+        TeamService.getByOrganizationWithMembers(currentOrg.id),
+        UserService.getByOrganizationWithRole(currentOrg.id),
+      ])
+      setTeams(loadedTeams)
+      setOrgUsers(loadedUsers)
+
+      const entries = await Promise.all(
+        loadedTeams.map(async t => {
+          const perms = await PermissionService.getTeamPerms(t.id)
+          return [t.id, perms] as [string, Record<string, boolean>]
+        })
+      )
+      setPermsMap(Object.fromEntries(entries))
+    }
+    load()
+  }, [currentOrg.id])
+
+  function getResponsable(id: string): User | undefined {
+    return orgUsers.find(u => u.id === id)
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-5xl">
@@ -46,11 +71,11 @@ export function AdminPermissions() {
             </tr>
           </thead>
           <tbody>
-            {orgTeams.map((team, idx) => {
-              const perms = PermissionService.getTeamPerms(team.id)
+            {teams.map((team, idx) => {
+              const perms = permsMap[team.id] ?? {}
               const resp = getResponsable(team.responsableId)
               return (
-                <tr key={team.id} className={`${idx < orgTeams.length - 1 ? 'border-b border-border' : ''} hover:bg-bg transition-colors`}>
+                <tr key={team.id} className={`${idx < teams.length - 1 ? 'border-b border-border' : ''} hover:bg-bg transition-colors`}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: team.color + '22' }}>
@@ -65,10 +90,7 @@ export function AdminPermissions() {
                   {TEAM_PERMS.map(perm => (
                     <td key={perm.key} className="px-3 py-3.5 text-center">
                       <div className="flex justify-center">
-                        <ShieldCheck
-                          size={16}
-                          className={perms[perm.key] ? 'text-success' : 'text-border'}
-                        />
+                        <ShieldCheck size={16} className={perms[perm.key] ? 'text-success' : 'text-border'} />
                       </div>
                     </td>
                   ))}
@@ -81,8 +103,8 @@ export function AdminPermissions() {
 
       {/* Mobile: card per team */}
       <div className="md:hidden space-y-4">
-        {orgTeams.map(team => {
-          const perms = PermissionService.getTeamPerms(team.id)
+        {teams.map(team => {
+          const perms = permsMap[team.id] ?? {}
           const resp = getResponsable(team.responsableId)
           return (
             <div key={team.id} className="bg-surface rounded-xl border border-border p-4">

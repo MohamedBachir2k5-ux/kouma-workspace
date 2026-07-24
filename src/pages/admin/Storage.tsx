@@ -1,8 +1,10 @@
-import { mockOrgUsers } from '../../lib/mock'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { DocumentService } from '../../services/document.service'
+import { UserService } from '../../services/user.service'
 import { FileText, File, Table } from 'lucide-react'
 import { formatFileSize } from '../../lib/utils'
+import type { Document, User } from '../../lib/types'
 
 const deptColors: Record<string, string> = {
   Finance:      'bg-amber',
@@ -30,20 +32,25 @@ function ProgressBar({ value, total, color = 'bg-indigo' }: { value: number; tot
 
 export function AdminStorage() {
   const { currentOrg, storageQuotaBytes } = useAuth()
+  const [docs, setDocs] = useState<Document[]>([])
+  const [totalUsed, setTotalUsed] = useState(0)
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
 
-  const docs      = DocumentService.list(currentOrg.id)
-  const totalUsed = DocumentService.totalUsed(currentOrg.id)
-  const pct       = storageQuotaBytes > 0 ? ((totalUsed / storageQuotaBytes) * 100).toFixed(1) : '0.0'
+  useEffect(() => {
+    DocumentService.list(currentOrg.id).then(setDocs)
+    DocumentService.totalUsed(currentOrg.id).then(setTotalUsed)
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+  }, [currentOrg.id])
 
-  // Usage by department
+  const pct = storageQuotaBytes > 0 ? ((totalUsed / storageQuotaBytes) * 100).toFixed(1) : '0.0'
+
   const byDept: Record<string, number> = {}
   docs.forEach(d => {
-    const uploader = mockOrgUsers.find(u => u.id === d.ownerId)
+    const uploader = orgUsers.find(u => u.id === d.ownerId)
     const dept = uploader?.department ?? 'Autre'
     byDept[dept] = (byDept[dept] ?? 0) + d.size
   })
 
-  // Usage by file type
   const byType: Record<string, { count: number; size: number }> = {}
   docs.forEach(d => {
     if (!byType[d.type]) byType[d.type] = { count: 0, size: 0 }
@@ -131,7 +138,7 @@ export function AdminStorage() {
           <h2 className="text-sm font-bold text-ink">Fichiers les plus volumineux</h2>
         </div>
         {sortedDocs.map((doc, idx) => {
-          const uploader = mockOrgUsers.find(u => u.id === doc.ownerId)
+          const uploader = orgUsers.find(u => u.id === doc.ownerId)
           return (
             <div key={doc.id} className={`flex items-center gap-4 px-5 py-3.5 ${idx < sortedDocs.length - 1 ? 'border-b border-border' : ''}`}>
               <div className="w-8 h-8 rounded-lg bg-bg flex items-center justify-center shrink-0">
@@ -145,6 +152,9 @@ export function AdminStorage() {
             </div>
           )
         })}
+        {sortedDocs.length === 0 && (
+          <div className="py-10 text-center text-sm text-muted">Aucun fichier.</div>
+        )}
       </div>
     </div>
   )

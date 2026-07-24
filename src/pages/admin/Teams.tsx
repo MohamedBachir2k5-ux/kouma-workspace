@@ -1,21 +1,25 @@
 import { useState, useRef, useEffect } from 'react'
 import { Plus, Hash, Users, MoreHorizontal, Pencil, Trash2, X, Search } from 'lucide-react'
-import { mockTeams, mockOrgUsers } from '../../lib/mock'
 import { useAuth } from '../../contexts/AuthContext'
+import { TeamService } from '../../services/team.service'
+import { UserService } from '../../services/user.service'
 import { Avatar } from '../../components/ui/Avatar'
-import type { Team } from '../../lib/types'
+import type { Team, User } from '../../lib/types'
 
 const TEAM_COLORS = ['#0f1628', '#4f46e5', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#0ea5e9']
 
-/* Smart responsable search input */
-function ResponsableSearch({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+function ResponsableSearch({ value, onChange, users }: {
+  value: string
+  onChange: (id: string) => void
+  users: User[]
+}) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const selected = mockOrgUsers.find(u => u.id === value)
+  const selected = users.find(u => u.id === value)
   const results = query.length > 0
-    ? mockOrgUsers.filter(u => u.status === 'active' && (
+    ? users.filter(u => u.status === 'active' && (
         `${u.firstName} ${u.lastName} ${u.role}`.toLowerCase().includes(query.toLowerCase())
       ))
     : []
@@ -28,16 +32,8 @@ function ResponsableSearch({ value, onChange }: { value: string; onChange: (id: 
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
-  function select(id: string) {
-    onChange(id)
-    setQuery('')
-    setOpen(false)
-  }
-
-  function clear() {
-    onChange('')
-    setQuery('')
-  }
+  function select(id: string) { onChange(id); setQuery(''); setOpen(false) }
+  function clear() { onChange(''); setQuery('') }
 
   return (
     <div ref={ref} className="relative">
@@ -64,7 +60,6 @@ function ResponsableSearch({ value, onChange }: { value: string; onChange: (id: 
           />
         </div>
       )}
-
       {open && results.length > 0 && (
         <div className="absolute z-30 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
           {results.map(u => (
@@ -83,8 +78,12 @@ function ResponsableSearch({ value, onChange }: { value: string; onChange: (id: 
   )
 }
 
-/* Team creation / edit modal */
-function TeamModal({ team, onClose, onSave }: { team?: Team | null; onClose: () => void; onSave: (data: Partial<Team>) => void }) {
+function TeamModal({ team, users, onClose, onSave }: {
+  team?: Team | null
+  users: User[]
+  onClose: () => void
+  onSave: (data: Partial<Team>) => void
+}) {
   const [form, setForm] = useState({
     name: team?.name ?? '',
     description: team?.description ?? '',
@@ -101,7 +100,7 @@ function TeamModal({ team, onClose, onSave }: { team?: Team | null; onClose: () 
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-md bg-surface rounded-2xl border border-border shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="p-6 border-b border-border">
-          <h3 className="font-bold text-navy text-lg">{isEdit ? 'Modifier l\'équipe' : 'Nouvelle équipe'}</h3>
+          <h3 className="font-bold text-navy text-lg">{isEdit ? "Modifier l'équipe" : 'Nouvelle équipe'}</h3>
         </div>
 
         <div className="p-6 space-y-5">
@@ -131,7 +130,7 @@ function TeamModal({ team, onClose, onSave }: { team?: Team | null; onClose: () 
 
           <div>
             <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Responsable *</label>
-            <ResponsableSearch value={form.responsableId} onChange={id => update('responsableId', id)} />
+            <ResponsableSearch value={form.responsableId} onChange={id => update('responsableId', id)} users={users} />
           </div>
         </div>
 
@@ -142,7 +141,7 @@ function TeamModal({ team, onClose, onSave }: { team?: Team | null; onClose: () 
             onClick={() => { onSave(form); onClose() }}
             className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40"
           >
-            {isEdit ? 'Enregistrer' : 'Créer l\'équipe'}
+            {isEdit ? 'Enregistrer' : "Créer l'équipe"}
           </button>
         </div>
       </div>
@@ -151,36 +150,50 @@ function TeamModal({ team, onClose, onSave }: { team?: Team | null; onClose: () 
 }
 
 export function AdminTeams() {
-  const { currentOrg } = useAuth()
-  const [teams, setTeams] = useState(() => mockTeams.filter(t => t.organizationId === currentOrg.id))
+  const { currentOrg, currentUser } = useAuth()
+  const [teams, setTeams] = useState<Team[]>([])
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
   const [showModal, setShowModal] = useState(false)
   const [editTeam, setEditTeam] = useState<Team | null>(null)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
 
-  function createTeam(data: Partial<Team>) {
-    const newTeam: Team = {
-      id: `t${Date.now()}`,
+  useEffect(() => {
+    TeamService.getByOrganizationWithMembers(currentOrg.id).then(setTeams)
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+  }, [currentOrg.id])
+
+  async function createTeam(data: Partial<Team>) {
+    const { teamId, error } = await TeamService.create({
       organizationId: currentOrg.id,
       name: data.name ?? '',
       description: data.description,
-      responsableId: data.responsableId ?? '',
-      members: [data.responsableId ?? ''],
       color: data.color ?? TEAM_COLORS[0],
-      createdAt: new Date().toISOString(),
+      ownerId: data.responsableId ?? currentUser.id,
+      actorId: currentUser.id,
+    })
+    if (!error && teamId) {
+      const updated = await TeamService.getByOrganizationWithMembers(currentOrg.id)
+      setTeams(updated)
     }
-    setTeams(prev => [...prev, newTeam])
   }
 
-  function updateTeam(id: string, data: Partial<Team>) {
+  async function updateTeam(id: string, data: Partial<Team>) {
+    await TeamService.update(
+      id,
+      { name: data.name, description: data.description ?? null, color: data.color, owner_id: data.responsableId },
+      currentOrg.id,
+      currentUser.id,
+    )
     setTeams(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
   }
 
-  function deleteTeam(id: string) {
+  async function deleteTeam(id: string) {
+    await TeamService.delete(id, currentOrg.id, currentUser.id)
     setTeams(prev => prev.filter(t => t.id !== id))
     setMenuOpen(null)
   }
 
-  function getUser(id: string) { return mockOrgUsers.find(u => u.id === id) }
+  function getUser(id: string) { return orgUsers.find(u => u.id === id) }
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
@@ -198,7 +211,7 @@ export function AdminTeams() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {teams.map(team => {
           const responsable = getUser(team.responsableId)
-          const members = team.members.map(id => getUser(id)).filter(Boolean)
+          const members = team.members.map(id => getUser(id)).filter(Boolean) as User[]
 
           return (
             <div key={team.id} className="bg-surface rounded-xl border border-border p-5 hover:border-indigo/20 hover:shadow-sm transition-all relative">
@@ -241,7 +254,7 @@ export function AdminTeams() {
 
               <div className="flex items-center justify-between">
                 <div className="flex -space-x-2">
-                  {members.slice(0, 5).map(m => m && (
+                  {members.slice(0, 5).map(m => (
                     <Avatar key={m.id} firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
                   ))}
                   {members.length > 5 && (
@@ -269,6 +282,7 @@ export function AdminTeams() {
       {showModal && (
         <TeamModal
           team={editTeam}
+          users={orgUsers}
           onClose={() => setShowModal(false)}
           onSave={data => editTeam ? updateTeam(editTeam.id, data) : createTeam(data)}
         />

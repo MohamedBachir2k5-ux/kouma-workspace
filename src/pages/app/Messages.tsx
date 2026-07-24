@@ -1,10 +1,14 @@
-import { useState, useRef } from 'react'
-import { Search, Plus, Hash, User, Lock, Paperclip, FolderInput, Check, Info, ArrowLeft, X, Bell, BellOff, Star, Link2, Image, Crown, FileText, LogOut } from 'lucide-react'
-import { mockChannels, mockMessages, mockOrgUsers, mockTeams } from '../../lib/mock'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Plus, Hash, User, Lock, Paperclip, FolderInput, Check, Info, ArrowLeft, X, Bell, BellOff, Star, Link2, Image, Crown, FileText, LogOut, Loader2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { MessageService } from '../../services/message.service'
+import { UserService } from '../../services/user.service'
+import { TeamService } from '../../services/team.service'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { formatTime, formatFileSize } from '../../lib/utils'
+import type { Channel, Message, User as AppUser, Team } from '../../lib/types'
 
 /* ── Types ── */
 type ConvType = 'direct' | 'group' | 'team'
@@ -14,11 +18,12 @@ interface Attachment {
   name: string
   size: number
   type: string
+  url?: string
 }
 
-const mockAttachments: Record<string, Attachment[]> = {
-  c_d1: [{ id: 'a1', name: 'synthese_trimestre.pdf', size: 1200000, type: 'pdf' }],
-  c_g1: [{ id: 'a2', name: 'planning_event.xlsx', size: 340000, type: 'xlsx' }],
+function fileIcon(type: string) {
+  if (/^image\//i.test(type)) return <Image size={13} className="text-indigo" />
+  return <Paperclip size={13} className="text-indigo" />
 }
 
 const sectionLabel: Record<ConvType, string> = {
@@ -28,11 +33,25 @@ const sectionLabel: Record<ConvType, string> = {
 }
 
 /* ── New group modal ── */
-function NewGroupModal({ onClose }: { onClose: () => void }) {
-  const { currentUser } = useAuth()
+function NewGroupModal({ onClose, orgUsers, onCreated }: {
+  onClose: () => void
+  orgUsers: AppUser[]
+  onCreated: () => void
+}) {
+  const { currentUser, currentOrg } = useAuth()
   const [name, setName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
+  const [creating, setCreating] = useState(false)
+
   function toggle(id: string) { setSelected(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]) }
+
+  async function handleCreate() {
+    if (!name.trim() || selected.length === 0 || creating) return
+    setCreating(true)
+    await MessageService.createGroupConversation(currentOrg.id, [currentUser.id, ...selected])
+    onCreated()
+    onClose()
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -53,7 +72,7 @@ function NewGroupModal({ onClose }: { onClose: () => void }) {
           <div>
             <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Participants ({selected.length})</label>
             <div className="max-h-44 overflow-y-auto border border-border rounded-xl divide-y divide-border">
-              {mockOrgUsers.filter(u => u.id !== currentUser.id && u.status === 'active').map(u => (
+              {orgUsers.filter(u => u.id !== currentUser.id && u.status === 'active').map(u => (
                 <button key={u.id} type="button" onClick={() => toggle(u.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${selected.includes(u.id) ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
                   <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
@@ -69,9 +88,9 @@ function NewGroupModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
-          <button onClick={onClose} disabled={!name.trim() || selected.length === 0}
+          <button onClick={handleCreate} disabled={!name.trim() || selected.length === 0 || creating}
             className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
-            Créer
+            {creating ? 'Création…' : 'Créer'}
           </button>
         </div>
       </div>
@@ -85,27 +104,12 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
   const [done, setDone] = useState(false)
 
   const options = [
-    {
-      id: 'root',
-      label: 'Bibliothèque générale',
-      desc: 'Document accessible à toute l\'organisation, sans classement par équipe.',
-    },
-    {
-      id: 'f1',
-      label: 'Finance',
-      desc: 'Visible uniquement par les membres de l\'équipe Finance.',
-    },
-    {
-      id: 'f2',
-      label: 'Ressources Humaines',
-      desc: 'Visible uniquement par les membres de l\'équipe RH.',
-    },
+    { id: 'root', label: 'Bibliothèque générale', desc: "Document accessible à toute l'organisation, sans classement par équipe." },
+    { id: 'f1',   label: 'Finance',               desc: "Visible uniquement par les membres de l'équipe Finance." },
+    { id: 'f2',   label: 'Ressources Humaines',   desc: "Visible uniquement par les membres de l'équipe RH." },
   ] as const
 
-  function confirm() {
-    setDone(true)
-    setTimeout(onClose, 1400)
-  }
+  function confirm() { setDone(true); setTimeout(onClose, 1400) }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -117,7 +121,6 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
         <p className="text-xs text-muted mb-4 leading-relaxed">
           Ce fichier deviendra un document officiel du workspace, classé selon la destination choisie.
         </p>
-
         <div className="p-3 bg-bg rounded-xl border border-border mb-4 flex items-center gap-3">
           <Paperclip size={15} className="text-indigo shrink-0" />
           <div className="min-w-0">
@@ -125,7 +128,6 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
             <div className="text-xs text-muted">{formatFileSize(file.size)}</div>
           </div>
         </div>
-
         <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Destination</label>
         <div className="space-y-2 mb-4">
           {options.map(opt => (
@@ -145,7 +147,6 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
             </button>
           ))}
         </div>
-
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
           <button onClick={confirm}
@@ -161,20 +162,30 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
 /* ── Conversation info panel ── */
 type LibrarySection = 'files' | 'links' | 'starred'
 
-function InfoPanel({ channelId, attachments, onClose }: { channelId: string; attachments: Attachment[]; onClose: () => void }) {
+function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateToDocs, onLeave }: {
+  channel: Channel
+  orgUsers: AppUser[]
+  teams: Team[]
+  attachments: Attachment[]
+  onClose: () => void
+  onNavigateToDocs: () => void
+  onLeave: () => void
+}) {
   const { currentUser } = useAuth()
-  const ch = mockChannels.find(c => c.id === channelId)!
-  const type = ch.type as ConvType
-  const [muted, setMuted] = useState(false)
+  const type = channel.type as ConvType
+  const MUTED_KEY = `muted_conv_${channel.id}`
+  const [muted, setMuted] = useState(() => localStorage.getItem(MUTED_KEY) === '1')
   const [libraryOpen, setLibraryOpen] = useState<LibrarySection | null>(null)
 
-  const otherMemberId = ch.members.find(id => id !== currentUser.id) ?? ''
-  const otherUser = mockOrgUsers.find(u => u.id === otherMemberId)
-  const allMembers = ch.members.map(id => mockOrgUsers.find(u => u.id === id)).filter(Boolean)
+  const otherMemberId = channel.members.find(id => id !== currentUser.id) ?? ''
+  const otherUser = orgUsers.find(u => u.id === otherMemberId)
+  const allMembers = channel.members.map(id => orgUsers.find(u => u.id === id)).filter(Boolean)
 
-  const team = type === 'team' ? mockTeams.find(t => t.name === ch.name) : null
-  const teamResponsable = team ? mockOrgUsers.find(u => u.id === team.responsableId) : null
-  const teamMembers = team ? team.members.map(id => mockOrgUsers.find(u => u.id === id)).filter(Boolean) : allMembers
+  const team = type === 'team' && channel.teamId ? teams.find(t => t.id === channel.teamId) : null
+  const teamResponsable = team ? orgUsers.find(u => u.id === team.responsableId) : null
+  const teamMembers = team
+    ? team.members.map(id => orgUsers.find(u => u.id === id)).filter(Boolean)
+    : allMembers
 
   function SectionHeader({ label }: { label: string }) {
     return <h3 className="text-xs font-semibold text-muted uppercase tracking-wide">{label}</h3>
@@ -235,7 +246,6 @@ function InfoPanel({ channelId, attachments, onClose }: { channelId: string; att
 
   return (
     <div className="flex flex-col h-full bg-bg">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 h-14 border-b border-border bg-surface shrink-0">
         <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink">
           <ArrowLeft size={18} />
@@ -264,7 +274,7 @@ function InfoPanel({ channelId, attachments, onClose }: { channelId: string; att
               <div className="w-16 h-16 rounded-2xl bg-indigo-pale flex items-center justify-center mb-3">
                 <Lock size={24} className="text-indigo" />
               </div>
-              <h2 className="font-bold text-ink text-base">{ch.name}</h2>
+              <h2 className="font-bold text-ink text-base">{channel.name}</h2>
               <p className="text-sm text-muted">{allMembers.length} membres · Groupe privé</p>
             </>
           ) : (
@@ -272,7 +282,7 @@ function InfoPanel({ channelId, attachments, onClose }: { channelId: string; att
               <div className="w-16 h-16 rounded-2xl bg-navy/10 flex items-center justify-center mb-3">
                 <Hash size={24} className="text-navy" />
               </div>
-              <h2 className="font-bold text-ink text-base">{ch.name}</h2>
+              <h2 className="font-bold text-ink text-base">{channel.name}</h2>
               <p className="text-sm text-muted">{teamMembers.length} membres · Espace d'équipe</p>
             </>
           )}
@@ -352,7 +362,7 @@ function InfoPanel({ channelId, attachments, onClose }: { channelId: string; att
         {type === 'team' && (
           <div className="px-4 py-4 border-b border-border">
             <div className="mb-3"><SectionHeader label="Documents de l'équipe" /></div>
-            <button className="w-full flex items-center gap-3 p-3 bg-surface rounded-xl border border-border hover:border-indigo/40 transition-colors text-left">
+            <button onClick={onNavigateToDocs} className="w-full flex items-center gap-3 p-3 bg-surface rounded-xl border border-border hover:border-indigo/40 transition-colors text-left">
               <FileText size={14} className="text-indigo shrink-0" />
               <span className="text-sm text-indigo font-medium">Voir dans la bibliothèque →</span>
             </button>
@@ -400,13 +410,19 @@ function InfoPanel({ channelId, attachments, onClose }: { channelId: string; att
               {muted ? <BellOff size={16} className="text-muted" /> : <Bell size={16} className="text-muted" />}
               <span className="text-sm text-ink">Notifications</span>
             </div>
-            <button type="button" onClick={() => setMuted(!muted)}
+            <button type="button" onClick={() => {
+              const next = !muted
+              setMuted(next)
+              if (next) localStorage.setItem(MUTED_KEY, '1')
+              else localStorage.removeItem(MUTED_KEY)
+            }}
               className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors ${muted ? 'bg-border' : 'bg-success'}`}>
               <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${muted ? 'translate-x-0.5' : 'translate-x-4'}`} />
             </button>
           </div>
           {type === 'group' && (
-            <button className="w-full flex items-center gap-3 p-3.5 bg-surface rounded-xl border border-border text-left hover:border-danger/40 transition-colors">
+            <button onClick={() => { if (window.confirm('Quitter ce groupe ? Vous ne pourrez plus accéder aux messages.')) onLeave() }}
+              className="w-full flex items-center gap-3 p-3.5 bg-surface rounded-xl border border-border text-left hover:border-danger/40 transition-colors">
               <LogOut size={16} className="text-danger shrink-0" />
               <span className="text-sm text-danger">Quitter le groupe</span>
             </button>
@@ -418,28 +434,37 @@ function InfoPanel({ channelId, attachments, onClose }: { channelId: string; att
 }
 
 /* ── Conversation list ── */
-function ConvList({ onSelect, selected }: { onSelect: (id: string) => void; selected: string | null }) {
+function ConvList({ channels, onSelect, selected, onNewGroup }: {
+  channels: Channel[]
+  onSelect: (id: string) => void
+  selected: string | null
+  onNewGroup: () => void
+}) {
   const [query, setQuery] = useState('')
-  const [showNewGroup, setShowNewGroup] = useState(false)
 
-  const byType: Record<ConvType, typeof mockChannels> = { direct: [], group: [], team: [] }
-  mockChannels.forEach(c => {
+  const byType: Record<ConvType, Channel[]> = { direct: [], group: [], team: [] }
+  channels.forEach(c => {
     const filtered = !query || c.name.toLowerCase().includes(query.toLowerCase())
     if (filtered) byType[c.type as ConvType].push(c)
   })
 
-  const sections: { type: ConvType; items: typeof mockChannels }[] = [
+  const sections: { type: ConvType; items: Channel[] }[] = [
     { type: 'direct' as ConvType, items: byType.direct },
     { type: 'group' as ConvType, items: byType.group },
     { type: 'team' as ConvType, items: byType.team },
   ].filter(s => s.items.length > 0)
+
+  function getAvatarParts(ch: Channel) {
+    const parts = ch.name.split(' ')
+    return { firstName: parts[0] ?? '', lastName: parts[1] ?? '' }
+  }
 
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-3 shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-ink">Messagerie</h2>
-          <button onClick={() => setShowNewGroup(true)} title="Nouveau groupe"
+          <button onClick={onNewGroup} title="Nouveau groupe"
             className="w-8 h-8 rounded-full bg-indigo-pale flex items-center justify-center text-indigo hover:bg-indigo hover:text-white transition-colors">
             <Plus size={16} />
           </button>
@@ -458,6 +483,7 @@ function ConvList({ onSelect, selected }: { onSelect: (id: string) => void; sele
             {items.map(ch => {
               const isTeam = type === 'team'
               const isGroup = type === 'group'
+              const { firstName, lastName } = getAvatarParts(ch)
               return (
                 <button key={ch.id} onClick={() => onSelect(ch.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-left transition-colors ${selected === ch.id ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
@@ -466,7 +492,7 @@ function ConvList({ onSelect, selected }: { onSelect: (id: string) => void; sele
                   ) : isGroup ? (
                     <div className="w-9 h-9 rounded-xl bg-indigo-pale flex items-center justify-center shrink-0"><Lock size={14} className="text-indigo" /></div>
                   ) : (
-                    <Avatar firstName={ch.name.split(' ')[0]} lastName={ch.name.split(' ')[1] ?? ''} id={ch.id} />
+                    <Avatar firstName={firstName} lastName={lastName} id={ch.id} />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
@@ -487,38 +513,92 @@ function ConvList({ onSelect, selected }: { onSelect: (id: string) => void; sele
         ))}
         {sections.length === 0 && <p className="text-xs text-faint text-center py-8">Aucun résultat.</p>}
       </div>
-
-      {showNewGroup && <NewGroupModal onClose={() => setShowNewGroup(false)} />}
     </div>
   )
 }
 
 /* ── Conversation view ── */
-function ConvView({ channelId, onBack }: { channelId: string; onBack: () => void }) {
-  const { currentUser } = useAuth()
-  const ch = mockChannels.find(c => c.id === channelId)!
-  const type = ch.type as ConvType
-  const messages = mockMessages.filter(m => m.channelId === channelId)
-  const baseAttachments = mockAttachments[channelId] ?? []
+function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
+  channel: Channel
+  orgUsers: AppUser[]
+  teams: Team[]
+  onBack: () => void
+  onLeaveChannel: (channelId: string) => void
+}) {
+  const { currentUser, currentOrg } = useAuth()
+  const navigate = useNavigate()
+  const type = channel.type as ConvType
+  const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [promoteFile, setPromoteFile] = useState<Attachment | null>(null)
   const [showAttachments, setShowAttachments] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [localAttachments, setLocalAttachments] = useState<Attachment[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
-  const [localAttachments, setLocalAttachments] = useState<Attachment[]>(baseAttachments)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  function getUser(id: string) { return mockOrgUsers.find(u => u.id === id) }
+  // Load messages on channel change
+  useEffect(() => {
+    setMessages([])
+    setLocalAttachments([])
+    MessageService.getMessages(channel.id, currentOrg.id).then(setMessages)
+  }, [channel.id])
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  // Realtime subscription
+  useEffect(() => {
+    const unsubscribe = MessageService.subscribe(channel.id, currentOrg.id, msg => {
+      setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg])
+    })
+    return unsubscribe
+  }, [channel.id])
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const getUser = useCallback((id: string) => orgUsers.find(u => u.id === id), [orgUsers])
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
-    const att: Attachment = { id: `a${Date.now()}`, name: f.name, size: f.size, type: f.name.split('.').pop() ?? 'bin' }
-    setLocalAttachments(prev => [...prev, att])
     e.target.value = ''
+    setUploading(true)
+    const { path, url, error } = await MessageService.uploadAttachment(currentOrg.id, channel.id, f)
+    setUploading(false)
+    if (error || !path) return
+    const att: Attachment = { id: `a${Date.now()}`, name: f.name, size: f.size, type: f.type || 'application/octet-stream', url: url ?? undefined }
+    setLocalAttachments(prev => [...prev, att])
+    // Store the storage path in files[] so recipients can decrypt; display name in content
+    await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path])
+  }
+
+  async function handleSend() {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    setText('')
+    // Optimistic: add locally (Realtime will confirm)
+    await MessageService.send(channel.id, currentUser.id, trimmed, currentOrg.id)
+  }
+
+  async function handleLeave() {
+    await MessageService.leaveConversation(channel.id, currentUser.id)
+    onLeaveChannel(channel.id)
   }
 
   if (showInfo) {
-    return <InfoPanel channelId={channelId} attachments={localAttachments} onClose={() => setShowInfo(false)} />
+    return (
+      <InfoPanel
+        channel={channel}
+        orgUsers={orgUsers}
+        teams={teams}
+        attachments={localAttachments}
+        onClose={() => setShowInfo(false)}
+        onNavigateToDocs={() => navigate('/app/documents')}
+        onLeave={handleLeave}
+      />
+    )
   }
 
   return (
@@ -531,14 +611,14 @@ function ConvView({ channelId, onBack }: { channelId: string; onBack: () => void
 
         {type === 'team' && <div className="w-8 h-8 rounded-xl bg-navy flex items-center justify-center shrink-0"><Hash size={14} className="text-indigo-light" /></div>}
         {type === 'group' && <div className="w-8 h-8 rounded-xl bg-indigo-pale flex items-center justify-center shrink-0"><Lock size={14} className="text-indigo" /></div>}
-        {type === 'direct' && <Avatar firstName={ch.name.split(' ')[0]} lastName={ch.name.split(' ')[1] ?? ''} id={ch.id} size="sm" />}
+        {type === 'direct' && (() => { const p = channel.name.split(' '); return <Avatar firstName={p[0]} lastName={p[1] ?? ''} id={channel.id} size="sm" /> })()}
 
         <button className="flex-1 min-w-0 text-left" onClick={() => setShowInfo(true)}>
-          <div className="font-semibold text-ink text-sm hover:text-indigo transition-colors">{ch.name}</div>
+          <div className="font-semibold text-ink text-sm hover:text-indigo transition-colors">{channel.name}</div>
           <div className="text-[10px] text-muted">
             {type === 'direct' && 'Conversation privée'}
-            {type === 'group' && `Groupe · ${ch.members.length} membres`}
-            {type === 'team' && `Espace d'équipe · ${ch.members.length} membres`}
+            {type === 'group' && `Groupe · ${channel.members.length} membres`}
+            {type === 'team' && `Espace d'équipe · ${channel.members.length} membres`}
           </div>
         </button>
 
@@ -549,8 +629,7 @@ function ConvView({ channelId, onBack }: { channelId: string; onBack: () => void
               <Paperclip size={13} />{localAttachments.length}
             </button>
           )}
-          <button onClick={() => setShowInfo(true)}
-            className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
+          <button onClick={() => setShowInfo(true)} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
             <Info size={17} />
           </button>
         </div>
@@ -597,34 +676,51 @@ function ConvView({ channelId, onBack }: { channelId: string; onBack: () => void
         {messages.map(msg => {
           const user = getUser(msg.senderId)
           const isMe = msg.senderId === currentUser.id
+          const isFileMsg = msg.files && msg.files.length > 0
           return (
             <div key={msg.id} className={`flex items-end gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
               {!isMe && user && <Avatar firstName={user.firstName} lastName={user.lastName} id={user.id} size="sm" />}
               <div className={`max-w-[75%] flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`}>
                 {!isMe && user && <span className="text-[11px] font-semibold text-muted ml-1">{user.firstName} {user.lastName}</span>}
-                <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-indigo text-white rounded-br-md' : 'bg-surface border border-border text-ink rounded-bl-md'}`}>
-                  {msg.content}
-                </div>
+                {isFileMsg ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const storagePath = msg.files![0]
+                      const fileName = msg.content.replace('📎 ', '') || storagePath.split('/').pop() || 'fichier'
+                      MessageService.downloadAndDecrypt(storagePath, msg.channelId, currentOrg.id, fileName)
+                    }}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border text-sm ${isMe ? 'bg-indigo/10 border-indigo/20 text-indigo rounded-br-md' : 'bg-surface border-border text-ink rounded-bl-md'} hover:opacity-80 transition-opacity cursor-pointer`}
+                  >
+                    {fileIcon(msg.files![0])}
+                    <span className="truncate max-w-[160px] font-medium">{msg.content.replace('📎 ', '')}</span>
+                  </button>
+                ) : (
+                  <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-indigo text-white rounded-br-md' : 'bg-surface border border-border text-ink rounded-bl-md'}`}>
+                    {msg.content}
+                  </div>
+                )}
                 <span className="text-[10px] text-faint mx-1">{formatTime(msg.createdAt)}</span>
               </div>
             </div>
           )
         })}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Composer */}
       <div className="px-4 pb-4 pt-3 border-t border-border bg-surface shrink-0">
         <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
         <div className="flex items-center gap-2">
-          <button onClick={() => fileRef.current?.click()}
-            className="p-2.5 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors shrink-0">
-            <Paperclip size={18} />
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="p-2.5 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors shrink-0 disabled:opacity-40">
+            {uploading ? <Loader2 size={18} className="animate-spin text-indigo" /> : <Paperclip size={18} />}
           </button>
           <input value={text} onChange={e => setText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && text.trim() && setText('')}
-            placeholder={`Message ${ch.name.split(' ')[0]}…`}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && text.trim()) { e.preventDefault(); handleSend() } }}
+            placeholder={`Message ${channel.name.split(' ')[0]}…`}
             className="flex-1 px-4 py-3 bg-bg border border-border rounded-full text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent" />
-          <button onClick={() => setText('')} disabled={!text.trim()}
+          <button onClick={handleSend} disabled={!text.trim()}
             className="w-10 h-10 rounded-full bg-indigo flex items-center justify-center text-white disabled:opacity-30 hover:opacity-90 transition-opacity shrink-0">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -640,16 +736,49 @@ function ConvView({ channelId, onBack }: { channelId: string; onBack: () => void
 
 /* ── Main ── */
 export function Messages() {
+  const { currentUser, currentOrg } = useAuth()
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [orgUsers, setOrgUsers] = useState<AppUser[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
   const [selected, setSelected] = useState<string | null>(null)
+  const [showNewGroup, setShowNewGroup] = useState(false)
+
+  function loadChannels() {
+    MessageService.getConversations(currentOrg.id, currentUser.id).then(setChannels)
+  }
+
+  function handleLeaveChannel(channelId: string) {
+    setChannels(prev => prev.filter(c => c.id !== channelId))
+    setSelected(null)
+  }
+
+  useEffect(() => {
+    loadChannels()
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+    TeamService.getByOrganizationWithMembers(currentOrg.id).then(setTeams)
+  }, [currentOrg.id, currentUser.id])
+
+  const selectedChannel = channels.find(c => c.id === selected) ?? null
 
   return (
     <div className="flex h-full overflow-hidden">
       <div className={`${selected ? 'hidden md:flex' : 'flex'} md:w-80 w-full flex-col border-r border-border bg-surface shrink-0 overflow-hidden`}>
-        <ConvList onSelect={setSelected} selected={selected} />
+        <ConvList
+          channels={channels}
+          onSelect={setSelected}
+          selected={selected}
+          onNewGroup={() => setShowNewGroup(true)}
+        />
       </div>
       <div className={`${selected ? 'flex' : 'hidden md:flex'} flex-1 flex-col overflow-hidden bg-bg`}>
-        {selected ? (
-          <ConvView channelId={selected} onBack={() => setSelected(null)} />
+        {selectedChannel ? (
+          <ConvView
+            channel={selectedChannel}
+            orgUsers={orgUsers}
+            teams={teams}
+            onBack={() => setSelected(null)}
+            onLeaveChannel={handleLeaveChannel}
+          />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
             <div className="w-16 h-16 rounded-2xl bg-indigo-pale flex items-center justify-center mb-4">
@@ -673,6 +802,14 @@ export function Messages() {
           </div>
         )}
       </div>
+
+      {showNewGroup && (
+        <NewGroupModal
+          onClose={() => setShowNewGroup(false)}
+          orgUsers={orgUsers}
+          onCreated={loadChannels}
+        />
+      )}
     </div>
   )
 }

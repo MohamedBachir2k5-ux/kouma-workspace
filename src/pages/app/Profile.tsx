@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react'
 import { Bell, Smartphone, LogOut, ChevronRight, Moon, X, Check, Camera, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { UserService } from '../../services/user.service'
+import { AuthService } from '../../services/auth.service'
+import { KeyService } from '../../services/key.service'
 import { Avatar } from '../../components/ui/Avatar'
 import i18n from '../../i18n/index'
 
@@ -30,18 +33,27 @@ export function Profile() {
   const [draft, setDraft] = useState(profile)
 
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
+  const [pwError, setPwError] = useState<string | null>(null)
 
-  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => setPhotoPreview(reader.result as string)
     reader.readAsDataURL(file)
+    const { avatarUrl, error } = await UserService.uploadAvatar(currentUser.id, currentOrg.id, file)
+    if (!error && avatarUrl) setPhotoPreview(avatarUrl)
   }
 
   function openEdit() { setDraft(profile); setEditing(true) }
 
-  function saveEdit() {
+  async function saveEdit() {
+    await UserService.updateProfile(currentUser.id, {
+      firstname: draft.firstName,
+      lastname: draft.lastName,
+      phone: draft.phone || null,
+      language: draft.language,
+    })
     setProfile(draft)
     if (draft.language !== i18n.language) {
       i18n.changeLanguage(draft.language)
@@ -51,8 +63,13 @@ export function Profile() {
     setTimeout(() => setSaved(false), 2500)
   }
 
-  function savePassword() {
-    // TODO: AuthService.updatePassword(pwForm.current, pwForm.next)
+  async function savePassword() {
+    setPwError(null)
+    const { error } = await AuthService.updatePassword(pwForm.next)
+    if (error) { setPwError(error); return }
+    // Re-wrap private key so next login can unwrap with the new secret
+    const { error: keyError } = await KeyService.rewrapPrivateKey(currentUser.id, pwForm.next)
+    if (keyError) { setPwError('Mot de passe mis à jour, mais la clé de chiffrement n\'a pas pu être re-chiffrée. Reconnectez-vous.'); return }
     setPwForm({ current: '', next: '', confirm: '' })
     setChangingPassword(false)
     setPwSaved(true)
@@ -284,6 +301,7 @@ export function Profile() {
               ))}
             </div>
 
+            {pwError && <p className="px-5 pb-2 text-xs text-danger">{pwError}</p>}
             <div className="flex gap-3 px-5 pb-5">
               <button onClick={() => setChangingPassword(false)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">Annuler</button>
               <button onClick={savePassword} disabled={!pwValid}

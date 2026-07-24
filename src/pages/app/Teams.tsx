@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Hash, Users, ChevronRight, ArrowLeft, FileText, MessageSquare, Crown, File, Table, ShieldCheck, Search, UserPlus, X, Settings } from 'lucide-react'
-import { mockTeams, mockOrgUsers, mockDocuments, mockChannels } from '../../lib/mock'
 import { useAuth } from '../../contexts/AuthContext'
+import { TeamService } from '../../services/team.service'
+import { UserService } from '../../services/user.service'
+import { DocumentService } from '../../services/document.service'
+import { MessageService } from '../../services/message.service'
+import { PermissionService } from '../../services/permission.service'
 import { Avatar } from '../../components/ui/Avatar'
 import { formatFileSize } from '../../lib/utils'
 import { useNavigate } from 'react-router-dom'
+import type { Team, User, Document, Channel } from '../../lib/types'
 
 function FileIcon({ type, size = 16 }: { type: string; size?: number }) {
   if (type === 'pdf')  return <FileText size={size} className="text-danger" />
@@ -13,19 +18,11 @@ function FileIcon({ type, size = 16 }: { type: string; size?: number }) {
 }
 
 const TEAM_PERMS = [
-  { key: 'invite_members',   label: 'Inviter des membres',  desc: 'Inviter de nouveaux membres dans l\'équipe' },
+  { key: 'invite_members',   label: 'Inviter des membres',  desc: "Inviter de nouveaux membres dans l'équipe" },
   { key: 'manage_documents', label: 'Gérer les documents',  desc: 'Créer, modifier et supprimer les documents' },
-  { key: 'manage_events',    label: 'Gérer l\'agenda',      desc: 'Créer et modifier les événements de l\'équipe' },
-  { key: 'admin_space',      label: 'Administrer',          desc: 'Modifier les paramètres de l\'équipe' },
+  { key: 'manage_events',    label: "Gérer l'agenda",       desc: "Créer et modifier les événements de l'équipe" },
+  { key: 'admin_space',      label: 'Administrer',          desc: "Modifier les paramètres de l'équipe" },
 ]
-
-const DEFAULT_PERMS: Record<string, Record<string, boolean>> = {
-  t1: { invite_members: true,  manage_documents: true,  manage_events: true,  admin_space: true  },
-  t2: { invite_members: false, manage_documents: true,  manage_events: true,  admin_space: false },
-  t3: { invite_members: true,  manage_documents: true,  manage_events: false, admin_space: false },
-  t4: { invite_members: false, manage_documents: false, manage_events: true,  admin_space: false },
-  t5: { invite_members: true,  manage_documents: true,  manage_events: true,  admin_space: false },
-}
 
 function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void; disabled?: boolean }) {
   return (
@@ -40,30 +37,37 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
 
 const TEAM_COLORS = ['#0f1628', '#4f46e5', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#0ea5e9']
 
-function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) {
-  const { currentUser } = useAuth()
+function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
+  team: Team
+  orgUsers: User[]
+  channels: Channel[]
+  onBack: () => void
+  onTeamUpdated: (updated: Team) => void
+}) {
+  const { currentUser, currentOrg } = useAuth()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<'membres' | 'documents' | 'canal' | 'permissions' | 'parametres'>('membres')
-  const [perms, setPerms] = useState<Record<string, boolean>>(
-    DEFAULT_PERMS[teamId] ?? { invite_members: false, manage_documents: false, manage_events: false, admin_space: false }
-  )
+  const [perms, setPerms] = useState<Record<string, boolean>>({})
   const [permSaved, setPermSaved] = useState(false)
-  const [memberIds, setMemberIds] = useState<string[]>(
-    mockTeams.find(t => t.id === teamId)?.members ?? []
-  )
+  const [memberIds, setMemberIds] = useState<string[]>(team.members)
   const [memberQuery, setMemberQuery] = useState('')
   const [memberSaved, setMemberSaved] = useState(false)
-  const navigate = useNavigate()
-  const team = mockTeams.find(t => t.id === teamId)!
   const [settings, setSettings] = useState({ name: team.name, description: team.description ?? '', color: team.color })
   const [settingsSaved, setSettingsSaved] = useState(false)
-  const docs = mockDocuments.filter(d => d.teamId === teamId)
-  const channel = mockChannels.find(c => c.teamId === teamId)
+  const [docs, setDocs] = useState<Document[]>([])
+
+  useEffect(() => {
+    PermissionService.getTeamPerms(team.id).then(setPerms)
+    DocumentService.getByTeam(team.id).then(setDocs)
+  }, [team.id])
+
+  const channel = channels.find(c => c.teamId === team.id)
   const isResponsable = team.responsableId === currentUser.id
 
-  const members = memberIds.map(id => mockOrgUsers.find(u => u.id === id)).filter(Boolean)
+  const members = memberIds.map(id => orgUsers.find(u => u.id === id)).filter(Boolean) as User[]
 
   const memberSearchResults = memberQuery.length > 1
-    ? mockOrgUsers.filter(u =>
+    ? orgUsers.filter(u =>
         u.status === 'active' &&
         !memberIds.includes(u.id) &&
         `${u.firstName} ${u.lastName} ${u.role}`.toLowerCase().includes(memberQuery.toLowerCase())
@@ -81,8 +85,15 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
     setMemberSaved(false)
   }
 
-  function saveMembers() {
-    // TODO: TeamService.updateMembers(team.id, memberIds) in Étape 3
+  async function saveMembers() {
+    const original = team.members
+    const added = memberIds.filter(id => !original.includes(id))
+    const removed = original.filter(id => !memberIds.includes(id))
+    await Promise.all([
+      ...added.map(id => TeamService.addMember(team.id, id)),
+      ...removed.map(id => TeamService.removeMember(team.id, id)),
+    ])
+    onTeamUpdated({ ...team, members: memberIds })
     setMemberSaved(true)
     setTimeout(() => setMemberSaved(false), 2000)
   }
@@ -93,9 +104,22 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
     setPermSaved(false)
   }
 
-  function savePerms() {
+  async function savePerms() {
+    await PermissionService.updateTeamPerms(team.id, perms)
     setPermSaved(true)
     setTimeout(() => setPermSaved(false), 2000)
+  }
+
+  async function saveSettings() {
+    await TeamService.update(
+      team.id,
+      { name: settings.name, description: settings.description || null, color: settings.color },
+      currentOrg.id,
+      currentUser.id,
+    )
+    onTeamUpdated({ ...team, name: settings.name, description: settings.description || undefined, color: settings.color })
+    setSettingsSaved(true)
+    setTimeout(() => setSettingsSaved(false), 2000)
   }
 
   return (
@@ -135,7 +159,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
         {tab === 'membres' && (
           <div>
             <div className="space-y-2 mb-4">
-              {members.map(m => m && (
+              {members.map(m => (
                 <div key={m.id} className="flex items-center gap-3 p-3.5 bg-surface rounded-xl border border-border">
                   <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="md" />
                   <div className="flex-1 min-w-0">
@@ -210,7 +234,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
             ) : (
               <div className="space-y-2">
                 {docs.map(doc => {
-                  const owner = mockOrgUsers.find(u => u.id === doc.ownerId)
+                  const owner = orgUsers.find(u => u.id === doc.ownerId)
                   return (
                     <div key={doc.id} className="flex items-center gap-3 p-3.5 bg-surface rounded-xl border border-border hover:border-indigo/30 transition-colors cursor-pointer">
                       <div className="w-9 h-9 rounded-lg bg-bg flex items-center justify-center shrink-0">
@@ -327,7 +351,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
             <div className="pt-1 border-t border-border">
               <div className="text-xs font-semibold text-ink mb-1 uppercase tracking-wide">Responsable</div>
               {(() => {
-                const resp = mockOrgUsers.find(u => u.id === team.responsableId)
+                const resp = orgUsers.find(u => u.id === team.responsableId)
                 return resp ? (
                   <div className="flex items-center gap-3 py-2">
                     <Avatar firstName={resp.firstName} lastName={resp.lastName} id={resp.id} size="sm" />
@@ -344,7 +368,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
             {isResponsable && (
               <button
                 disabled={!settings.name.trim()}
-                onClick={() => { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 2000) }}
+                onClick={saveSettings}
                 className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors disabled:opacity-40 ${
                   settingsSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                 }`}>
@@ -359,12 +383,32 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
 }
 
 export function Teams() {
-  const { currentUser } = useAuth()
+  const { currentUser, currentOrg } = useAuth()
+  const [myTeams, setMyTeams] = useState<Team[]>([])
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
+  const [channels, setChannels] = useState<Channel[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
-  const myTeams = mockTeams.filter(t => t.members.includes(currentUser.id))
 
-  if (selectedTeamId) {
-    return <TeamDetail teamId={selectedTeamId} onBack={() => setSelectedTeamId(null)} />
+  useEffect(() => {
+    TeamService.getByOrganizationWithMembers(currentOrg.id).then(all => {
+      setMyTeams(all.filter(t => t.members.includes(currentUser.id)))
+    })
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+    MessageService.getConversations(currentOrg.id, currentUser.id).then(setChannels)
+  }, [currentUser.id, currentOrg.id])
+
+  const selectedTeam = myTeams.find(t => t.id === selectedTeamId) ?? null
+
+  if (selectedTeam) {
+    return (
+      <TeamDetail
+        team={selectedTeam}
+        orgUsers={orgUsers}
+        channels={channels}
+        onBack={() => setSelectedTeamId(null)}
+        onTeamUpdated={updated => setMyTeams(prev => prev.map(t => t.id === updated.id ? updated : t))}
+      />
+    )
   }
 
   return (
@@ -377,8 +421,8 @@ export function Teams() {
 
         <div className="space-y-3">
           {myTeams.map(team => {
-            const members = team.members.map(id => mockOrgUsers.find(u => u.id === id)).filter(Boolean)
-            const responsable = mockOrgUsers.find(u => u.id === team.responsableId)
+            const members = team.members.map(id => orgUsers.find(u => u.id === id)).filter(Boolean) as User[]
+            const responsable = orgUsers.find(u => u.id === team.responsableId)
             return (
               <button key={team.id} onClick={() => setSelectedTeamId(team.id)}
                 className="w-full text-left bg-surface rounded-xl border border-border p-4 hover:border-indigo/30 hover:shadow-sm transition-all">
@@ -396,7 +440,7 @@ export function Teams() {
                     )}
                     <div className="flex items-center justify-between">
                       <div className="flex -space-x-2">
-                        {members.slice(0, 4).map(m => m && (
+                        {members.slice(0, 4).map(m => (
                           <Avatar key={m.id} firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
                         ))}
                       </div>

@@ -1,14 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+
+import { ArrowLeft } from 'lucide-react'
+import { AuthService } from '../../services/auth.service'
+import { KeyService } from '../../services/key.service'
+import { OrganizationService } from '../../services/organization.service'
 
 export function UserLogin() {
   const [email, setEmail] = useState('')
-  const [pin, setPin] = useState(['', '', '', '', '', ''])
-  const [showPin, setShowPin] = useState(false)
+  const [pin, setPin] = useState('')
   const [step, setStep] = useState<'email' | 'pin'>('email')
   const [loading, setLoading] = useState(false)
-  const pinRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   function handleEmailNext(e: React.FormEvent) {
@@ -16,29 +19,26 @@ export function UserLogin() {
     if (email.trim()) setStep('pin')
   }
 
-  function handlePinChange(idx: number, val: string) {
-    if (!/^\d*$/.test(val)) return
-    const next = [...pin]
-    next[idx] = val.slice(-1)
-    setPin(next)
-    if (val && idx < 5) {
-      pinRefs.current[idx + 1]?.focus()
-    }
-  }
-
-  function handlePinKeyDown(idx: number, e: React.KeyboardEvent) {
-    if (e.key === 'Backspace' && !pin[idx] && idx > 0) {
-      pinRefs.current[idx - 1]?.focus()
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const code = pin.join('')
-    if (code.length !== 6) return
+    if (pin.length !== 6) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
-    navigate('/app/messages')
+    setError(null)
+
+    const { userId, error: authError } = await AuthService.signIn({ email, password: pin })
+    if (authError || !userId) {
+      setError('Code PIN ou email incorrect.')
+      setLoading(false)
+      return
+    }
+
+    // Load E2E keys into session (best-effort — don't block login if missing)
+    const orgRow = await OrganizationService.getForUser(userId)
+    if (orgRow) {
+      await KeyService.loadUserKeys(userId, pin, orgRow.id)
+    }
+
+    navigate('/app/messages', { replace: true })
   }
 
   return (
@@ -92,7 +92,7 @@ export function UserLogin() {
           <form onSubmit={handleSubmit}>
             <button
               type="button"
-              onClick={() => setStep('email')}
+              onClick={() => { setStep('email'); setPin(''); setError(null) }}
               className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors"
             >
               <ArrowLeft size={15} />
@@ -104,43 +104,44 @@ export function UserLogin() {
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo" />
                 <span className="text-indigo text-xs font-medium truncate max-w-[220px]">{email}</span>
               </div>
-              <h1 className="text-2xl font-bold text-navy mb-1">Entrez votre PIN</h1>
-              <p className="text-muted text-sm">Code à 6 chiffres créé lors de votre activation.</p>
+              <h1 className="text-2xl font-bold text-navy mb-1">Code PIN</h1>
+              <p className="text-muted text-sm">Entrez votre code PIN à 6 chiffres.</p>
             </div>
 
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex gap-2.5">
-                {pin.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    ref={el => { pinRefs.current[idx] = el }}
-                    type={showPin ? 'text' : 'password'}
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={e => handlePinChange(idx, e.target.value)}
-                    onKeyDown={e => handlePinKeyDown(idx, e)}
-                    autoFocus={idx === 0}
-                    className="w-11 h-13 text-center text-lg font-bold bg-surface border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent transition-all text-ink"
-                  />
-                ))}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
+                  Code PIN
+                </label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={pin}
+                  onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="••••••"
+                  required
+                  autoFocus
+                  className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink text-center tracking-[1rem] font-mono placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent transition-all"
+                />
               </div>
-              <button
-                type="button"
-                onClick={() => setShowPin(!showPin)}
-                className="p-2 rounded-lg text-muted hover:text-ink transition-colors"
-              >
-                {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
 
-            <button
-              type="submit"
-              disabled={pin.join('').length !== 6 || loading}
-              className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Connexion…' : 'Se connecter'}
-            </button>
+              {error && (
+                <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={pin.length !== 6 || loading}
+                className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Connexion…' : 'Se connecter'}
+              </button>
+              <p className="text-center text-xs text-faint">
+                <Link to="/recuperation/utilisateur" className="text-indigo hover:underline">Code PIN oublié ?</Link>
+              </p>
+            </div>
           </form>
         )}
       </div>

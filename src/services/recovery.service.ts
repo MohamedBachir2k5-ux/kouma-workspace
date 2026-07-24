@@ -1,0 +1,176 @@
+import { supabase } from '../lib/supabase'
+import { CryptoService } from './crypto.service'
+import { KeyService } from './key.service'
+import { cryptoSession } from '../lib/crypto-session'
+import { OrganizationService } from './organization.service'
+
+export const RecoveryService = {
+
+  // ── OTP (used by both admin and collaborator recovery) ─────────────────────
+
+  async sendRecoveryOtp(email: string): Promise<{ error: string | null }> {
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
+    return { error: error?.message ?? null }
+  },
+
+  async verifyOtp(email: string, token: string): Promise<{ userId: string | null; error: string | null }> {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    if (error || !data.user) return { userId: null, error: error?.message ?? 'Code invalide ou expiré.' }
+    return { userId: data.user.id, error: null }
+  },
+
+  // ── Admin breakglass recovery ──────────────────────────────────────────────
+  //
+  // Flow: OTP verified → admin authenticated → enter breakglass phrase + new password
+  // 1. Fetch any org_recovery_keys row with bg_encrypted_key for this org
+  // 2. Unwrap org_recovery_priv using the breakglass phrase (PBKDF2 → AES-GCM)
+  // 3. Generate new user key pair for the admin (loads into CryptoSession)
+  // 4. Re-encrypt all conversation keys (via conversation_recovery_keys) for new admin pub
+  // 5. Upsert admin row in org_recovery_keys with new ECIES wrap
+  // 6. Update Supabase auth password
+  // 7. Audit log
+
+  async adminBreakglassRecovery(
+    orgId: string,
+    userId: string,
+    breakglassPhrase: string,
+    newPassword: string,
+  ): Promise<{ error: string | null }> {
+    try {
+      // 1. Fetch breakglass-protected row (any row with bg_encrypted_key in this org)
+      const { data: bgRow, error: bgErr } = await supabase
+        .from('org_recovery_keys')
+        .select('recovery_public_key, bg_encrypted_key, bg_kdf_salt, bg_iv')
+        .eq('organization_id', orgId)
+        .not('bg_encrypted_key', 'is', null)
+        .limit(1)
+        .single()
+
+      if (bgErr || !bgRow?.bg_encrypted_key || !bgRow.bg_kdf_salt || !bgRow.bg_iv) {
+        return { error: 'Clé breakglass introuvable pour cette organisation.' }
+      }
+
+      // 2. Unwrap org_recovery_priv using breakglass phrase
+      const orgRecoveryPriv = await CryptoService.unwrapPrivateKeyWithPassphrase(
+        bgRow.bg_encrypted_key, bgRow.bg_iv, bgRow.bg_kdf_salt, breakglassPhrase,
+      )
+
+      // 3. Generate new user key pair (also loads into CryptoSession)
+      const { error: keyErr } = await KeyService.generateAndStoreUserKeys(userId, newPassword)
+      if (keyErr) return { error: keyErr }
+
+      const newAdminPub = cryptoSession.userPub
+      if (!newAdminPub) return { error: 'Erreur de session cryptographique.' }
+
+      // 4. Re-encrypt all conversation keys for admin via org recovery key
+      const { data: recoveryKeys } = await supabase
+        .from('conversation_recovery_keys')
+        .select('conversation_id, encrypted_key, eph_public_key, ecies_iv')
+        .eq('organization_id', orgId)
+
+      if (recoveryKeys?.length) {
+        const keyRows: Array<{ conversation_id: string; user_id: string; encrypted_key: string; eph_public_key: string; ecies_iv: string }> = []
+        for (const rk of recoveryKeys) {
+          try {
+            const convKey = await CryptoService.eciesUnwrapSymmetricKey(
+              rk.eph_public_key, rk.ecies_iv, rk.encrypted_key, orgRecoveryPriv, orgId,
+            )
+            const wrap = await CryptoService.eciesWrapKey(convKey, newAdminPub, orgId)
+            keyRows.push({
+              conversation_id: rk.conversation_id,
+              user_id: userId,
+              encrypted_key: wrap.ciphertext,
+              eph_public_key: wrap.ephPub,
+              ecies_iv: wrap.iv,
+            })
+          } catch {
+            // Skip undecryptable conv keys — continue with others
+          }
+        }
+        if (keyRows.length > 0) {
+          await supabase.from('conversation_keys')
+            .upsert(keyRows, { onConflict: 'conversation_id,user_id' })
+        }
+      }
+
+      // 5. Upsert admin's org_recovery_keys row with new ECIES wrap
+      const newWrap = await CryptoService.eciesWrapKey(orgRecoveryPriv, newAdminPub, orgId, 'pkcs8')
+      await supabase.from('org_recovery_keys').upsert({
+        organization_id: orgId,
+        admin_user_id: userId,
+        recovery_public_key: bgRow.recovery_public_key,
+        encrypted_recovery_private_key: newWrap.ciphertext,
+        eph_public_key: newWrap.ephPub,
+        ecies_iv: newWrap.iv,
+        bg_encrypted_key: bgRow.bg_encrypted_key,
+        bg_kdf_salt: bgRow.bg_kdf_salt,
+        bg_iv: bgRow.bg_iv,
+      }, { onConflict: 'organization_id,admin_user_id' })
+
+      // 6. Update Supabase auth password
+      const { error: pwErr } = await supabase.auth.updateUser({ password: newPassword })
+      if (pwErr) return { error: pwErr.message }
+
+      // 7. Audit log
+      await supabase.from('audit_logs').insert({
+        organization_id: orgId,
+        user_id: userId,
+        action: 'recovery_completed',
+        target_id: userId,
+        target_type: 'user',
+        detail: 'Récupération administrateur via clé breakglass',
+      })
+
+      return { error: null }
+    } catch (e) {
+      if ((e as Error).message?.includes('unwrap') || (e as Error).name === 'OperationError') {
+        return { error: 'Phrase de récupération incorrecte.' }
+      }
+      return { error: (e as Error).message }
+    }
+  },
+
+  // ── Collaborator PIN reset ─────────────────────────────────────────────────
+  //
+  // Simplified v1: generates a new key pair with the new PIN.
+  // Historical encrypted messages are no longer decryptable (acceptable trade-off).
+  // For full recovery with history, an admin must manually re-encrypt conv keys.
+
+  async collaboratorResetPin(
+    userId: string,
+    orgId: string,
+    newPin: string,
+  ): Promise<{ error: string | null }> {
+    try {
+      // Generate new key pair wrapped with new PIN
+      const { error: keyErr } = await KeyService.generateAndStoreUserKeys(userId, newPin)
+      if (keyErr) return { error: keyErr }
+
+      // Update Supabase auth password (PIN = password for collaborators)
+      const { error: pwErr } = await supabase.auth.updateUser({ password: newPin })
+      if (pwErr) return { error: pwErr.message }
+
+      // Audit log (best-effort)
+      try {
+        await supabase.from('audit_logs').insert({
+          organization_id: orgId,
+          user_id: userId,
+          action: 'recovery_completed',
+          target_id: userId,
+          target_type: 'user',
+          detail: 'Réinitialisation PIN collaborateur',
+        })
+      } catch { /* non-blocking */ }
+
+      return { error: null }
+    } catch (e) {
+      return { error: (e as Error).message }
+    }
+  },
+
+  // Lookup org for a user (needed after OTP verification to find orgId)
+  async getOrgIdForUser(userId: string): Promise<string | null> {
+    const orgRow = await OrganizationService.getForUser(userId)
+    return orgRow?.id ?? null
+  },
+}

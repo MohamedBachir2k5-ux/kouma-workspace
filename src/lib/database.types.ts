@@ -98,6 +98,89 @@ export type Database = {
           },
         ]
       }
+      conversation_keys: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          ecies_iv?: string
+          encrypted_key?: string
+          eph_public_key?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_keys_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_recovery_keys: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          ecies_iv?: string
+          encrypted_key?: string
+          eph_public_key?: string
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_recovery_keys_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_recovery_keys_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -159,6 +242,72 @@ export type Database = {
           },
         ]
       }
+      events: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          end_at: string
+          external_link: string | null
+          id: string
+          location: string | null
+          modified_at: string | null
+          organization_id: string
+          participants: string[]
+          start_at: string
+          status: string
+          title: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_at: string
+          external_link?: string | null
+          id?: string
+          location?: string | null
+          modified_at?: string | null
+          organization_id: string
+          participants?: string[]
+          start_at: string
+          status?: string
+          title: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_at?: string
+          external_link?: string | null
+          id?: string
+          location?: string | null
+          modified_at?: string | null
+          organization_id?: string
+          participants?: string[]
+          start_at?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string
@@ -214,6 +363,74 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_keys: {
+        Row: {
+          created_at: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          storage_path: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          storage_path: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ecies_iv?: string
+          encrypted_key?: string
+          eph_public_key?: string
+          storage_path?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      file_recovery_keys: {
+        Row: {
+          created_at: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          storage_path: string
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          created_at?: string
+          ecies_iv: string
+          encrypted_key: string
+          eph_public_key: string
+          storage_path: string
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          created_at?: string
+          ecies_iv?: string
+          encrypted_key?: string
+          eph_public_key?: string
+          storage_path?: string
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_recovery_keys_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -389,7 +606,7 @@ export type Database = {
       invitations: {
         Row: {
           created_at: string
-          email: string
+          email: string | null
           expires_at: string
           id: string
           organization_id: string
@@ -398,7 +615,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          email: string
+          email?: string | null
           expires_at?: string
           id?: string
           organization_id: string
@@ -407,7 +624,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          email?: string
+          email?: string | null
           expires_at?: string
           id?: string
           organization_id?: string
@@ -534,9 +751,11 @@ export type Database = {
       messages: {
         Row: {
           content: string
+          content_encrypted: boolean
           conversation_id: string
           created_at: string
           edited_at: string | null
+          files: string[] | null
           id: string
           reply_to_id: string | null
           sender_id: string
@@ -544,9 +763,11 @@ export type Database = {
         }
         Insert: {
           content: string
+          content_encrypted?: boolean
           conversation_id: string
           created_at?: string
           edited_at?: string | null
+          files?: string[] | null
           id?: string
           reply_to_id?: string | null
           sender_id: string
@@ -554,9 +775,11 @@ export type Database = {
         }
         Update: {
           content?: string
+          content_encrypted?: boolean
           conversation_id?: string
           created_at?: string
           edited_at?: string | null
+          files?: string[] | null
           id?: string
           reply_to_id?: string | null
           sender_id?: string
@@ -623,21 +846,27 @@ export type Database = {
       }
       organization_members: {
         Row: {
+          department_id: string | null
           id: string
+          job_title: string | null
           organization_id: string
           role: string
           status: string
           user_id: string
         }
         Insert: {
+          department_id?: string | null
           id?: string
+          job_title?: string | null
           organization_id: string
           role?: string
           status?: string
           user_id: string
         }
         Update: {
+          department_id?: string | null
           id?: string
+          job_title?: string | null
           organization_id?: string
           role?: string
           status?: string
@@ -710,6 +939,56 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      org_recovery_keys: {
+        Row: {
+          admin_user_id: string
+          bg_encrypted_key: string | null
+          bg_iv: string | null
+          bg_kdf_salt: string | null
+          created_at: string
+          ecies_iv: string
+          encrypted_recovery_private_key: string
+          eph_public_key: string
+          id: string
+          organization_id: string
+          recovery_public_key: string
+        }
+        Insert: {
+          admin_user_id: string
+          bg_encrypted_key?: string | null
+          bg_iv?: string | null
+          bg_kdf_salt?: string | null
+          created_at?: string
+          ecies_iv: string
+          encrypted_recovery_private_key: string
+          eph_public_key: string
+          id?: string
+          organization_id: string
+          recovery_public_key: string
+        }
+        Update: {
+          admin_user_id?: string
+          bg_encrypted_key?: string | null
+          bg_iv?: string | null
+          bg_kdf_salt?: string | null
+          created_at?: string
+          ecies_iv?: string
+          encrypted_recovery_private_key?: string
+          eph_public_key?: string
+          id?: string
+          organization_id?: string
+          recovery_public_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_recovery_keys_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -879,6 +1158,77 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_sessions: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device_name: string | null
+          id: string
+          last_seen_at: string
+          platform: string | null
+          revoked: boolean
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string | null
+          revoked?: boolean
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string | null
+          revoked?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_key_pairs: {
+        Row: {
+          encrypted_private_key: string
+          kdf_iterations: number
+          kdf_iv: string
+          kdf_salt: string
+          public_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          encrypted_private_key: string
+          kdf_iterations?: number
+          kdf_iv: string
+          kdf_salt: string
+          public_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          encrypted_private_key?: string
+          kdf_iterations?: number
+          kdf_iv?: string
+          kdf_salt?: string
+          public_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       team_permissions: {
         Row: {
@@ -1122,3 +1472,10 @@ export type SubscriptionRow     = Tables<'subscriptions'>
 export type PaymentRow          = Tables<'payments'>
 export type NotificationRow     = Tables<'notifications'>
 export type AuditLogRow         = Tables<'audit_logs'>
+export type EventRow                  = Tables<'events'>
+export type UserKeyPairRow            = Tables<'user_key_pairs'>
+export type OrgRecoveryKeyRow         = Tables<'org_recovery_keys'>
+export type ConversationKeyRow        = Tables<'conversation_keys'>
+export type ConversationRecoveryKeyRow = Tables<'conversation_recovery_keys'>
+export type FileKeyRow                = Tables<'file_keys'>
+export type FileRecoveryKeyRow        = Tables<'file_recovery_keys'>

@@ -1,43 +1,121 @@
+import { supabase } from '../lib/supabase'
 import type { Event, EventStatus } from '../lib/types'
-import { mockEvents } from '../lib/mock'
+
+type EventRow = {
+  id: string
+  organization_id: string
+  title: string
+  description: string | null
+  location: string | null
+  external_link: string | null
+  start_at: string
+  end_at: string
+  participants: string[]
+  created_by: string
+  created_at: string
+  status: string
+  modified_at: string | null
+  cancel_reason: string | null
+}
+
+function rowToEvent(r: EventRow): Event {
+  return {
+    id: r.id,
+    organizationId: r.organization_id,
+    title: r.title,
+    description: r.description ?? undefined,
+    location: r.location ?? undefined,
+    externalLink: r.external_link ?? undefined,
+    startAt: r.start_at,
+    endAt: r.end_at,
+    participants: r.participants,
+    createdById: r.created_by,
+    createdAt: r.created_at,
+    status: r.status as EventStatus,
+    modifiedAt: r.modified_at ?? undefined,
+    cancelReason: r.cancel_reason ?? undefined,
+  }
+}
 
 export const EventService = {
-  /** All events for an organisation. */
-  list(orgId: string): Event[] {
-    // TODO Phase 3: supabase.from('events').select('*, event_participants(*)').eq('organization_id', orgId)
-    return mockEvents.filter(e => e.organizationId === orgId)
+  async list(orgId: string): Promise<Event[]> {
+    const { data } = await supabase
+      .from('events')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('start_at', { ascending: true })
+    return (data ?? []).map(r => rowToEvent(r as unknown as EventRow))
   },
 
-  /** Events where the user is a participant. */
-  getForUser(orgId: string, userId: string): Event[] {
-    return EventService.list(orgId).filter(e => e.participants.includes(userId))
+  async getForUser(orgId: string, userId: string): Promise<Event[]> {
+    const { data } = await supabase
+      .from('events')
+      .select('*')
+      .eq('organization_id', orgId)
+      .contains('participants', [userId])
+      .order('start_at', { ascending: true })
+    return (data ?? []).map(r => rowToEvent(r as unknown as EventRow))
   },
 
-  /** Create a new event. Returns the created event. */
-  create(data: Omit<Event, 'id' | 'createdAt'>): Event {
-    // TODO Phase 3: supabase.from('events').insert(data)
-    return { ...data, id: `e${Date.now()}`, createdAt: new Date().toISOString() }
+  async create(data: Omit<Event, 'id' | 'createdAt'>): Promise<Event> {
+    const { data: row, error } = await supabase
+      .from('events')
+      .insert({
+        organization_id: data.organizationId,
+        title: data.title,
+        description: data.description ?? null,
+        location: data.location ?? null,
+        external_link: data.externalLink ?? null,
+        start_at: data.startAt,
+        end_at: data.endAt,
+        participants: data.participants,
+        created_by: data.createdById,
+        status: data.status ?? 'scheduled',
+        cancel_reason: data.cancelReason ?? null,
+      })
+      .select()
+      .single()
+
+    if (error || !row) throw new Error(error?.message ?? 'Erreur lors de la création.')
+    return rowToEvent(row as unknown as EventRow)
   },
 
-  /** Update event fields. */
-  update(id: string, data: Partial<Event>): void {
-    // TODO Phase 3: supabase.from('events').update(data).eq('id', id)
-    void id; void data
+  async update(id: string, updates: Partial<Event>): Promise<void> {
+    await supabase.from('events').update({
+      ...(updates.title !== undefined       ? { title: updates.title } : {}),
+      ...(updates.description !== undefined ? { description: updates.description ?? null } : {}),
+      ...(updates.location !== undefined    ? { location: updates.location ?? null } : {}),
+      ...(updates.externalLink !== undefined ? { external_link: updates.externalLink ?? null } : {}),
+      ...(updates.startAt !== undefined     ? { start_at: updates.startAt } : {}),
+      ...(updates.endAt !== undefined       ? { end_at: updates.endAt } : {}),
+      ...(updates.participants !== undefined ? { participants: updates.participants } : {}),
+      status: updates.status ?? 'modified',
+      modified_at: new Date().toISOString(),
+    }).eq('id', id)
   },
 
-  /** Cancel an event with a reason. */
-  cancel(id: string, reason: string): void {
-    // TODO Phase 3: supabase.from('events').update({ status: 'cancelled', cancel_reason: reason }).eq('id', id)
-    void id; void reason
+  async cancel(id: string, reason: string): Promise<void> {
+    await supabase
+      .from('events')
+      .update({ status: 'cancelled', cancel_reason: reason, modified_at: new Date().toISOString() })
+      .eq('id', id)
   },
 
-  /** Mark a past event as done. */
-  markDone(id: string): void {
-    // TODO Phase 3: supabase.from('events').update({ status: 'done' }).eq('id', id)
-    void id
+  async markDone(id: string): Promise<void> {
+    await supabase
+      .from('events')
+      .update({ status: 'done', modified_at: new Date().toISOString() })
+      .eq('id', id)
   },
 
-  updateStatus(id: string, status: EventStatus): void {
-    EventService.update(id, { status })
+  async updateStatus(id: string, status: EventStatus): Promise<void> {
+    await supabase
+      .from('events')
+      .update({ status, modified_at: new Date().toISOString() })
+      .eq('id', id)
+  },
+
+  async delete(id: string): Promise<void> {
+    await supabase.from('events').delete().eq('id', id)
   },
 }

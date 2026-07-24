@@ -106,7 +106,7 @@ export const OrganizationService = {
     return org ?? null
   },
 
-  async update(id: string, updates: Partial<Pick<OrganizationRow, 'name' | 'email' | 'phone' | 'website' | 'logo_url' | 'country' | 'currency' | 'language' | 'sector' | 'size'>>): Promise<{ error: string | null }> {
+  async update(id: string, updates: Partial<Pick<OrganizationRow, 'name' | 'email' | 'phone' | 'website' | 'logo_url' | 'country' | 'currency' | 'language' | 'sector' | 'size' | 'city'>>): Promise<{ error: string | null }> {
     const { error } = await supabase
       .from('organizations')
       .update(updates)
@@ -129,6 +129,20 @@ export const OrganizationService = {
       .eq('organization_id', organizationId)
       .single()
     return data ?? null
+  },
+
+  async uploadLogo(orgId: string, file: File): Promise<{ logoUrl: string | null; error: string | null }> {
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    // Path must be org-scoped so storage RLS policy allows it
+    const path = `${orgId}/logos/${orgId}.${ext}`
+    const { error: uploadErr } = await supabase.storage
+      .from('attachments')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadErr) return { logoUrl: null, error: uploadErr.message }
+    const { data } = supabase.storage.from('attachments').getPublicUrl(path)
+    const logoUrl = data.publicUrl
+    await supabase.from('organizations').update({ logo_url: logoUrl }).eq('id', orgId)
+    return { logoUrl, error: null }
   },
 
   async getStorageUsed(organizationId: string): Promise<number> {

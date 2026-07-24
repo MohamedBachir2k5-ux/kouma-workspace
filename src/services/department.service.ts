@@ -1,28 +1,51 @@
+import { supabase } from '../lib/supabase'
 import type { Department } from '../lib/types'
-import { mockDepartments } from '../lib/mock'
+import type { Tables } from '../lib/database.types'
 
-let store: Department[] = [...mockDepartments]
+type DepartmentRow = Tables<'departments'>
+
+function rowToDepartment(r: DepartmentRow): Department {
+  return {
+    id: r.id,
+    organizationId: r.organization_id,
+    name: r.name,
+    code: r.code,
+  }
+}
 
 export const DepartmentService = {
-  list(orgId: string): Department[] {
-    // TODO Phase 3: supabase.from('departments').select('*').eq('organization_id', orgId)
-    return store.filter(d => d.organizationId === orgId)
+  async list(orgId: string): Promise<Department[]> {
+    const { data } = await supabase
+      .from('departments')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('name')
+    return (data ?? []).map(rowToDepartment)
   },
 
-  create(orgId: string, data: { name: string; code: string }): Department {
-    // TODO Phase 3: supabase.from('departments').insert({ organization_id: orgId, ...data })
-    const dept: Department = { id: `d${Date.now()}`, organizationId: orgId, ...data }
-    store = [...store, dept]
-    return dept
+  async create(orgId: string, data: { name: string; code: string }): Promise<{ dept: Department | null; error: string | null }> {
+    const { data: row, error } = await supabase
+      .from('departments')
+      .insert({ organization_id: orgId, name: data.name, code: data.code })
+      .select()
+      .single()
+    if (error) return { dept: null, error: error.message }
+    return { dept: rowToDepartment(row), error: null }
   },
 
-  update(id: string, data: { name: string; code: string }): void {
-    // TODO Phase 3: supabase.from('departments').update(data).eq('id', id)
-    store = store.map(d => d.id === id ? { ...d, ...data } : d)
+  async update(id: string, data: { name: string; code: string }): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('departments')
+      .update({ name: data.name, code: data.code })
+      .eq('id', id)
+    return { error: error?.message ?? null }
   },
 
-  delete(id: string): void {
-    // TODO Phase 3: supabase.from('departments').delete().eq('id', id)
-    store = store.filter(d => d.id !== id)
+  async delete(id: string): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('departments')
+      .delete()
+      .eq('id', id)
+    return { error: error?.message ?? null }
   },
 }

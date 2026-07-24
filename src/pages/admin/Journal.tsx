@@ -1,36 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UserCheck, UserX, Users, ShieldCheck, FileText, Link as LinkIcon, Pencil, Search, ChevronLeft, ChevronRight } from 'lucide-react'
-import { mockOrgUsers } from '../../lib/mock'
 import { AuditService } from '../../services/audit.service'
+import { UserService } from '../../services/user.service'
 import { useAuth } from '../../contexts/AuthContext'
-import type { AuditLog, AuditAction } from '../../lib/types'
+import type { AuditLog, AuditAction, User } from '../../lib/types'
 
 const PAGE_SIZE = 5
 
 const actionConfig: Partial<Record<AuditAction, { icon: typeof UserCheck; label: string; color: string }>> = {
-  user_joined:         { icon: UserCheck,  label: 'Membre ajouté',           color: 'bg-success/10 text-success' },
-  user_suspended:      { icon: UserX,      label: 'Membre suspendu',          color: 'bg-amber/10 text-amber' },
-  user_revoked:        { icon: UserX,      label: 'Accès révoqué',            color: 'bg-danger/10 text-danger' },
-  user_activated:      { icon: UserCheck,  label: 'Membre réactivé',          color: 'bg-success/10 text-success' },
-  team_created:        { icon: Users,      label: 'Équipe créée',             color: 'bg-indigo/10 text-indigo' },
-  team_updated:        { icon: Pencil,     label: 'Équipe modifiée',          color: 'bg-indigo/10 text-indigo' },
-  team_deleted:        { icon: Users,      label: 'Équipe supprimée',         color: 'bg-danger/10 text-danger' },
-  permission_changed:  { icon: ShieldCheck,label: 'Permission modifiée',      color: 'bg-navy/10 text-navy' },
-  document_added:      { icon: FileText,   label: 'Document ajouté',          color: 'bg-success/10 text-success' },
-  document_deleted:    { icon: FileText,   label: 'Document supprimé',        color: 'bg-danger/10 text-danger' },
-  invite_generated:    { icon: LinkIcon,   label: "Invitation générée",       color: 'bg-muted/10 text-muted' },
-  subscription_changed:{ icon: ShieldCheck,label: 'Abonnement modifié',       color: 'bg-navy/10 text-navy' },
-  organization_created:{ icon: UserCheck,  label: 'Organisation créée',       color: 'bg-success/10 text-success' },
+  user_joined:         { icon: UserCheck,   label: 'Membre ajouté',      color: 'bg-success/10 text-success' },
+  user_suspended:      { icon: UserX,       label: 'Membre suspendu',    color: 'bg-amber/10 text-amber' },
+  user_revoked:        { icon: UserX,       label: 'Accès révoqué',      color: 'bg-danger/10 text-danger' },
+  user_activated:      { icon: UserCheck,   label: 'Membre réactivé',    color: 'bg-success/10 text-success' },
+  team_created:        { icon: Users,       label: 'Équipe créée',       color: 'bg-indigo/10 text-indigo' },
+  team_updated:        { icon: Pencil,      label: 'Équipe modifiée',    color: 'bg-indigo/10 text-indigo' },
+  team_deleted:        { icon: Users,       label: 'Équipe supprimée',   color: 'bg-danger/10 text-danger' },
+  permission_changed:  { icon: ShieldCheck, label: 'Permission modifiée',color: 'bg-navy/10 text-navy' },
+  document_added:      { icon: FileText,    label: 'Document ajouté',    color: 'bg-success/10 text-success' },
+  document_deleted:    { icon: FileText,    label: 'Document supprimé',  color: 'bg-danger/10 text-danger' },
+  invite_generated:    { icon: LinkIcon,    label: "Invitation générée", color: 'bg-muted/10 text-muted' },
+  subscription_changed:{ icon: ShieldCheck, label: 'Abonnement modifié', color: 'bg-navy/10 text-navy' },
+  organization_created:{ icon: UserCheck,   label: 'Organisation créée', color: 'bg-success/10 text-success' },
 }
 
 const fallbackConfig = { icon: ShieldCheck, label: 'Action', color: 'bg-muted/10 text-muted' }
 
 const filterOptions: { value: 'all' | AuditAction; label: string }[] = [
-  { value: 'all', label: 'Tout' },
-  { value: 'user_joined', label: 'Membres' },
-  { value: 'team_created', label: 'Équipes' },
+  { value: 'all',              label: 'Tout' },
+  { value: 'user_joined',      label: 'Membres' },
+  { value: 'team_created',     label: 'Équipes' },
   { value: 'permission_changed', label: 'Permissions' },
-  { value: 'document_added', label: 'Documents' },
+  { value: 'document_added',   label: 'Documents' },
 ]
 
 function formatTs(iso: string) {
@@ -63,10 +63,16 @@ export function AdminJournal() {
   const [filter, setFilter] = useState<'all' | AuditAction>('all')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  const [allLogs, setAllLogs] = useState<AuditLog[]>([])
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
 
-  function getActor(id: string | null) { return id ? mockOrgUsers.find(u => u.id === id) : null }
+  useEffect(() => {
+    AuditService.getLogs(currentOrg.id).then(setAllLogs)
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+  }, [currentOrg.id])
 
-  const allLogs = AuditService.getLogs(currentOrg.id)
+  function getActor(id: string | null) { return id ? orgUsers.find(u => u.id === id) : null }
+
   const base = allLogs.filter(l => {
     if (filter !== 'all') {
       if (filter === 'user_joined') {
@@ -87,15 +93,8 @@ export function AdminJournal() {
   const currentPage = Math.min(page, totalPages)
   const paged = base.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  function changeFilter(f: typeof filter) {
-    setFilter(f)
-    setPage(1)
-  }
-
-  function changeQuery(q: string) {
-    setQuery(q)
-    setPage(1)
-  }
+  function changeFilter(f: typeof filter) { setFilter(f); setPage(1) }
+  function changeQuery(q: string) { setQuery(q); setPage(1) }
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
@@ -104,7 +103,6 @@ export function AdminJournal() {
         <p className="text-sm text-muted mt-0.5">{base.length} entrée{base.length > 1 ? 's' : ''}</p>
       </div>
 
-      {/* Search */}
       <div className="relative mb-4">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
         <input value={query} onChange={e => changeQuery(e.target.value)}
@@ -112,7 +110,6 @@ export function AdminJournal() {
           className="w-full pl-9 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 mb-5 flex-wrap">
         {filterOptions.map(f => (
           <button key={f.value} onClick={() => changeFilter(f.value)}
@@ -157,7 +154,6 @@ export function AdminJournal() {
         })}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}

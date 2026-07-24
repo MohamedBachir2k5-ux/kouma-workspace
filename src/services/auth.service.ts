@@ -34,10 +34,17 @@ export const AuthService = {
       },
     })
 
-    if (error) return { userId: null, error: error.message }
+    if (error) {
+      const msg = /already registered|already been registered/i.test(error.message)
+        ? 'Cette adresse email est déjà utilisée.'
+        : error.message
+      return { userId: null, error: msg }
+    }
     if (!data.user) return { userId: null, error: 'Création du compte échouée.' }
 
-    const { error: profileError } = await supabase.from('profiles').insert({
+    // The on_auth_user_created trigger may already have created a basic profile row.
+    // Use upsert so additional fields (phone, language…) are always written.
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: data.user.id,
       firstname: params.firstName,
       lastname: params.lastName,
@@ -46,7 +53,7 @@ export const AuthService = {
       country: params.country ?? null,
       language: params.language ?? 'fr',
       status: 'active',
-    })
+    }, { onConflict: 'id' })
 
     if (profileError) return { userId: null, error: profileError.message }
 

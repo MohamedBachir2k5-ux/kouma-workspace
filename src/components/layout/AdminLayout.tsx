@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, UsersRound,
-  HardDrive, Lock, ScrollText, Settings, Menu, X, LogOut,
+  HardDrive, Lock, ScrollText, Settings, ShieldCheck, Menu, X, LogOut,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 import { NotificationBell } from '../ui/NotificationBell'
 
 function orgInitials(name: string) {
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/admin/equipes',         icon: UsersRound,      label: 'Équipes' },
   { to: '/admin/stockage',        icon: HardDrive,       label: 'Stockage' },
   { to: '/admin/securite',        icon: Lock,            label: 'Sécurité' },
+  { to: '/admin/permissions',     icon: ShieldCheck,     label: 'Permissions' },
   { to: '/admin/journal',         icon: ScrollText,      label: "Journal d'activité" },
   { to: '/admin/parametres',      icon: Settings,        label: 'Paramètres' },
 ]
@@ -25,6 +27,9 @@ const navItems = [
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { currentOrg, currentUser, signOut } = useAuth()
+  const { checking } = useRequireAuth('/connexion/admin')
+
+  if (checking) return null
 
   return (
     <div className="flex h-dvh bg-bg overflow-hidden">

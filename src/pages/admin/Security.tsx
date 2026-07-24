@@ -1,10 +1,8 @@
-import { useState } from 'react'
-import { Smartphone, Shield, LogOut, AlertTriangle, Clock } from 'lucide-react'
-
-const mockSessions = [
-  { id: 's1', device: 'iPhone 14 Pro', browser: 'Safari', location: 'Conakry, Guinée', lastActive: new Date(Date.now() - 1000 * 60 * 5).toISOString(), current: true },
-  { id: 's2', device: 'MacBook Pro', browser: 'Chrome', location: 'Conakry, Guinée', lastActive: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), current: false },
-]
+import { useState, useEffect } from 'react'
+import { Smartphone, Shield, LogOut, AlertTriangle, Clock, Loader2, Monitor, Tablet } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+import { SessionService } from '../../services/session.service'
+import type { SessionRecord } from '../../services/session.service'
 
 function formatRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -16,17 +14,39 @@ function formatRelative(iso: string) {
   return `Il y a ${Math.floor(h / 24)}j`
 }
 
+function DeviceIcon({ platform }: { platform: string | null }) {
+  if (!platform) return <Smartphone size={17} className="text-muted" />
+  const p = platform.toLowerCase()
+  if (p.includes('iphone') || p.includes('android')) return <Smartphone size={17} className="text-muted" />
+  if (p.includes('ipad')) return <Tablet size={17} className="text-muted" />
+  return <Monitor size={17} className="text-muted" />
+}
+
 export function AdminSecurity() {
-  const [sessions, setSessions] = useState(mockSessions)
-  const [sessionDuration, setSessionDuration] = useState('30')
-  const [pinLength] = useState('6')
+  const { currentUser, currentSessionId } = useAuth()
+  const [sessions, setSessions] = useState<SessionRecord[]>([])
+  const [loadingSessions, setLoadingSessions] = useState(true)
+  const [revoking, setRevoking] = useState<string | null>(null)
+  const SESSION_KEY = `session_duration_${currentUser.id}`
+  const [sessionDuration, setSessionDuration] = useState(() => localStorage.getItem(SESSION_KEY) ?? '30')
   const [saved, setSaved] = useState(false)
 
-  function revokeSession(id: string) {
+  useEffect(() => {
+    SessionService.list(currentUser.id).then(data => {
+      setSessions(data)
+      setLoadingSessions(false)
+    })
+  }, [currentUser.id])
+
+  async function revokeSession(id: string) {
+    setRevoking(id)
+    await SessionService.revoke(id)
     setSessions(prev => prev.filter(s => s.id !== id))
+    setRevoking(null)
   }
 
   function save() {
+    localStorage.setItem(SESSION_KEY, sessionDuration)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -42,34 +62,59 @@ export function AdminSecurity() {
       <div className="bg-surface rounded-xl border border-border overflow-hidden mb-5">
         <div className="px-5 py-3.5 border-b border-border bg-bg flex items-center gap-2">
           <Smartphone size={16} className="text-muted" />
-          <h2 className="text-sm font-bold text-ink">Sessions administrateur actives</h2>
+          <h2 className="text-sm font-bold text-ink">Sessions actives</h2>
+          {!loadingSessions && (
+            <span className="ml-auto text-xs text-faint">{sessions.length} session{sessions.length !== 1 ? 's' : ''}</span>
+          )}
         </div>
-        {sessions.map((s, idx) => (
-          <div key={s.id} className={`flex items-center gap-4 px-5 py-4 ${idx < sessions.length - 1 ? 'border-b border-border' : ''}`}>
-            <div className="w-9 h-9 rounded-xl bg-bg border border-border flex items-center justify-center shrink-0">
-              <Smartphone size={17} className="text-muted" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-sm font-semibold text-ink">{s.device}</span>
-                {s.current && (
-                  <span className="px-1.5 py-0.5 bg-success/10 text-success text-[10px] font-semibold rounded-full">Session actuelle</span>
+
+        {loadingSessions ? (
+          <div className="flex items-center justify-center py-10 gap-2 text-muted">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Chargement…</span>
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-muted">
+            Aucune session active enregistrée.
+          </div>
+        ) : (
+          sessions.map((s, idx) => {
+            const isCurrent = s.id === currentSessionId
+            return (
+              <div key={s.id} className={`flex items-center gap-4 px-5 py-4 ${idx < sessions.length - 1 ? 'border-b border-border' : ''}`}>
+                <div className="w-9 h-9 rounded-xl bg-bg border border-border flex items-center justify-center shrink-0">
+                  <DeviceIcon platform={s.platform} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-semibold text-ink">{s.deviceName ?? 'Appareil inconnu'}</span>
+                    {isCurrent && (
+                      <span className="px-1.5 py-0.5 bg-success/10 text-success text-[10px] font-semibold rounded-full">Session actuelle</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted">{s.browser ?? '—'} · {s.platform ?? '—'}</div>
+                  <div className="flex items-center gap-1 text-[10px] text-faint mt-0.5">
+                    <Clock size={10} />
+                    {formatRelative(s.lastSeenAt)}
+                  </div>
+                </div>
+                {!isCurrent && (
+                  <button
+                    onClick={() => revokeSession(s.id)}
+                    disabled={revoking === s.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-danger/30 text-danger text-xs font-semibold rounded-lg hover:bg-danger/5 transition-colors shrink-0 disabled:opacity-40"
+                  >
+                    {revoking === s.id
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <LogOut size={13} />
+                    }
+                    Révoquer
+                  </button>
                 )}
               </div>
-              <div className="text-xs text-muted">{s.browser} · {s.location}</div>
-              <div className="flex items-center gap-1 text-[10px] text-faint mt-0.5">
-                <Clock size={10} />
-                {formatRelative(s.lastActive)}
-              </div>
-            </div>
-            {!s.current && (
-              <button onClick={() => revokeSession(s.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-danger/30 text-danger text-xs font-semibold rounded-lg hover:bg-danger/5 transition-colors shrink-0">
-                <LogOut size={13} /> Révoquer
-              </button>
-            )}
-          </div>
-        ))}
+            )
+          })
+        )}
       </div>
 
       {/* Security settings */}
@@ -84,7 +129,7 @@ export function AdminSecurity() {
               <div className="text-sm font-medium text-ink">Longueur du code PIN</div>
               <div className="text-xs text-muted">Code utilisé par les collaborateurs pour se connecter</div>
             </div>
-            <select value={pinLength} disabled
+            <select disabled
               className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-muted cursor-not-allowed">
               <option value="6">6 chiffres</option>
             </select>

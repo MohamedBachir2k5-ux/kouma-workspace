@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { Plus, Clock, Users, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Calendar, Search, X, MapPin, Link as LinkIcon } from 'lucide-react'
-import { mockOrgUsers, mockTeams, mockChannels } from '../../lib/mock'
 import { EventService } from '../../services/event.service'
+import { UserService } from '../../services/user.service'
+import { TeamService } from '../../services/team.service'
+import { MessageService } from '../../services/message.service'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatEventTime } from '../../lib/utils'
 import { Avatar } from '../../components/ui/Avatar'
-import type { EventStatus, Event } from '../../lib/types'
+import type { EventStatus, Event, User, Team, Channel } from '../../lib/types'
 
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 const DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
@@ -36,8 +38,13 @@ function StatusBadge({ status }: { status: EventStatus }) {
 }
 
 /* ── Smart participant picker ── */
-function ParticipantPicker({ participants, onChange }: { participants: string[]; onChange: (ids: string[]) => void }) {
-  const { currentUser } = useAuth()
+function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups }: {
+  participants: string[]
+  onChange: (ids: string[]) => void
+  orgUsers: User[]
+  myTeams: Team[]
+  myGroups: Channel[]
+}) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -49,28 +56,25 @@ function ParticipantPicker({ participants, onChange }: { participants: string[];
   }, [])
 
   const searchResults = query.length > 0
-    ? mockOrgUsers.filter(u => u.status === 'active' && `${u.firstName} ${u.lastName}`.toLowerCase().includes(query.toLowerCase()))
+    ? orgUsers.filter(u => u.status === 'active' && `${u.firstName} ${u.lastName}`.toLowerCase().includes(query.toLowerCase()))
     : []
 
   function add(id: string) { if (!participants.includes(id)) onChange([...participants, id]) }
   function remove(id: string) { onChange(participants.filter(p => p !== id)) }
 
   function addTeam(teamId: string) {
-    const team = mockTeams.find(t => t.id === teamId)
+    const team = myTeams.find(t => t.id === teamId)
     if (!team) return
     const toAdd = team.members.filter(id => !participants.includes(id))
     onChange([...participants, ...toAdd])
   }
 
   function addGroup(channelId: string) {
-    const ch = mockChannels.find(c => c.id === channelId)
+    const ch = myGroups.find(c => c.id === channelId)
     if (!ch) return
     const toAdd = ch.members.filter(id => !participants.includes(id))
     onChange([...participants, ...toAdd])
   }
-
-  const myTeams = mockTeams.filter(t => t.members.includes(currentUser.id))
-  const myGroups = mockChannels.filter(c => c.type === 'group' && c.members.includes(currentUser.id))
 
   return (
     <div ref={ref}>
@@ -78,7 +82,7 @@ function ParticipantPicker({ participants, onChange }: { participants: string[];
       {participants.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {participants.map(id => {
-            const u = mockOrgUsers.find(u => u.id === id)
+            const u = orgUsers.find(u => u.id === id)
             if (!u) return null
             return (
               <span key={id} className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 bg-indigo-pale rounded-full text-xs font-medium text-indigo">
@@ -172,8 +176,11 @@ function emptyForm(): EventForm {
   return { title: '', date: today, timeStart: '09:00', timeEnd: '10:00', location: '', externalLink: '', participants: [], description: '' }
 }
 
-function EventModal({ event, onClose, onSave }: {
+function EventModal({ event, orgUsers, myTeams, myGroups, onClose, onSave }: {
   event?: Event | null
+  orgUsers: User[]
+  myTeams: Team[]
+  myGroups: Channel[]
   onClose: () => void
   onSave: (form: EventForm) => void
 }) {
@@ -259,7 +266,13 @@ function EventModal({ event, onClose, onSave }: {
             <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
               Participants ({form.participants.length})
             </label>
-            <ParticipantPicker participants={form.participants} onChange={ids => set('participants', ids)} />
+            <ParticipantPicker
+              participants={form.participants}
+              onChange={ids => set('participants', ids)}
+              orgUsers={orgUsers}
+              myTeams={myTeams}
+              myGroups={myGroups}
+            />
           </div>
 
           <div>
@@ -292,7 +305,21 @@ export function Agenda() {
   const [showCreate, setShowCreate] = useState(false)
   const [editEvent, setEditEvent] = useState<Event | null>(null)
   const [filterStatus, setFilterStatus] = useState<EventStatus | 'all'>('all')
-  const [events, setEvents] = useState(() => EventService.list(currentOrg.id))
+  const [events, setEvents] = useState<Event[]>([])
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
+  const [myTeams, setMyTeams] = useState<Team[]>([])
+  const [myGroups, setMyGroups] = useState<Channel[]>([])
+
+  useEffect(() => {
+    EventService.list(currentOrg.id).then(setEvents)
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+    TeamService.getByOrganizationWithMembers(currentOrg.id).then(all => {
+      setMyTeams(all.filter(t => t.members.includes(currentUser.id)))
+    })
+    MessageService.getConversations(currentOrg.id, currentUser.id).then(convs => {
+      setMyGroups(convs.filter(c => c.type === 'group'))
+    })
+  }, [currentOrg.id, currentUser.id])
 
   const { year, month } = viewDate
   const daysInMonth = getDaysInMonth(year, month)
@@ -320,12 +347,12 @@ export function Agenda() {
 
   const selectedEvents = baseEvents.filter(e => filterStatus === 'all' || e.status === filterStatus)
 
-  function getParticipant(id: string) { return mockOrgUsers.find(u => u.id === id) }
+  function getParticipant(id: string) { return orgUsers.find(u => u.id === id) }
 
-  function createEvent(form: EventForm) {
+  async function createEvent(form: EventForm) {
     const startAt = new Date(`${form.date}T${form.timeStart}:00`).toISOString()
     const endAt = new Date(`${form.date}T${form.timeEnd}:00`).toISOString()
-    const event = EventService.create({
+    const event = await EventService.create({
       organizationId: currentOrg.id,
       title: form.title,
       description: form.description || undefined,
@@ -337,21 +364,21 @@ export function Agenda() {
     setEvents(prev => [...prev, event])
   }
 
-  function updateEvent(id: string, form: EventForm) {
+  async function updateEvent(id: string, form: EventForm) {
     const startAt = new Date(`${form.date}T${form.timeStart}:00`).toISOString()
     const endAt = new Date(`${form.date}T${form.timeEnd}:00`).toISOString()
     const patch = { title: form.title, description: form.description || undefined, startAt, endAt, participants: form.participants, status: 'modified' as EventStatus, modifiedAt: new Date().toISOString() }
-    EventService.update(id, patch)
+    await EventService.update(id, patch)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e))
   }
 
-  function cancelEvent(id: string) {
-    EventService.cancel(id, "Annulé par l'organisateur.")
+  async function cancelEvent(id: string) {
+    await EventService.cancel(id, "Annulé par l'organisateur.")
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' as EventStatus, cancelReason: "Annulé par l'organisateur." } : e))
   }
 
-  function markDone(id: string) {
-    EventService.markDone(id)
+  async function markDone(id: string) {
+    await EventService.markDone(id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'done' as EventStatus } : e))
   }
 
@@ -510,6 +537,9 @@ export function Agenda() {
       {(showCreate || editEvent) && (
         <EventModal
           event={editEvent}
+          orgUsers={orgUsers}
+          myTeams={myTeams}
+          myGroups={myGroups}
           onClose={() => { setShowCreate(false); setEditEvent(null) }}
           onSave={form => editEvent ? updateEvent(editEvent.id, form) : createEvent(form)}
         />

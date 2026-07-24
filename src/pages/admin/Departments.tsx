@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Building2, Users, Pencil, Trash2, MoreHorizontal, X } from 'lucide-react'
-import { mockOrgUsers } from '../../lib/mock'
 import { Avatar } from '../../components/ui/Avatar'
 import { DepartmentService } from '../../services/department.service'
+import { UserService } from '../../services/user.service'
 import { useAuth } from '../../contexts/AuthContext'
-import type { Department } from '../../lib/types'
+import type { Department, User } from '../../lib/types'
 
 function DeptModal({ dept, onClose, onSave }: {
   dept?: Department | null
@@ -59,27 +59,40 @@ function DeptModal({ dept, onClose, onSave }: {
 
 export function AdminDepartments() {
   const { currentOrg } = useAuth()
-  const [depts, setDepts] = useState<Department[]>(() => DepartmentService.list(currentOrg.id))
+  const [depts, setDepts] = useState<Department[]>([])
+  const [orgUsers, setOrgUsers] = useState<User[]>([])
   const [showModal, setShowModal] = useState(false)
   const [editDept, setEditDept] = useState<Department | null>(null)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
 
+  useEffect(() => {
+    DepartmentService.list(currentOrg.id).then(setDepts)
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
+  }, [currentOrg.id])
+
   function memberCount(name: string) {
-    return mockOrgUsers.filter(u => u.department === name).length
+    return orgUsers.filter(u => u.department === name).length
   }
 
-  function create(data: { name: string; code: string }) {
-    const dept = DepartmentService.create(currentOrg.id, data)
-    setDepts(prev => [...prev, dept])
+  function membersOf(name: string) {
+    return orgUsers.filter(u => u.department === name)
   }
 
-  function update(id: string, data: { name: string; code: string }) {
-    DepartmentService.update(id, data)
+  async function create(data: { name: string; code: string }) {
+    const { dept } = await DepartmentService.create(currentOrg.id, data)
+    if (dept) setDepts(prev => [...prev, dept])
+  }
+
+  async function update(id: string, data: { name: string; code: string }) {
+    await DepartmentService.update(id, data)
     setDepts(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
   }
 
-  function remove(id: string) {
-    DepartmentService.delete(id)
+  async function remove(id: string) {
+    const dept = depts.find(d => d.id === id)
+    const confirmed = window.confirm(`Supprimer le département "${dept?.name ?? id}" ? Cette action est irréversible.`)
+    if (!confirmed) return
+    await DepartmentService.delete(id)
     setDepts(prev => prev.filter(d => d.id !== id))
     setMenuOpen(null)
   }
@@ -103,7 +116,7 @@ export function AdminDepartments() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {depts.map(dept => {
           const count = memberCount(dept.name)
-          const members = mockOrgUsers.filter(u => u.department === dept.name)
+          const members = membersOf(dept.name)
           return (
             <div key={dept.id} className="bg-surface rounded-xl border border-border p-5 hover:border-indigo/20 hover:shadow-sm transition-all relative">
               <div className="flex items-start justify-between mb-4">

@@ -12,6 +12,10 @@ import { UserLogin } from './pages/auth/UserLogin'
 import { AdminLogin } from './pages/auth/AdminLogin'
 import { CreateOrg } from './pages/auth/CreateOrg'
 import { JoinOrg } from './pages/auth/JoinOrg'
+import { AdminRecovery } from './pages/auth/AdminRecovery'
+import { CollaboratorRecovery } from './pages/auth/CollaboratorRecovery'
+import { ResetPassword } from './pages/auth/ResetPassword'
+import { PaymentCallback } from './pages/auth/PaymentCallback'
 import { AppLayout } from './components/layout/AppLayout'
 import { AdminLayout } from './components/layout/AdminLayout'
 import { Messages } from './pages/app/Messages'
@@ -27,6 +31,7 @@ import { AdminStorage } from './pages/admin/Storage'
 import { AdminSecurity } from './pages/admin/Security'
 import { AdminJournal } from './pages/admin/Journal'
 import { AdminSettings } from './pages/admin/Settings'
+import { AdminPermissions } from './pages/admin/Permissions'
 
 export default function App() {
   return (
@@ -56,6 +61,10 @@ export default function App() {
         <Route path="/connexion/admin" element={<AdminLogin />} />
         <Route path="/creer" element={<CreateOrg />} />
         <Route path="/rejoindre/:token" element={<JoinOrg />} />
+        <Route path="/recuperation/admin" element={<AdminRecovery />} />
+        <Route path="/recuperation/utilisateur" element={<CollaboratorRecovery />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/payment/callback" element={<PaymentCallback />} />
 
         {/* ── App collaborateur ── */}
         <Route path="/app" element={<AppLayout />}>
@@ -77,6 +86,7 @@ export default function App() {
           <Route path="stockage" element={<AdminStorage />} />
           <Route path="securite" element={<AdminSecurity />} />
           <Route path="journal" element={<AdminJournal />} />
+          <Route path="permissions" element={<AdminPermissions />} />
           <Route path="parametres" element={<AdminSettings />} />
         </Route>
 

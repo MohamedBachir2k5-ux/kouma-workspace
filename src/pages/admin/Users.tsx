@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { Search, UserPlus, MoreHorizontal, UserX, UserCheck, Send, AlertTriangle, Link2, Copy, Check as CheckIcon } from 'lucide-react'
-import { mockOrgUsers } from '../../lib/mock'
+import { useState, useEffect } from 'react'
+import { Search, UserPlus, MoreHorizontal, UserX, UserCheck, Send, AlertTriangle, Link2, Copy, Check as CheckIcon, Shield, ShieldOff } from 'lucide-react'
 import { Avatar } from '../../components/ui/Avatar'
 import { useAuth } from '../../contexts/AuthContext'
+import { UserService } from '../../services/user.service'
+import { KeyService } from '../../services/key.service'
 import type { User } from '../../lib/types'
 
 const statusLabel: Record<User['status'], string> = {
@@ -29,18 +30,25 @@ const FILTER_TABS: { value: FilterValue; label: string }[] = [
   { value: 'suspended', label: 'Suspendus' },
 ]
 
-type ConfirmAction = { userId: string; action: 'suspend' | 'reactivate' | 'revoke' }
+type ConfirmAction = { userId: string; action: 'suspend' | 'reactivate' | 'revoke' | 'promote' | 'demote' }
 
 export function AdminUsers() {
-  const { currentOrg } = useAuth()
+  const { currentOrg, currentUser } = useAuth()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterValue>('all')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteStep, setInviteStep] = useState<InviteStep>('idle')
   const [inviteLink, setInviteLink] = useState('')
-  const [users, setUsers] = useState<User[]>(() => mockOrgUsers.filter(u => u.organizationId === currentOrg.id))
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [users, setUsers] = useState<User[]>([])
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+
+  useEffect(() => {
+    UserService.getByOrganizationWithRole(currentOrg.id).then(setUsers)
+  }, [currentOrg.id])
 
   const visible = users.filter(u => u.status !== 'deleted')
   const filtered = visible.filter(u => {
@@ -52,24 +60,46 @@ export function AdminUsers() {
 
   function openConfirm(userId: string, action: ConfirmAction['action']) {
     setMenuOpen(null)
+    setActionError(null)
     setConfirm({ userId, action })
   }
 
-  function executeConfirm() {
+  async function executeConfirm() {
     if (!confirm) return
-    setUsers(prev => prev.map(u => {
-      if (u.id !== confirm.userId) return u
-      if (confirm.action === 'suspend')    return { ...u, status: 'suspended' as const }
-      if (confirm.action === 'reactivate') return { ...u, status: 'active' as const }
-      if (confirm.action === 'revoke')     return { ...u, status: 'deleted' as const }
-      return u
-    }))
-    setConfirm(null)
+    setActionLoading(true)
+    setActionError(null)
+
+    if (confirm.action === 'promote') {
+      const { error: promoteError } = await UserService.promoteToAdmin(currentOrg.id, confirm.userId, currentUser.id)
+      if (promoteError) { setActionError(promoteError); setActionLoading(false); return }
+
+      const { error: keyError } = await KeyService.distributeRecoveryKeyToAdmin(currentOrg.id, confirm.userId)
+      if (keyError) { setActionError(keyError); setActionLoading(false); return }
+
+      setUsers(prev => prev.map(u => u.id === confirm.userId ? { ...u, role: 'admin' } : u))
+      setConfirm(null)
+    } else if (confirm.action === 'demote') {
+      const { error: demoteError } = await UserService.demoteAdmin(currentOrg.id, confirm.userId, currentUser.id)
+      if (demoteError) { setActionError(demoteError); setActionLoading(false); return }
+
+      setUsers(prev => prev.map(u => u.id === confirm.userId ? { ...u, role: 'member' } : u))
+      setConfirm(null)
+    } else {
+      const statusMap = { suspend: 'suspended', reactivate: 'active', revoke: 'deleted' } as const
+      const newStatus = statusMap[confirm.action]
+      await UserService.updateStatus(confirm.userId, currentOrg.id, newStatus, currentUser.id)
+      setUsers(prev => prev.map(u => u.id === confirm.userId ? { ...u, status: newStatus } : u))
+      setConfirm(null)
+    }
+
+    setActionLoading(false)
   }
 
-  function generateLink() {
-    // TODO Phase 3: call UserService.invite(email, currentOrg.id, currentUser.id) for real token
-    const token = Math.random().toString(36).slice(2, 10)
+  async function generateLink() {
+    setInviteLoading(true)
+    const { token, error } = await UserService.invite(currentOrg.id, currentUser.id)
+    setInviteLoading(false)
+    if (error || !token) return
     setInviteLink(`${window.location.origin}/rejoindre/${token}`)
     setInviteStep('link')
   }
@@ -88,9 +118,11 @@ export function AdminUsers() {
 
   const confirmUser = confirm ? users.find(u => u.id === confirm.userId) : null
   const confirmLabels: Record<ConfirmAction['action'], { title: string; body: string; cta: string; danger: boolean }> = {
-    suspend:    { title: 'Suspendre l\'accès',  body: 'L\'accès sera bloqué immédiatement. Le compte reste récupérable.', cta: 'Suspendre',  danger: false },
-    reactivate: { title: 'Réactiver le compte', body: 'L\'accès sera rétabli immédiatement.',                               cta: 'Réactiver',  danger: false },
-    revoke:     { title: 'Révoquer l\'accès',   body: 'L\'accès sera définitivement supprimé. Fenêtre de récupération : 7 jours.', cta: 'Révoquer', danger: true },
+    promote:    { title: 'Promouvoir administrateur', body: "Ce collaborateur obtiendra les droits d'administration et accès aux clés de récupération de l'organisation.", cta: 'Promouvoir', danger: false },
+    demote:     { title: 'Rétrograder en collaborateur', body: "Les droits d'administration et l'accès aux clés de récupération seront révoqués. Les sessions actives seront fermées.", cta: 'Rétrograder', danger: true },
+    suspend:    { title: "Suspendre l'accès",  body: "L'accès sera bloqué immédiatement. Le compte reste récupérable.", cta: 'Suspendre',  danger: false },
+    reactivate: { title: 'Réactiver le compte', body: "L'accès sera rétabli immédiatement.",                              cta: 'Réactiver',  danger: false },
+    revoke:     { title: "Révoquer l'accès",   body: "L'accès sera définitivement supprimé. Fenêtre de récupération : 7 jours.", cta: 'Révoquer', danger: true },
   }
 
   return (
@@ -163,7 +195,10 @@ export function AdminUsers() {
               </div>
             </div>
 
-            <div className="hidden md:block text-sm text-ink truncate">{user.role}</div>
+            <div className="hidden md:flex items-center gap-1.5">
+              {user.role === 'admin' && <Shield size={13} className="text-indigo shrink-0" />}
+              <span className="text-sm text-ink truncate">{user.role === 'admin' ? 'Administrateur' : user.role}</span>
+            </div>
             <div className="hidden md:block text-sm text-muted truncate">{user.department || '—'}</div>
 
             <div className="ml-auto md:ml-0">
@@ -180,7 +215,24 @@ export function AdminUsers() {
                 <MoreHorizontal size={16} />
               </button>
               {menuOpen === user.id && (
-                <div className="absolute right-0 top-8 z-20 w-48 bg-surface border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden">
+                <div className="absolute right-0 top-8 z-20 w-52 bg-surface border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden">
+                  {/* Role management — admin-only, not self */}
+                  {currentUser.role === 'admin' && user.id !== currentUser.id && user.status === 'active' && user.role !== 'admin' && (
+                    <button
+                      onClick={() => openConfirm(user.id, 'promote')}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left hover:bg-bg transition-colors"
+                    >
+                      <Shield size={15} className="text-indigo" /> Promouvoir admin
+                    </button>
+                  )}
+                  {currentUser.role === 'admin' && user.id !== currentUser.id && user.role === 'admin' && (
+                    <button
+                      onClick={() => openConfirm(user.id, 'demote')}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left hover:bg-bg transition-colors"
+                    >
+                      <ShieldOff size={15} className="text-amber" /> Rétrograder
+                    </button>
+                  )}
                   {user.status === 'active' && (
                     <button
                       onClick={() => openConfirm(user.id, 'suspend')}
@@ -235,7 +287,7 @@ export function AdminUsers() {
                 </div>
                 <h3 className="font-bold text-navy text-lg mb-1 text-center">Inviter un collaborateur</h3>
                 <p className="text-sm text-muted mb-5 text-center leading-relaxed">
-                  Générez un lien sécurisé à partager directement avec vos collaborateurs. Chaque lien est unique et à usage unique.
+                  Générez un lien sécurisé à partager librement. Le collaborateur choisira lui-même son email à l'inscription.
                 </p>
                 <div className="p-4 bg-bg rounded-xl border border-border mb-5 space-y-2">
                   <div className="flex items-center gap-2 text-xs text-muted">
@@ -255,9 +307,12 @@ export function AdminUsers() {
                   <button onClick={closeInviteModal} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">
                     Annuler
                   </button>
-                  <button onClick={generateLink}
-                    className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
-                    <Link2 size={15} /> Générer le lien
+                  <button
+                    onClick={generateLink}
+                    disabled={inviteLoading}
+                    className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Link2 size={15} /> {inviteLoading ? 'Génération…' : 'Générer le lien'}
                   </button>
                 </div>
               </>
@@ -302,38 +357,48 @@ export function AdminUsers() {
 
       {/* Confirmation modal */}
       {confirm && confirmUser && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setConfirm(null)}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => { if (!actionLoading) setConfirm(null) }}>
           <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className={`flex items-center justify-center w-10 h-10 rounded-full mx-auto mb-4 ${
-              confirmLabels[confirm.action].danger ? 'bg-danger/10' : 'bg-amber/10'
+              confirmLabels[confirm.action].danger ? 'bg-danger/10' : confirm.action === 'promote' ? 'bg-indigo-pale' : 'bg-amber/10'
             }`}>
-              <AlertTriangle size={18} className={confirmLabels[confirm.action].danger ? 'text-danger' : 'text-amber'} />
+              {confirm.action === 'promote'
+                ? <Shield size={18} className="text-indigo" />
+                : <AlertTriangle size={18} className={confirmLabels[confirm.action].danger ? 'text-danger' : 'text-amber'} />
+              }
             </div>
             <h3 className="font-bold text-navy text-base mb-1 text-center">{confirmLabels[confirm.action].title}</h3>
             <p className="text-sm text-muted text-center mb-1">
               <strong className="text-ink">{confirmUser.firstName} {confirmUser.lastName}</strong>
             </p>
-            <p className="text-xs text-muted text-center mb-5 leading-relaxed">
+            <p className="text-xs text-muted text-center mb-4 leading-relaxed">
               {confirmLabels[confirm.action].body}
             </p>
+            {actionError && (
+              <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2 mb-4 text-center">{actionError}</p>
+            )}
             <div className="flex gap-3">
-              <button onClick={() => setConfirm(null)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">
+              <button
+                onClick={() => { setConfirm(null); setActionError(null) }}
+                disabled={actionLoading}
+                className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors disabled:opacity-40"
+              >
                 Annuler
               </button>
               <button
                 onClick={executeConfirm}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 ${
-                  confirmLabels[confirm.action].danger ? 'bg-danger' : 'bg-amber'
+                disabled={actionLoading}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 ${
+                  confirmLabels[confirm.action].danger ? 'bg-danger' : confirm.action === 'promote' ? 'bg-indigo' : 'bg-amber'
                 }`}
               >
-                {confirmLabels[confirm.action].cta}
+                {actionLoading ? 'En cours…' : confirmLabels[confirm.action].cta}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Close menu on outside click */}
       {menuOpen && (
         <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
       )}

@@ -3,10 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, ChevronDown } from 'lucide-react'
 import { COUNTRIES } from '../../config/countries'
 import { CURRENCY_LABELS } from '../../config/pricing'
+import { AuthService } from '../../services/auth.service'
+import { OrganizationService } from '../../services/organization.service'
+import { KeyService } from '../../services/key.service'
+import type { SupportedCurrency } from '../../config/pricing'
 
 const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 
-const steps = ['Votre organisation', 'Accès administrateur', 'Confirmation']
+const steps = ['Votre organisation', 'Accès administrateur', 'Confirmation', 'Clé de récupération']
 
 const orgTypes = [
   { value: 'prive', label: 'Secteur privé' },
@@ -34,10 +38,14 @@ export function CreateOrg() {
   const [countryOpen, setCountryOpen] = useState(false)
   const [countryQuery, setCountryQuery] = useState('')
   const countryRef = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [breakglassPhrase, setBreakglassPhrase] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
   const [form, setForm] = useState({
     orgName: '', orgType: '', orgTypeOther: '',
     country: '', city: '', address: '', website: '',
     language: 'fr', currency: '',
+    adminFirstName: '', adminLastName: '',
     email: '', emailSecondary: '', phone: '', phoneSecondary: '',
     password: '', confirmPassword: '',
   })
@@ -60,6 +68,8 @@ export function CreateOrg() {
     }
     if (step === 1) {
       return !!(
+        form.adminFirstName &&
+        form.adminLastName &&
         form.email &&
         form.phone &&
         form.password.length >= 6 &&
@@ -71,8 +81,66 @@ export function CreateOrg() {
 
   async function handleSubmit() {
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1200))
-    navigate('/admin/tableau-de-bord')
+    setError(null)
+
+    const { userId, error: signUpError } = await AuthService.signUp({
+      email: form.email,
+      password: form.password,
+      firstName: form.adminFirstName,
+      lastName: form.adminLastName,
+      phone: form.phone || undefined,
+      country: form.country || undefined,
+      language: form.language,
+    })
+
+    if (signUpError || !userId) {
+      setError(signUpError ?? 'Erreur lors de la création du compte.')
+      setLoading(false)
+      return
+    }
+
+    // Generate admin key pair (loads into CryptoSession)
+    const { error: keyError } = await KeyService.generateAndStoreUserKeys(userId, form.password)
+    if (keyError) {
+      setError('Erreur lors de la génération des clés de chiffrement.')
+      setLoading(false)
+      return
+    }
+
+    const sectorLabel: Record<string, string> = {
+      prive: 'Secteur privé', public: 'Secteur public',
+      npo: 'Organisation à but non lucratif', autre: form.orgTypeOther || 'Autre',
+    }
+
+    const { organizationId, error: orgError } = await OrganizationService.create({
+      name: form.orgName,
+      email: form.email,
+      phone: form.phone || undefined,
+      website: form.website || undefined,
+      country: form.country,
+      currency: (form.currency || 'XOF') as SupportedCurrency,
+      language: form.language,
+      sector: sectorLabel[form.orgType] ?? form.orgType,
+      adminUserId: userId,
+    })
+
+    if (orgError || !organizationId) {
+      setError(orgError ?? 'Erreur lors de la création de l\'organisation.')
+      setLoading(false)
+      return
+    }
+
+    // Generate org recovery key pair + breakglass
+    const { breakglassPhrase: phrase, error: recoveryError } = await KeyService.generateOrgRecoveryKeys(organizationId, userId)
+    if (recoveryError) {
+      setError('Erreur lors de la génération des clés de récupération.')
+      setLoading(false)
+      return
+    }
+
+    setBreakglassPhrase(phrase)
+    setStep(3)
+    setLoading(false)
   }
 
   const selectedType = orgTypes.find(t => t.value === form.orgType)
@@ -276,6 +344,28 @@ export function CreateOrg() {
               </p>
 
               <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Prénom *</label>
+                    <input
+                      value={form.adminFirstName}
+                      onChange={e => update('adminFirstName', e.target.value)}
+                      placeholder="Mamadou"
+                      autoFocus
+                      className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Nom *</label>
+                    <input
+                      value={form.adminLastName}
+                      onChange={e => update('adminLastName', e.target.value)}
+                      placeholder="Diallo"
+                      className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
                     Email principal *
@@ -374,6 +464,7 @@ export function CreateOrg() {
                   { label: 'Ville', value: form.city },
                   { label: 'Langue', value: languages.find(l => l.value === form.language)?.label ?? form.language },
                   { label: 'Devise', value: currencyNameForCountry(form.country) || '—' },
+                  { label: 'Administrateur', value: `${form.adminFirstName} ${form.adminLastName}` },
                   { label: 'Email administrateur', value: form.email },
                   { label: 'Téléphone', value: form.phone },
                 ].map(({ label, value }, idx, arr) => (
@@ -392,18 +483,57 @@ export function CreateOrg() {
             </div>
           )}
 
+          {/* ── STEP 4 — Breakglass phrase ── */}
+          {step === 3 && breakglassPhrase && (
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg mb-5">
+                <span className="text-amber-700 text-xs font-semibold uppercase tracking-wide">Clé de récupération d'urgence</span>
+              </div>
+              <h1 className="text-xl font-bold text-navy mb-2">Notez votre phrase de récupération</h1>
+              <p className="text-sm text-muted leading-relaxed mb-6">
+                Cette phrase est affichée <strong>une seule fois</strong>. Elle vous permet de récupérer l'accès à votre organisation en cas d'urgence. Conservez-la dans un endroit sûr, hors ligne.
+              </p>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 mb-6 text-center">
+                <p className="font-mono text-sm tracking-widest text-amber-900 break-all select-all">{breakglassPhrase}</p>
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={e => setConfirmed(e.target.checked)}
+                  className="mt-0.5 accent-navy"
+                />
+                <span className="text-sm text-ink leading-relaxed">
+                  J'ai noté cette phrase en lieu sûr et je comprends qu'elle ne sera plus affichée.
+                </span>
+              </label>
+            </div>
+          )}
+
           {/* Navigation */}
+          {error && <p className="mt-4 text-sm text-center text-danger">{error}</p>}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
             <button
               type="button"
-              onClick={() => step > 0 ? setStep(step - 1) : null}
-              className={`inline-flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors ${step === 0 ? 'invisible' : ''}`}
+              onClick={() => step > 0 && step < 3 ? setStep(step - 1) : null}
+              className={`inline-flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors ${step === 0 || step === 3 ? 'invisible' : ''}`}
             >
               <ArrowLeft size={15} />
               Précédent
             </button>
 
-            {step < steps.length - 1 ? (
+            {step === 3 ? (
+              <button
+                type="button"
+                onClick={() => navigate('/admin/tableau-de-bord')}
+                disabled={!confirmed}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-success text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Accéder à mon espace <ArrowRight size={15} />
+              </button>
+            ) : step < 2 ? (
               <button
                 type="button"
                 onClick={() => setStep(step + 1)}

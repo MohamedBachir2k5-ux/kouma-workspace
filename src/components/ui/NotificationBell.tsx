@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { NotificationService } from '../../services/notification.service'
@@ -7,19 +7,21 @@ import type { Notification } from '../../lib/types'
 export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
   const { currentUser } = useAuth()
   const [open, setOpen] = useState(false)
-  const [notifs, setNotifs] = useState<Notification[]>(() =>
-    NotificationService.getForUser(currentUser.id)
-  )
+  const [notifs, setNotifs] = useState<Notification[]>([])
+
+  useEffect(() => {
+    NotificationService.getForUser(currentUser.id).then(setNotifs)
+  }, [currentUser.id])
 
   const unread = notifs.filter(n => !n.read).length
 
-  function markAll() {
-    NotificationService.markAllRead(currentUser.id)
-    setNotifs(NotificationService.getForUser(currentUser.id))
+  async function markAll() {
+    await NotificationService.markAllRead(currentUser.id)
+    setNotifs(prev => prev.map(n => ({ ...n, read: true })))
   }
 
-  function markOne(id: string) {
-    NotificationService.markRead(id)
+  async function markOne(id: string) {
+    await NotificationService.markRead(id)
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
   }
 

@@ -1,9 +1,11 @@
-import { useState, useRef } from 'react'
-import { Building2, CreditCard, Bell, Camera } from 'lucide-react'
-import { mockOrgUsers } from '../../lib/mock'
+import { useState, useRef, useEffect } from 'react'
+import { Building2, CreditCard, Bell, Camera, Loader2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { DocumentService } from '../../services/document.service'
-import { PRICING, STORAGE, STORAGE_BYTES, PLAN_USER_LIMITS, TRIAL_DAYS, discountedPrice, formatPrice } from '../../config/pricing'
+import { UserService } from '../../services/user.service'
+import { OrganizationService } from '../../services/organization.service'
+import { PaymentService } from '../../services/payment.service'
+import { PRICING, STORAGE, PLAN_USER_LIMITS, TRIAL_DAYS, discountedPrice, formatPrice } from '../../config/pricing'
 import { formatFileSize, formatShortDate } from '../../lib/utils'
 import type { SupportedCurrency } from '../../config/pricing'
 
@@ -23,15 +25,19 @@ export function AdminSettings() {
     phone:   currentOrg.phone ?? '',
     website: currentOrg.website ?? '',
   })
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const NOTIFS_KEY = `notif_prefs_${currentOrg.id}`
+  const [logoPreview, setLogoPreview] = useState<string | null>(currentOrg.logoUrl)
   const [saved, setSaved] = useState(false)
   const [section, setSection] = useState<'org' | 'plan' | 'notifs'>('org')
-  const [notifs, setNotifs] = useState({
-    invites:  true,
-    storage:  true,
-    failures: false,
-    upgrade:  true,
+  const [notifs, setNotifs] = useState(() => {
+    try {
+      const stored = localStorage.getItem(NOTIFS_KEY)
+      return stored ? JSON.parse(stored) : { invites: true, storage: true, failures: false, upgrade: true }
+    } catch {
+      return { invites: true, storage: true, failures: false, upgrade: true }
+    }
   })
+  const [notifSaved, setNotifSaved] = useState(false)
   const logoRef = useRef<HTMLInputElement>(null)
 
   const currency = currentOrg.currency as SupportedCurrency
@@ -42,27 +48,57 @@ export function AdminSettings() {
   const otherPrices = PRICING[currency][otherPlan]
   const otherDiscounted = discountedPrice(otherPrices.monthly, otherPrices.discountPercent)
 
-  const activeCount   = mockOrgUsers.filter(u => u.organizationId === currentOrg.id && u.status === 'active').length
-  const storageUsed   = DocumentService.totalUsed(currentOrg.id)
-  void STORAGE_BYTES[plan]
-  const userLimit     = PLAN_USER_LIMITS[plan]
+  const [memberCount, setMemberCount] = useState(0)
+  const [storageUsed, setStorageUsed] = useState(0)
+  const [upgrading, setUpgrading] = useState(false)
+  const [upgradeError, setUpgradeError] = useState<string | null>(null)
+  const userLimit = PLAN_USER_LIMITS[plan]
+
+  useEffect(() => {
+    // Billing counts all non-deleted members (active + suspended) — Gundo bills per
+    // authorized collaborator regardless of activity. getByOrganizationWithRole already
+    // excludes status='deleted', so users.length is the billable seat count.
+    UserService.getByOrganizationWithRole(currentOrg.id).then(users => {
+      setMemberCount(users.filter(u => u.status === 'active' || u.status === 'suspended').length)
+    })
+    DocumentService.totalUsed(currentOrg.id).then(setStorageUsed)
+  }, [currentOrg.id])
 
   function update(field: string, val: string) {
     setOrgForm(p => ({ ...p, [field]: val }))
     setSaved(false)
   }
 
-  function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => setLogoPreview(reader.result as string)
     reader.readAsDataURL(file)
     setSaved(false)
+    const { logoUrl, error } = await OrganizationService.uploadLogo(currentOrg.id, file)
+    if (!error && logoUrl) setLogoPreview(logoUrl)
   }
 
-  function save() {
-    // TODO Phase 3: OrganizationService.update(currentOrg.id, orgForm)
+  async function handleUpgrade() {
+    setUpgrading(true)
+    setUpgradeError(null)
+    const { redirectUrl, error } = await PaymentService.upgradeSubscription(currentOrg.id, 'business', currency, true)
+    setUpgrading(false)
+    if (error) { setUpgradeError(error); return }
+    if (redirectUrl) { window.location.href = redirectUrl; return }
+    setUpgradeError('Le service de paiement est temporairement indisponible. Réessayez dans quelques instants.')
+  }
+
+  async function save() {
+    await OrganizationService.update(currentOrg.id, {
+      name: orgForm.name,
+      email: orgForm.email,
+      phone: orgForm.phone || null,
+      website: orgForm.website || null,
+      city: orgForm.city || null,
+      sector: orgForm.type || null,
+    })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -141,7 +177,7 @@ export function AdminSettings() {
           <div>
             <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Taille</label>
             <div className="flex items-center justify-between w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink">
-              <span>{activeCount} utilisateur{activeCount > 1 ? 's' : ''} actif{activeCount > 1 ? 's' : ''}</span>
+              <span>{memberCount} collaborateur{memberCount > 1 ? 's' : ''}</span>
               <span className="text-xs text-faint">Calculée automatiquement</span>
             </div>
             <p className="text-xs text-faint mt-1">La taille évolue automatiquement selon le nombre réel d'utilisateurs.</p>
@@ -180,8 +216,8 @@ export function AdminSettings() {
             </div>
             <div className="space-y-2 text-sm text-muted">
               <div className="flex justify-between">
-                <span>Utilisateurs actifs</span>
-                <span className="font-semibold text-ink">{activeCount}{userLimit ? ` / ${userLimit}` : ''}</span>
+                <span>Collaborateurs</span>
+                <span className="font-semibold text-ink">{memberCount}{userLimit ? ` / ${userLimit}` : ''}</span>
               </div>
               <div className="flex justify-between">
                 <span>Stockage utilisé</span>
@@ -223,8 +259,13 @@ export function AdminSettings() {
                   <div className="text-xs text-indigo">−{otherPrices.discountPercent}% première année</div>
                 </div>
               </div>
-              <button className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity">
-                Passer au plan Business
+              {upgradeError && (
+                <p className="text-xs text-danger mb-3">{upgradeError}</p>
+              )}
+              <button onClick={handleUpgrade} disabled={upgrading}
+                className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2">
+                {upgrading && <Loader2 size={15} className="animate-spin" />}
+                {upgrading ? 'Redirection...' : 'Passer au plan Business'}
               </button>
             </div>
           )}
@@ -232,6 +273,8 @@ export function AdminSettings() {
       )}
 
       {section === 'notifs' && (
+        <div>
+        {notifSaved && <p className="text-xs text-success mb-3 px-1">Préférences enregistrées.</p>}
         <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
           {([
             { key: 'invites',  label: 'Nouveaux membres invités',     desc: "Notifier lorsqu'un membre accepte une invitation" },
@@ -244,12 +287,19 @@ export function AdminSettings() {
                 <div className="text-sm font-medium text-ink">{label}</div>
                 <div className="text-xs text-muted">{desc}</div>
               </div>
-              <button type="button" onClick={() => setNotifs(p => ({ ...p, [key]: !p[key] }))}
+              <button type="button" onClick={() => {
+                const next = { ...notifs, [key]: !notifs[key] }
+                setNotifs(next)
+                localStorage.setItem(NOTIFS_KEY, JSON.stringify(next))
+                setNotifSaved(true)
+                setTimeout(() => setNotifSaved(false), 1500)
+              }}
                 className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors ${notifs[key] ? 'bg-success' : 'bg-border'}`}>
                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${notifs[key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </button>
             </div>
           ))}
+        </div>
         </div>
       )}
     </div>

@@ -1,31 +1,336 @@
-import type { Channel, Message } from '../lib/types'
-import { mockChannels, mockMessages } from '../lib/mock'
+import { supabase } from '../lib/supabase'
+import type { Channel, Message, ChannelType } from '../lib/types'
+import { CryptoService } from './crypto.service'
+import { KeyService } from './key.service'
+import { cryptoSession } from '../lib/crypto-session'
+
+type MessageRow = {
+  id: string
+  conversation_id: string
+  sender_id: string
+  content: string
+  content_encrypted: boolean
+  status: string
+  reply_to_id: string | null
+  edited_at: string | null
+  files: string[] | null
+  created_at: string
+}
+
+function rowToMessage(r: MessageRow): Message {
+  return {
+    id: r.id,
+    channelId: r.conversation_id,
+    senderId: r.sender_id,
+    content: r.content,
+    status: r.status as Message['status'],
+    replyToId: r.reply_to_id ?? undefined,
+    editedAt: r.edited_at ?? undefined,
+    files: r.files ?? undefined,
+    createdAt: r.created_at,
+  }
+}
+
+// Decrypt a single row; falls back gracefully on any error.
+async function decryptRow(row: MessageRow, orgId: string): Promise<Message> {
+  if (!row.content_encrypted) return rowToMessage(row)
+  try {
+    const convKey = await KeyService.getOrLoadConversationKey(row.conversation_id, orgId)
+    if (!convKey) return rowToMessage(row)
+    const plaintext = await CryptoService.decryptMessage(row.content, convKey)
+    return rowToMessage({ ...row, content: plaintext })
+  } catch {
+    return rowToMessage({ ...row, content: '[Impossible de déchiffrer]' })
+  }
+}
+
+// Ensure conversation keys exist; initialises them on first use.
+async function ensureConvKey(conversationId: string, orgId: string): Promise<CryptoKey | null> {
+  let convKey = await KeyService.getOrLoadConversationKey(conversationId, orgId)
+  if (convKey) return convKey
+
+  const { data: members } = await supabase
+    .from('conversation_members')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+  const ids = (members ?? []).map(m => m.user_id)
+  await KeyService.initConversationKeys(conversationId, orgId, ids)
+  return KeyService.getOrLoadConversationKey(conversationId, orgId)
+}
 
 export const MessageService = {
-  /** Return all channels accessible to a user in an org. */
-  getChannels(orgId: string, userId: string): Channel[] {
-    // TODO Phase 3: supabase.from('channels').select('*, channel_members!inner()')
-    //               .eq('organization_id', orgId).eq('channel_members.user_id', userId)
-    return mockChannels.filter(c => c.organizationId === orgId && c.members.includes(userId))
-  },
 
-  /** Return all messages in a channel. */
-  getMessages(channelId: string): Message[] {
-    // TODO Phase 3: supabase.from('messages').select('*').eq('channel_id', channelId).order('created_at')
-    return mockMessages.filter(m => m.channelId === channelId)
-  },
+  async getConversations(orgId: string, userId: string): Promise<Channel[]> {
+    const { data: memberships } = await supabase
+      .from('conversation_members')
+      .select('conversation_id')
+      .eq('user_id', userId)
 
-  /** Send a new message. Returns the created message. */
-  send(channelId: string, senderId: string, content: string): Message {
-    // TODO Phase 3: supabase.from('messages').insert({ channel_id, sender_id, content })
-    const msg: Message = {
-      id: `m${Date.now()}`,
-      channelId,
-      senderId,
-      content,
-      status: 'sent',
-      createdAt: new Date().toISOString(),
+    if (!memberships?.length) return []
+    const convIds = memberships.map(m => m.conversation_id)
+
+    const { data: convs } = await supabase
+      .from('conversations')
+      .select('*, conversation_members(user_id)')
+      .eq('organization_id', orgId)
+      .in('id', convIds)
+
+    if (!convs?.length) return []
+
+    const allMemberIds = [...new Set(
+      convs.flatMap(c => (c as unknown as { conversation_members: { user_id: string }[] }).conversation_members.map(m => m.user_id))
+    )]
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, firstname, lastname')
+      .in('id', allMemberIds)
+
+    const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
+
+    const teamRefIds = convs
+      .filter(c => c.type === 'team' && c.reference_id)
+      .map(c => c.reference_id!)
+
+    const teamNameMap: Record<string, string> = {}
+    if (teamRefIds.length > 0) {
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('id, name')
+        .in('id', teamRefIds)
+      ;(teams ?? []).forEach(t => { teamNameMap[t.id] = t.name })
     }
-    return msg
+
+    return convs.map(c => {
+      const members = (c as unknown as { conversation_members: { user_id: string }[] })
+        .conversation_members.map(m => m.user_id)
+
+      let name = ''
+      if (c.type === 'direct') {
+        const otherId = members.find(id => id !== userId) ?? ''
+        const p = profileMap[otherId]
+        name = p ? `${p.firstname} ${p.lastname}` : 'Direct'
+      } else if (c.type === 'team' && c.reference_id) {
+        name = teamNameMap[c.reference_id] ?? 'Équipe'
+      } else {
+        name = members
+          .filter(id => id !== userId)
+          .slice(0, 2)
+          .map(id => profileMap[id]?.firstname ?? '')
+          .filter(Boolean)
+          .join(', ') || 'Groupe'
+      }
+
+      return {
+        id: c.id,
+        organizationId: c.organization_id,
+        name,
+        type: c.type as ChannelType,
+        teamId: c.type === 'team' ? c.reference_id ?? undefined : undefined,
+        members,
+      } satisfies Channel
+    })
+  },
+
+  async countConversations(orgId: string): Promise<number> {
+    const { count } = await supabase
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+    return count ?? 0
+  },
+
+  // Phase 4: decrypts messages transparently (plaintext fallback for legacy rows).
+  async getMessages(conversationId: string, orgId: string): Promise<Message[]> {
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+
+    if (!data?.length) return []
+    return Promise.all((data as unknown as MessageRow[]).map(r => decryptRow(r, orgId)))
+  },
+
+  // Phase 4: encrypts content when a conversation key is available.
+  async send(
+    conversationId: string,
+    senderId: string,
+    content: string,
+    orgId: string,
+    files?: string[],
+  ): Promise<Message | null> {
+    let finalContent = content
+    let encrypted = false
+
+    if (cryptoSession.isLoaded) {
+      const convKey = await ensureConvKey(conversationId, orgId)
+      if (convKey) {
+        try {
+          finalContent = await CryptoService.encryptMessage(content, convKey)
+          encrypted = true
+        } catch { /* fall back to plaintext */ }
+      }
+    }
+
+    const { data } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: senderId,
+        content: finalContent,
+        content_encrypted: encrypted,
+        status: 'sent',
+        ...(files?.length ? { files } : {}),
+      })
+      .select()
+      .single()
+
+    if (!data) return null
+    // Return the plaintext version for immediate local display
+    return rowToMessage({ ...(data as unknown as MessageRow), content, content_encrypted: false })
+  },
+
+  async createGroupConversation(orgId: string, memberIds: string[]): Promise<{ id: string | null; error: string | null }> {
+    const { data: conv, error } = await supabase
+      .from('conversations')
+      .insert({ organization_id: orgId, type: 'group', reference_id: null })
+      .select()
+      .single()
+    if (error || !conv) return { id: null, error: error?.message ?? null }
+
+    await supabase.from('conversation_members').insert(
+      memberIds.map(uid => ({ conversation_id: conv.id, user_id: uid }))
+    )
+    return { id: conv.id, error: null }
+  },
+
+  // Phase 4: Realtime — decrypts message before passing to callback.
+  subscribe(conversationId: string, orgId: string, onMessage: (msg: Message) => void): () => void {
+    const channel = supabase
+      .channel(`messages:${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        payload => {
+          decryptRow(payload.new as MessageRow, orgId)
+            .then(onMessage)
+            .catch(() => onMessage(rowToMessage(payload.new as MessageRow)))
+        },
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  },
+
+  // Phase 5: encrypts file using the conversation key before upload.
+  async uploadAttachment(
+    orgId: string,
+    conversationId: string,
+    file: File,
+  ): Promise<{ path: string | null; url: string | null; error: string | null }> {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `${orgId}/${conversationId}/${Date.now()}_${safeName}`
+
+    let uploadBlob: Blob = file
+
+    if (cryptoSession.isLoaded) {
+      const convKey = await ensureConvKey(conversationId, orgId)
+      if (convKey) {
+        try {
+          const buf = await file.arrayBuffer()
+          const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
+          const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, buf)
+          const out = new Uint8Array(12 + cipherBuf.byteLength)
+          out.set(iv, 0)
+          out.set(new Uint8Array(cipherBuf), 12)
+          uploadBlob = new Blob([out], { type: 'application/octet-stream' })
+        } catch { /* fall back to plaintext upload */ }
+      }
+    }
+
+    const { error } = await supabase.storage
+      .from('attachments')
+      .upload(path, uploadBlob, { contentType: uploadBlob.type })
+
+    if (error) return { path: null, url: null, error: error.message }
+
+    // Try public URL first; fall back to signed URL for private buckets
+    const { data: pubData } = supabase.storage.from('attachments').getPublicUrl(path)
+    if (pubData.publicUrl && !pubData.publicUrl.includes('undefined')) {
+      return { path, url: pubData.publicUrl, error: null }
+    }
+
+    const { data: signed, error: signErr } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(path, 60 * 60 * 24 * 7)
+
+    return signErr
+      ? { path: null, url: null, error: signErr.message }
+      : { path, url: signed.signedUrl, error: null }
+  },
+
+  // Phase 5: download + decrypt an encrypted attachment (conv key used).
+  async downloadAndDecrypt(
+    storagePath: string,
+    conversationId: string,
+    orgId: string,
+    fileName: string,
+  ): Promise<{ error: string | null }> {
+    try {
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(storagePath, 300)
+      if (signErr || !signed) return { error: signErr?.message ?? 'URL introuvable.' }
+
+      const response = await fetch(signed.signedUrl)
+      if (!response.ok) return { error: 'Téléchargement échoué.' }
+      const encBuf = await response.arrayBuffer()
+
+      let plainBuf: ArrayBuffer = encBuf
+
+      if (cryptoSession.isLoaded) {
+        const convKey = await KeyService.getOrLoadConversationKey(conversationId, orgId)
+        if (convKey && encBuf.byteLength > 12) {
+          try {
+            const iv = new Uint8Array(encBuf, 0, 12) as Uint8Array<ArrayBuffer>
+            const cipher = new Uint8Array(encBuf, 12) as Uint8Array<ArrayBuffer>
+            plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
+          } catch { /* not encrypted or wrong key — serve raw */ }
+        }
+      }
+
+      const blob = new Blob([plainBuf])
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = fileName
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+      return { error: null }
+    } catch (e) {
+      return { error: (e as Error).message }
+    }
+  },
+
+  async getSignedUrl(path: string): Promise<string | null> {
+    const { data, error } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(path, 60 * 60 * 24 * 7)
+    return error ? null : data.signedUrl
+  },
+
+  async leaveConversation(conversationId: string, userId: string): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('conversation_members')
+      .delete()
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+    return { error: error?.message ?? null }
   },
 }

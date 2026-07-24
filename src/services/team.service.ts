@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { TeamRow, TeamMemberRow, TeamPermissionRow } from '../lib/database.types'
+import type { Team } from '../lib/types'
 
 export interface CreateTeamParams {
   organizationId: string
@@ -56,6 +57,30 @@ export const TeamService = {
       .select('*')
       .eq('organization_id', organizationId)
     return data ?? []
+  },
+
+  async getByOrganizationWithMembers(organizationId: string): Promise<Team[]> {
+    const { data: teams } = await supabase
+      .from('teams')
+      .select('*, team_members(user_id)')
+      .eq('organization_id', organizationId)
+      .order('name')
+
+    if (!teams) return []
+
+    return teams.map(t => {
+      const members = (t as unknown as { team_members: { user_id: string }[] }).team_members ?? []
+      return {
+        id: t.id,
+        organizationId: t.organization_id,
+        name: t.name,
+        description: t.description ?? undefined,
+        responsableId: t.owner_id ?? '',
+        members: members.map(m => m.user_id),
+        color: t.color,
+        createdAt: t.created_at,
+      } satisfies Team
+    })
   },
 
   async getForUser(userId: string, organizationId: string): Promise<TeamRow[]> {
