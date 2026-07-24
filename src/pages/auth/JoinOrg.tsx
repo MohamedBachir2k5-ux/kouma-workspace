@@ -59,7 +59,7 @@ export function JoinOrg() {
     UserService.getInviteByToken(token).then(async data => {
       if (!data) { setLoadError('Ce lien d\'invitation est invalide ou a expiré.'); return }
       setInvite(data)
-      const depts = await DepartmentService.list(data.organizationId)
+      const depts = await DepartmentService.listByInviteToken(token)
       setDepartments(depts)
     })
   }, [token])

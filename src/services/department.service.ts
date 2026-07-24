@@ -23,6 +23,20 @@ export const DepartmentService = {
     return (data ?? []).map(rowToDepartment)
   },
 
+  // Used by JoinOrg (public page, unauthenticated).
+  // The RPC validates the invitation token and returns only the matching org's departments.
+  // This replaces the former anon USING(true) SELECT policy (which exposed all orgs).
+  async listByInviteToken(token: string): Promise<Department[]> {
+    const { data } = await supabase.rpc('get_departments_for_invite', { p_token: token })
+    if (!data) return []
+    return (data as { id: string; name: string; code: string; organization_id: string }[]).map(r => ({
+      id: r.id,
+      organizationId: r.organization_id,
+      name: r.name,
+      code: r.code,
+    }))
+  },
+
   async create(orgId: string, data: { name: string; code: string }): Promise<{ dept: Department | null; error: string | null }> {
     const { data: row, error } = await supabase
       .from('departments')

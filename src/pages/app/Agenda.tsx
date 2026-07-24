@@ -368,17 +368,17 @@ export function Agenda() {
     const startAt = new Date(`${form.date}T${form.timeStart}:00`).toISOString()
     const endAt = new Date(`${form.date}T${form.timeEnd}:00`).toISOString()
     const patch = { title: form.title, description: form.description || undefined, startAt, endAt, participants: form.participants, status: 'modified' as EventStatus, modifiedAt: new Date().toISOString() }
-    await EventService.update(id, patch)
+    await EventService.update(id, patch, currentOrg.id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e))
   }
 
   async function cancelEvent(id: string) {
-    await EventService.cancel(id, "Annulé par l'organisateur.")
+    await EventService.cancel(id, "Annulé par l'organisateur.", currentOrg.id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' as EventStatus, cancelReason: "Annulé par l'organisateur." } : e))
   }
 
   async function markDone(id: string) {
-    await EventService.markDone(id)
+    await EventService.markDone(id, currentOrg.id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'done' as EventStatus } : e))
   }
 

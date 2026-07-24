@@ -80,8 +80,8 @@ export const EventService = {
     return rowToEvent(row as unknown as EventRow)
   },
 
-  async update(id: string, updates: Partial<Event>): Promise<void> {
-    await supabase.from('events').update({
+  async update(id: string, updates: Partial<Event>, orgId?: string): Promise<void> {
+    let q = supabase.from('events').update({
       ...(updates.title !== undefined       ? { title: updates.title } : {}),
       ...(updates.description !== undefined ? { description: updates.description ?? null } : {}),
       ...(updates.location !== undefined    ? { location: updates.location ?? null } : {}),
@@ -92,30 +92,40 @@ export const EventService = {
       status: updates.status ?? 'modified',
       modified_at: new Date().toISOString(),
     }).eq('id', id)
+    if (orgId) q = q.eq('organization_id', orgId)
+    await q
   },
 
-  async cancel(id: string, reason: string): Promise<void> {
-    await supabase
+  async cancel(id: string, reason: string, orgId?: string): Promise<void> {
+    let q = supabase
       .from('events')
       .update({ status: 'cancelled', cancel_reason: reason, modified_at: new Date().toISOString() })
       .eq('id', id)
+    if (orgId) q = q.eq('organization_id', orgId)
+    await q
   },
 
-  async markDone(id: string): Promise<void> {
-    await supabase
+  async markDone(id: string, orgId?: string): Promise<void> {
+    let q = supabase
       .from('events')
       .update({ status: 'done', modified_at: new Date().toISOString() })
       .eq('id', id)
+    if (orgId) q = q.eq('organization_id', orgId)
+    await q
   },
 
-  async updateStatus(id: string, status: EventStatus): Promise<void> {
-    await supabase
+  async updateStatus(id: string, status: EventStatus, orgId?: string): Promise<void> {
+    let q = supabase
       .from('events')
       .update({ status, modified_at: new Date().toISOString() })
       .eq('id', id)
+    if (orgId) q = q.eq('organization_id', orgId)
+    await q
   },
 
-  async delete(id: string): Promise<void> {
-    await supabase.from('events').delete().eq('id', id)
+  async delete(id: string, orgId?: string): Promise<void> {
+    let q = supabase.from('events').delete().eq('id', id)
+    if (orgId) q = q.eq('organization_id', orgId)
+    await q
   },
 }

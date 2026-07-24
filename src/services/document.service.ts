@@ -111,6 +111,25 @@ export const DocumentService = {
     file: File,
     folderId?: string,
   ): Promise<{ document: Document | null; error: string | null }> {
+    const ALLOWED_TYPES = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+      'text/plain', 'text/csv',
+      'application/zip', 'application/x-zip-compressed',
+    ]
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return { document: null, error: 'Type de fichier non autorisé.' }
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      return { document: null, error: 'Fichier trop volumineux (max 50 Mo).' }
+    }
+
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
     const encrypted = cryptoSession.isLoaded

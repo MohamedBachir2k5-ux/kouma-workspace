@@ -252,12 +252,23 @@ export const UserService = {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
     // Path must be org-scoped so storage RLS policy allows it
     const path = `${orgId}/avatars/${userId}.${ext}`
+    const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return { avatarUrl: null, error: 'Format d\'image non autorisé (PNG, JPG, GIF, WebP).' }
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return { avatarUrl: null, error: 'Image trop volumineuse (max 5 Mo).' }
+    }
     const { error: uploadErr } = await supabase.storage
       .from('attachments')
       .upload(path, file, { upsert: true, contentType: file.type })
     if (uploadErr) return { avatarUrl: null, error: uploadErr.message }
-    const { data } = supabase.storage.from('attachments').getPublicUrl(path)
-    const avatarUrl = data.publicUrl
+    // Bucket is private — signed URL with long expiry stored as avatar_url
+    const { data: signed, error: signErr } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(path, 60 * 60 * 24 * 365)
+    if (signErr || !signed) return { avatarUrl: null, error: signErr?.message ?? 'URL avatar introuvable.' }
+    const avatarUrl = signed.signedUrl
     await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId)
     return { avatarUrl, error: null }
   },

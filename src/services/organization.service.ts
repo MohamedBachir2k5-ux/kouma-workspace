@@ -135,12 +135,23 @@ export const OrganizationService = {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
     // Path must be org-scoped so storage RLS policy allows it
     const path = `${orgId}/logos/${orgId}.${ext}`
+    const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return { logoUrl: null, error: 'Format d\'image non autorisé (PNG, JPG, GIF, WebP, SVG).' }
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return { logoUrl: null, error: 'Image trop volumineuse (max 5 Mo).' }
+    }
     const { error: uploadErr } = await supabase.storage
       .from('attachments')
       .upload(path, file, { upsert: true, contentType: file.type })
     if (uploadErr) return { logoUrl: null, error: uploadErr.message }
-    const { data } = supabase.storage.from('attachments').getPublicUrl(path)
-    const logoUrl = data.publicUrl
+    // Bucket is private — signed URL with long expiry stored as logo_url
+    const { data: signed, error: signErr } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(path, 60 * 60 * 24 * 365)
+    if (signErr || !signed) return { logoUrl: null, error: signErr?.message ?? 'URL logo introuvable.' }
+    const logoUrl = signed.signedUrl
     await supabase.from('organizations').update({ logo_url: logoUrl }).eq('id', orgId)
     return { logoUrl, error: null }
   },

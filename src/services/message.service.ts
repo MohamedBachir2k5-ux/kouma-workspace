@@ -237,6 +237,27 @@ export const MessageService = {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `${orgId}/${conversationId}/${Date.now()}_${safeName}`
 
+    // Validate file type (allowlist — prevents XSS via HTML uploads)
+    const ALLOWED_TYPES = [
+      'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain', 'text/csv',
+      'application/zip', 'application/x-zip-compressed',
+    ]
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return { path: null, url: null, error: 'Type de fichier non autorisé.' }
+    }
+    const MAX_SIZE = 50 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      return { path: null, url: null, error: 'Fichier trop volumineux (max 50 Mo).' }
+    }
+
     let uploadBlob: Blob = file
 
     if (cryptoSession.isLoaded) {
@@ -260,15 +281,10 @@ export const MessageService = {
 
     if (error) return { path: null, url: null, error: error.message }
 
-    // Try public URL first; fall back to signed URL for private buckets
-    const { data: pubData } = supabase.storage.from('attachments').getPublicUrl(path)
-    if (pubData.publicUrl && !pubData.publicUrl.includes('undefined')) {
-      return { path, url: pubData.publicUrl, error: null }
-    }
-
+    // Bucket is private — always use signed URLs (1 h)
     const { data: signed, error: signErr } = await supabase.storage
       .from('attachments')
-      .createSignedUrl(path, 60 * 60 * 24 * 7)
+      .createSignedUrl(path, 3600)
 
     return signErr
       ? { path: null, url: null, error: signErr.message }
