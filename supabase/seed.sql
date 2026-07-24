@@ -83,10 +83,10 @@ INSERT INTO public.subscriptions (
   'starter', 'active',
   'GNF', 700000,
   null,
-  (now() - interval '60 days')::date::text,
-  (now() + interval '30 days')::date::text,
+  (now() - interval '60 days'),
+  (now() + interval '30 days'),
   40,
-  (now() + interval '305 days')::date::text,
+  (now() + interval '305 days'),
   now() - interval '60 days'
 ) ON CONFLICT (id) DO NOTHING;
 
@@ -232,20 +232,20 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Fichiers
 INSERT INTO public.files (id, owner_id, organization_id, storage_path, name, type, size, category, created_at) VALUES
-  ('fi000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'documents/rapport-q2-2025.pdf',          'Rapport Q2 2025.pdf',              'pdf',  2400000, 'document', now() - interval '2 days'),
-  ('fi000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'documents/organigramme-2025.docx',       'Organigramme 2025.docx',           'docx',  450000, 'document', now() - interval '5 days'),
-  ('fi000003-0000-0000-0000-000000000003', 'aa001000-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'documents/budget-previsionnel.xlsx',     'Budget prévisionnel.xlsx',         'xlsx',  890000, 'document', now() - interval '7 days'),
-  ('fi000004-0000-0000-0000-000000000004', 'aa000001-0000-0000-0000-000000000001', 'cc000001-0000-0000-0000-000000000001', 'documents/contrat-fournisseur.pdf',      'Contrat fournisseur Bauxite SA.pdf','pdf', 1200000, 'document', now() - interval '10 days'),
-  ('fi000005-0000-0000-0000-000000000005', 'aa001000-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'documents/procedure-onboarding.pdf',     'Procédure onboarding.pdf',         'pdf',   320000, 'document', now() - interval '14 days')
+  ('f1000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'documents/rapport-q2-2025.pdf',          'Rapport Q2 2025.pdf',              'pdf',  2400000, 'document', now() - interval '2 days'),
+  ('f1000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'documents/organigramme-2025.docx',       'Organigramme 2025.docx',           'docx',  450000, 'document', now() - interval '5 days'),
+  ('f1000003-0000-0000-0000-000000000003', 'aa001000-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'documents/budget-previsionnel.xlsx',     'Budget prévisionnel.xlsx',         'xlsx',  890000, 'document', now() - interval '7 days'),
+  ('f1000004-0000-0000-0000-000000000004', 'aa000001-0000-0000-0000-000000000001', 'cc000001-0000-0000-0000-000000000001', 'documents/contrat-fournisseur.pdf',      'Contrat fournisseur Bauxite SA.pdf','pdf', 1200000, 'document', now() - interval '10 days'),
+  ('f1000005-0000-0000-0000-000000000005', 'aa001000-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'documents/procedure-onboarding.pdf',     'Procédure onboarding.pdf',         'pdf',   320000, 'document', now() - interval '14 days')
 ON CONFLICT (id) DO NOTHING;
 
 -- Documents (pointent vers les fichiers)
 INSERT INTO public.documents (id, organization_id, folder_id, owner_id, title, file_id, created_at) VALUES
-  ('dc000001-0000-0000-0000-000000000001', 'cc000001-0000-0000-0000-000000000001', 'ff000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000003', 'Rapport Q2 2025',              'fi000001-0000-0000-0000-000000000001', now() - interval '2 days'),
-  ('dc000002-0000-0000-0000-000000000002', 'cc000001-0000-0000-0000-000000000001', 'ff000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000005', 'Organigramme 2025',            'fi000002-0000-0000-0000-000000000002', now() - interval '5 days'),
-  ('dc000003-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'ff000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000003', 'Budget prévisionnel',          'fi000003-0000-0000-0000-000000000003', now() - interval '7 days'),
-  ('dc000004-0000-0000-0000-000000000004', 'cc000001-0000-0000-0000-000000000001', null,                                   'aa000001-0000-0000-0000-000000000001', 'Contrat fournisseur Bauxite SA','fi000004-0000-0000-0000-000000000004', now() - interval '10 days'),
-  ('dc000005-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'ff000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000005', 'Procédure onboarding',         'fi000005-0000-0000-0000-000000000005', now() - interval '14 days')
+  ('dc000001-0000-0000-0000-000000000001', 'cc000001-0000-0000-0000-000000000001', 'ff000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000003', 'Rapport Q2 2025',              'f1000001-0000-0000-0000-000000000001', now() - interval '2 days'),
+  ('dc000002-0000-0000-0000-000000000002', 'cc000001-0000-0000-0000-000000000001', 'ff000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000005', 'Organigramme 2025',            'f1000002-0000-0000-0000-000000000002', now() - interval '5 days'),
+  ('dc000003-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'ff000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000003', 'Budget prévisionnel',          'f1000003-0000-0000-0000-000000000003', now() - interval '7 days'),
+  ('dc000004-0000-0000-0000-000000000004', 'cc000001-0000-0000-0000-000000000001', null,                                   'aa000001-0000-0000-0000-000000000001', 'Contrat fournisseur Bauxite SA','f1000004-0000-0000-0000-000000000004', now() - interval '10 days'),
+  ('dc000005-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'ff000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000005', 'Procédure onboarding',         'f1000005-0000-0000-0000-000000000005', now() - interval '14 days')
 ON CONFLICT (id) DO NOTHING;
 
 
@@ -255,29 +255,29 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Conversation d'équipe Direction Générale
 INSERT INTO public.conversations (id, type, organization_id, reference_id, created_at) VALUES
-  ('co000001-0000-0000-0000-000000000001', 'team', 'cc000001-0000-0000-0000-000000000001', 'bb000001-0000-0000-0000-000000000001', now() - interval '85 days'),
-  ('co000002-0000-0000-0000-000000000002', 'team', 'cc000001-0000-0000-0000-000000000001', 'bb000002-0000-0000-0000-000000000002', now() - interval '80 days'),
-  ('co000003-0000-0000-0000-000000000003', 'direct', 'cc000001-0000-0000-0000-000000000001', null, now() - interval '30 days')
+  ('c0000001-0000-0000-0000-000000000001', 'team', 'cc000001-0000-0000-0000-000000000001', 'bb000001-0000-0000-0000-000000000001', now() - interval '85 days'),
+  ('c0000002-0000-0000-0000-000000000002', 'team', 'cc000001-0000-0000-0000-000000000001', 'bb000002-0000-0000-0000-000000000002', now() - interval '80 days'),
+  ('c0000003-0000-0000-0000-000000000003', 'direct', 'cc000001-0000-0000-0000-000000000001', null, now() - interval '30 days')
 ON CONFLICT (id) DO NOTHING;
 
 -- Membres des conversations
 INSERT INTO public.conversation_members (conversation_id, user_id) VALUES
-  ('co000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001'),
-  ('co000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000001'),
-  ('co000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000002'),
-  ('co000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000003'),
-  ('co000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000004'),
-  ('co000003-0000-0000-0000-000000000003', 'aa000001-0000-0000-0000-000000000001'),
-  ('co000003-0000-0000-0000-000000000003', 'aa001000-0000-0000-0000-000000000001')
+  ('c0000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001'),
+  ('c0000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000001'),
+  ('c0000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000002'),
+  ('c0000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000003'),
+  ('c0000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000004'),
+  ('c0000003-0000-0000-0000-000000000003', 'aa000001-0000-0000-0000-000000000001'),
+  ('c0000003-0000-0000-0000-000000000003', 'aa001000-0000-0000-0000-000000000001')
 ON CONFLICT (conversation_id, user_id) DO NOTHING;
 
 -- Messages
 INSERT INTO public.messages (id, conversation_id, sender_id, content, status, created_at) VALUES
-  ('ms000001-0000-0000-0000-000000000001', 'co000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'Réunion budget confirmée pour vendredi 10h00.',              'read', now() - interval '12 minutes'),
-  ('ms000002-0000-0000-0000-000000000002', 'co000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000001', 'Confirmé. Je prépare les slides d''ici jeudi soir.',          'read', now() - interval '10 minutes'),
-  ('ms000003-0000-0000-0000-000000000003', 'co000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000002', 'Parfait. J''enverrai les convocations officielles ce soir.', 'read', now() - interval '8 minutes'),
-  ('ms000004-0000-0000-0000-000000000004', 'co000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000003', 'Les chiffres du trimestre ont été validés.',                 'read', now() - interval '2 hours'),
-  ('ms000005-0000-0000-0000-000000000005', 'co000003-0000-0000-0000-000000000003', 'aa001000-0000-0000-0000-000000000001', 'Le rapport est prêt, je te l''envoie.',                      'sent', now() - interval '45 minutes')
+  ('b5000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'Réunion budget confirmée pour vendredi 10h00.',              'read', now() - interval '12 minutes'),
+  ('b5000002-0000-0000-0000-000000000002', 'c0000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000001', 'Confirmé. Je prépare les slides d''ici jeudi soir.',          'read', now() - interval '10 minutes'),
+  ('b5000003-0000-0000-0000-000000000003', 'c0000001-0000-0000-0000-000000000001', 'aa001000-0000-0000-0000-000000000002', 'Parfait. J''enverrai les convocations officielles ce soir.', 'read', now() - interval '8 minutes'),
+  ('b5000004-0000-0000-0000-000000000004', 'c0000002-0000-0000-0000-000000000002', 'aa001000-0000-0000-0000-000000000003', 'Les chiffres du trimestre ont été validés.',                 'read', now() - interval '2 hours'),
+  ('b5000005-0000-0000-0000-000000000005', 'c0000003-0000-0000-0000-000000000003', 'aa001000-0000-0000-0000-000000000001', 'Le rapport est prêt, je te l''envoie.',                      'sent', now() - interval '45 minutes')
 ON CONFLICT (id) DO NOTHING;
 
 
@@ -286,16 +286,16 @@ ON CONFLICT (id) DO NOTHING;
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 INSERT INTO public.audit_logs (id, organization_id, user_id, action, target_type, target_id, target_name, detail, created_at) VALUES
-  ('al000001-0000-0000-0000-000000000001', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'organization_created', 'organization', 'cc000001-0000-0000-0000-000000000001', 'Organisation TEST SARL',  null,                        now() - interval '90 days'),
-  ('al000002-0000-0000-0000-000000000002', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'team_created',         'team',         'bb000001-0000-0000-0000-000000000001', 'Direction Générale',       null,                        now() - interval '85 days'),
-  ('al000003-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'team_created',         'team',         'bb000002-0000-0000-0000-000000000002', 'Finance',                  null,                        now() - interval '80 days'),
-  ('al000004-0000-0000-0000-000000000004', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'invite_generated',     null,           null,                                   null,                       'user50@test-sarl.com',      now() - interval '50 days'),
-  ('al000005-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'user_joined',          'user',         'aa001000-0000-0000-0000-000000000001', 'Mamadou Bah1',             null,                        now() - interval '89 days'),
-  ('al000006-0000-0000-0000-000000000006', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'document_added',       'document',     'dc000001-0000-0000-0000-000000000001', 'Rapport Q2 2025.pdf',      'Dossier Finance',           now() - interval '2 days'),
-  ('al000007-0000-0000-0000-000000000007', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'permission_changed',   'team',         'bb000002-0000-0000-0000-000000000002', 'Finance',                  'manage_documents activé',   now() - interval '10 days'),
-  ('al000008-0000-0000-0000-000000000008', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'subscription_changed', 'subscription', 'ee000001-0000-0000-0000-000000000001', null,                       'Passage trial → active',    now() - interval '60 days'),
-  ('al000009-0000-0000-0000-000000000009', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'user_suspended',       'user',         'aa001000-0000-0000-0000-000000000020', 'Fatoumata Traoré20',       'Accès bloqué temporairement', now() - interval '5 days'),
-  ('al000010-0000-0000-0000-000000000010', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'user_activated',       'user',         'aa001000-0000-0000-0000-000000000020', 'Fatoumata Traoré20',       null,                        now() - interval '3 days')
+  ('a1000001-0000-0000-0000-000000000001', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'organization_created', 'organization', 'cc000001-0000-0000-0000-000000000001', 'Organisation TEST SARL',  null,                        now() - interval '90 days'),
+  ('a1000002-0000-0000-0000-000000000002', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'team_created',         'team',         'bb000001-0000-0000-0000-000000000001', 'Direction Générale',       null,                        now() - interval '85 days'),
+  ('a1000003-0000-0000-0000-000000000003', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'team_created',         'team',         'bb000002-0000-0000-0000-000000000002', 'Finance',                  null,                        now() - interval '80 days'),
+  ('a1000004-0000-0000-0000-000000000004', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'invite_generated',     null,           null,                                   null,                       'user50@test-sarl.com',      now() - interval '50 days'),
+  ('a1000005-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'user_joined',          'user',         'aa001000-0000-0000-0000-000000000001', 'Mamadou Bah1',             null,                        now() - interval '89 days'),
+  ('a1000006-0000-0000-0000-000000000006', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'document_added',       'document',     'dc000001-0000-0000-0000-000000000001', 'Rapport Q2 2025.pdf',      'Dossier Finance',           now() - interval '2 days'),
+  ('a1000007-0000-0000-0000-000000000007', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'permission_changed',   'team',         'bb000002-0000-0000-0000-000000000002', 'Finance',                  'manage_documents activé',   now() - interval '10 days'),
+  ('a1000008-0000-0000-0000-000000000008', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'subscription_changed', 'subscription', 'ee000001-0000-0000-0000-000000000001', null,                       'Passage trial → active',    now() - interval '60 days'),
+  ('a1000009-0000-0000-0000-000000000009', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'user_suspended',       'user',         'aa001000-0000-0000-0000-000000000020', 'Fatoumata Traoré20',       'Accès bloqué temporairement', now() - interval '5 days'),
+  ('a1000010-0000-0000-0000-000000000010', 'cc000001-0000-0000-0000-000000000001', 'aa000001-0000-0000-0000-000000000001', 'user_activated',       'user',         'aa001000-0000-0000-0000-000000000020', 'Fatoumata Traoré20',       null,                        now() - interval '3 days')
 ON CONFLICT (id) DO NOTHING;
 
 
@@ -363,42 +363,49 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Politique storage : avatars — lecture par membres org, upload par propriétaire
-CREATE POLICY IF NOT EXISTS "Avatar upload own"
+DROP POLICY IF EXISTS "Avatar upload own" ON storage.objects;
+CREATE POLICY "Avatar upload own"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY IF NOT EXISTS "Avatar read org members"
+DROP POLICY IF EXISTS "Avatar read org members" ON storage.objects;
+CREATE POLICY "Avatar read org members"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'avatars');
 
 -- Politique storage : documents — accès réservé aux membres de l'org propriétaire
-CREATE POLICY IF NOT EXISTS "Document upload org member"
+DROP POLICY IF EXISTS "Document upload org member" ON storage.objects;
+CREATE POLICY "Document upload org member"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'documents' AND
     public.is_org_member((storage.foldername(name))[1]::uuid)
   );
 
-CREATE POLICY IF NOT EXISTS "Document read org member"
+DROP POLICY IF EXISTS "Document read org member" ON storage.objects;
+CREATE POLICY "Document read org member"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'documents' AND
     public.is_org_member((storage.foldername(name))[1]::uuid)
   );
 
-CREATE POLICY IF NOT EXISTS "Document delete own"
+DROP POLICY IF EXISTS "Document delete own" ON storage.objects;
+CREATE POLICY "Document delete own"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'documents' AND owner::uuid = auth.uid());
 
 -- Politique storage : attachments — membres de l'org
-CREATE POLICY IF NOT EXISTS "Attachment upload org member"
+DROP POLICY IF EXISTS "Attachment upload org member" ON storage.objects;
+CREATE POLICY "Attachment upload org member"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'attachments' AND
     public.is_org_member((storage.foldername(name))[1]::uuid)
   );
 
-CREATE POLICY IF NOT EXISTS "Attachment read org member"
+DROP POLICY IF EXISTS "Attachment read org member" ON storage.objects;
+CREATE POLICY "Attachment read org member"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'attachments' AND

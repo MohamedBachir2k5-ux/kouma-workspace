@@ -329,6 +329,40 @@ returns boolean language sql security definer stable as $$
   );
 $$;
 
+-- SECURITY DEFINER helpers — break RLS recursion cycles
+
+create or replace function public.is_team_owner_or_admin(p_team_id uuid)
+returns boolean language sql security definer stable as $$
+  select exists (
+    select 1 from public.team_members
+    where team_id = p_team_id and user_id = auth.uid() and role in ('owner','admin')
+  );
+$$;
+
+create or replace function public.is_group_member_fn(p_group_id uuid)
+returns boolean language sql security definer stable as $$
+  select exists (
+    select 1 from public.group_members
+    where group_id = p_group_id and user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_group_admin_fn(p_group_id uuid)
+returns boolean language sql security definer stable as $$
+  select exists (
+    select 1 from public.group_members
+    where group_id = p_group_id and user_id = auth.uid() and role = 'admin'
+  );
+$$;
+
+create or replace function public.is_conversation_member(p_conversation_id uuid)
+returns boolean language sql security definer stable as $$
+  select exists (
+    select 1 from public.conversation_members
+    where conversation_id = p_conversation_id and user_id = auth.uid()
+  );
+$$;
+
 -- ─── RLS Policies ────────────────────────────────────────────────────────────
 
 -- profiles: see own profile + fellow org members
@@ -377,77 +411,41 @@ create policy "Org admins manage teams" on public.teams for all
 create policy "Team members view" on public.team_members for select
   using (public.is_org_member((select organization_id from public.teams where id = team_id)));
 
+-- Note: uses is_team_owner_or_admin() (SECURITY DEFINER) to avoid infinite recursion
 create policy "Team owners manage members" on public.team_members for all
-  using (
-    exists (
-      select 1 from public.team_members tm
-      where tm.team_id = team_members.team_id
-        and tm.user_id = auth.uid()
-        and tm.role in ('owner','admin')
-    )
-  );
+  using (public.is_team_owner_or_admin(team_members.team_id));
 
--- team_permissions: only team owner/admin
+-- team_permissions: org admins + team owners/admins
 create policy "Team permissions view" on public.team_permissions for select
-  using (public.is_team_member(team_id));
+  using (
+    public.is_team_member(team_id) or
+    public.is_org_admin((select organization_id from public.teams where id = team_id))
+  );
 
 create policy "Team owners set permissions" on public.team_permissions for all
-  using (
-    exists (
-      select 1 from public.team_members
-      where team_id = team_permissions.team_id
-        and user_id = auth.uid()
-        and role in ('owner','admin')
-    )
-  );
+  using (public.is_team_owner_or_admin(team_permissions.team_id));
 
 -- groups: private — only members (admins never see content)
+-- Note: uses is_group_member_fn() / is_group_admin_fn() (SECURITY DEFINER) to avoid recursion
 create policy "Group members only" on public.groups for select
-  using (
-    exists (
-      select 1 from public.group_members
-      where group_id = groups.id and user_id = auth.uid()
-    )
-  );
+  using (public.is_group_member_fn(groups.id));
 
 create policy "Group creator manages" on public.groups for all
   using (creator_id = auth.uid());
 
 create policy "Group member view membership" on public.group_members for select
-  using (
-    exists (
-      select 1 from public.group_members gm
-      where gm.group_id = group_members.group_id and gm.user_id = auth.uid()
-    )
-  );
+  using (public.is_group_member_fn(group_members.group_id));
 
 create policy "Group admin manages members" on public.group_members for all
-  using (
-    exists (
-      select 1 from public.group_members
-      where group_id = group_members.group_id
-        and user_id = auth.uid()
-        and role = 'admin'
-    )
-  );
+  using (public.is_group_admin_fn(group_members.group_id));
 
 -- conversations: members only — private conversations invisible to admins
+-- Note: uses is_conversation_member() (SECURITY DEFINER) to avoid infinite recursion
 create policy "Conversation members view" on public.conversations for select
-  using (
-    exists (
-      select 1 from public.conversation_members
-      where conversation_id = conversations.id and user_id = auth.uid()
-    )
-  );
+  using (public.is_conversation_member(conversations.id));
 
 create policy "Conversation members" on public.conversation_members for select
-  using (
-    exists (
-      select 1 from public.conversation_members cm
-      where cm.conversation_id = conversation_members.conversation_id
-        and cm.user_id = auth.uid()
-    )
-  );
+  using (public.is_conversation_member(conversation_members.conversation_id));
 
 -- messages: conversation members only — admins cannot read private messages
 create policy "Message senders and receivers" on public.messages for select
@@ -547,3 +545,11 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ─── Grants ───────────────────────────────────────────────────────────────────
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select on public.invitations to anon;
+grant usage, select on all sequences in schema public to authenticated;
+
