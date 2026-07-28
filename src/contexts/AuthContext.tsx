@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { tracerSetContext } from '../lib/tracer'
 import type { User, Organization, Subscription } from '../lib/types'
 import { mockUser, MOCK_ORG, MOCK_SUBSCRIPTION, mockStorageQuotaBytes } from '../lib/mock'
 import { STORAGE_BYTES } from '../config/pricing'
@@ -151,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user.department = memberInfo?.department
         setCurrentUser(user)
         setCurrentOrg(orgRowToOrganization(orgRow))
+        tracerSetContext(user.id, orgRow.id)
         setOrgReady(true)
         if (subRow) {
           setCurrentSubscription(subRowToSubscription(subRow))
@@ -247,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    tracerSetContext(undefined, undefined)
     if (isSupabaseConfigured()) {
       if (currentSessionId) await SessionService.deleteSession(currentSessionId)
       await AuthService.signOut()

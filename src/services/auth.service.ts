@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
-import { devlog } from '../lib/devlog'
 
 export interface SignUpParams {
   email: string
@@ -36,15 +35,12 @@ export const AuthService = {
     })
 
     if (error) {
-      devlog.error('AuthService', 'signUp', 'auth.users', error.message)
       const msg = /already registered|already been registered/i.test(error.message)
         ? 'Cette adresse email est déjà utilisée.'
         : error.message
       return { userId: null, error: msg }
     }
     if (!data.user) return { userId: null, error: 'Création du compte échouée.' }
-    devlog.info('AuthService', 'signUp:ok', { userId: data.user.id })
-
     // The on_auth_user_created trigger may already have created a basic profile row.
     // Use upsert so additional fields (phone, language…) are always written.
     const { error: profileError } = await supabase.from('profiles').upsert({
@@ -69,8 +65,7 @@ export const AuthService = {
       password: params.password,
     })
 
-    if (error) { devlog.error('AuthService', 'signIn', 'auth', error.message); return { userId: null, error: error.message } }
-    devlog.info('AuthService', 'signIn:ok', { userId: data.user?.id })
+    if (error) return { userId: null, error: error.message }
     return { userId: data.user?.id ?? null, error: null }
   },
 

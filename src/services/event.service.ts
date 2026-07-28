@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase'
 import type { Event, EventStatus } from '../lib/types'
-import { devlog } from '../lib/devlog'
 
 type EventRow = {
   id: string
@@ -79,7 +78,7 @@ export const EventService = {
       .select()
       .single()
 
-    if (error || !row) { devlog.supabaseError('EventService', 'create', 'events', error); throw new Error(error?.message ?? 'Erreur lors de la création.') }
+    if (error || !row) throw new Error(error?.message ?? 'Erreur lors de la création.')
 
     // Notify all participants (except the creator) via SECURITY DEFINER RPC
     const others = data.participants.filter(id => id !== data.createdById)

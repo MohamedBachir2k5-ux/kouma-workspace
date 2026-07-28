@@ -34,7 +34,6 @@ import { AdminJournal } from './pages/admin/Journal'
 import { AdminSettings } from './pages/admin/Settings'
 import { AdminPermissions } from './pages/admin/Permissions'
 import { AdminAnnouncements } from './pages/admin/Announcements'
-
 export default function App() {
   return (
     <BrowserRouter>

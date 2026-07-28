@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { tracer } from '../lib/tracer'
 
 interface Props {
   children: ReactNode
@@ -17,11 +18,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[ErrorBoundary] Render error:', error, info.componentStack)
-    // Log to diagnostic system (dynamic import avoids circular deps)
-    import('../lib/devlog').then(({ devlog }) => {
-      devlog.error('ReactCrash', error.message, undefined, error.stack?.slice(0, 500), {
-        component: info.componentStack?.split('\n')[1]?.trim(),
-      })
+    tracer.push({
+      level: 'error',
+      module: 'ReactCrash',
+      action: error.message,
+      error: error.stack?.slice(0, 500),
+      detail: { component: info.componentStack?.split('\n')[1]?.trim() },
     })
   }
 

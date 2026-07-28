@@ -5,11 +5,13 @@ import './i18n/index'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { installFetchInterceptor } from './lib/fetch-interceptor'
-import { installDiagnostics } from './lib/diagnostic'
+import { installTracer } from './lib/tracer'
+import { installTraceInterceptor } from './lib/trace-interceptor'
+import { installTraceDiagnostic } from './lib/trace-diagnostic'
 
-installFetchInterceptor()
-installDiagnostics()
+installTracer()
+installTraceInterceptor()
+installTraceDiagnostic()
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {})

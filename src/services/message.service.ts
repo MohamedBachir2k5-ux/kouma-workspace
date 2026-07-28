@@ -3,7 +3,6 @@ import type { Channel, Message, ChannelType } from '../lib/types'
 import { CryptoService } from './crypto.service'
 import { KeyService } from './key.service'
 import { cryptoSession } from '../lib/crypto-session'
-import { devlog } from '../lib/devlog'
 
 type MessageRow = {
   id: string
@@ -206,7 +205,6 @@ export const MessageService = {
       .select()
       .single()
 
-    if (sendErr) devlog.supabaseError('MessageService', 'send', 'messages', sendErr)
     if (!data) return null
 
     // Notify all other participants for all conversation types (fire-and-forget)

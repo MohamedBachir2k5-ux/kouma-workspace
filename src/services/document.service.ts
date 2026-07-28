@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase'
 import type { Document, DocumentVisibility, Folder } from '../lib/types'
 import { cryptoSession } from '../lib/crypto-session'
 import { KeyService } from './key.service'
-import { devlog } from '../lib/devlog'
 
 type DocumentWithFile = {
   id: string
@@ -178,7 +177,7 @@ export const DocumentService = {
       .from('attachments')
       .upload(storagePath, uploadBlob, { contentType: uploadBlob.type })
 
-    if (uploadErr) { devlog.supabaseError('DocumentService', 'uploadDocument:storage', 'attachments', uploadErr); return { document: null, error: uploadErr.message } }
+    if (uploadErr) return { document: null, error: uploadErr.message }
 
     const { data: fileRecord, error: fileErr } = await supabase
       .from('files')
@@ -194,7 +193,7 @@ export const DocumentService = {
       .select()
       .single()
 
-    if (fileErr || !fileRecord) { devlog.supabaseError('DocumentService', 'uploadDocument:files', 'files', fileErr); return { document: null, error: fileErr?.message ?? 'Erreur fichier.' } }
+    if (fileErr || !fileRecord) return { document: null, error: fileErr?.message ?? 'Erreur fichier.' }
 
     const { data: docRecord, error: docErr } = await supabase
       .from('documents')
@@ -211,7 +210,7 @@ export const DocumentService = {
       .select('*, files(name, type, size, storage_path)')
       .single()
 
-    if (docErr || !docRecord) { devlog.supabaseError('DocumentService', 'uploadDocument:documents', 'documents', docErr); return { document: null, error: docErr?.message ?? 'Erreur document.' } }
+    if (docErr || !docRecord) return { document: null, error: docErr?.message ?? 'Erreur document.' }
 
     return { document: rowToDocument(docRecord as unknown as DocumentWithFile), error: null }
   },

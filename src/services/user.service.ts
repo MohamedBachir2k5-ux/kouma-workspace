@@ -1,7 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
 import type { User } from '../lib/types'
-import { devlog } from '../lib/devlog'
 
 export const UserService = {
   async getById(id: string): Promise<ProfileRow | null> {
@@ -57,8 +56,6 @@ export const UserService = {
       .update(updates)
       .eq('user_id', userId)
       .eq('organization_id', organizationId)
-
-    if (error) devlog.supabaseError('UserService', `updateStatus:${status}`, 'organization_members', error)
 
     if (!error) {
       const actionMap = { active: 'user_activated', suspended: 'user_suspended', deleted: 'user_revoked' }
