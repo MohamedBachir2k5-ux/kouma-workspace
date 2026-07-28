@@ -18,6 +18,9 @@ export const KeyService = {
   // Generates an ECDH P-256 key pair, wraps the private key with KWK derived
   // from secret, stores in user_key_pairs.
   async generateAndStoreUserKeys(userId: string, secret: string): Promise<{ error: string | null }> {
+    if (!crypto?.subtle) {
+      return { error: 'Web Crypto API indisponible. Accédez à l\'application via HTTPS ou localhost.' }
+    }
     try {
       const pair = await CryptoService.generateUserKeyPair()
       const salt = CryptoService.generateSalt()

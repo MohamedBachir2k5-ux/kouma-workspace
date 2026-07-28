@@ -23,6 +23,7 @@ import { Documents } from './pages/app/Documents'
 import { Agenda } from './pages/app/Agenda'
 import { Teams } from './pages/app/Teams'
 import { Profile } from './pages/app/Profile'
+import { Announcements } from './pages/app/Announcements'
 import { AdminDashboard } from './pages/admin/Dashboard'
 import { AdminUsers } from './pages/admin/Users'
 import { AdminDepartments } from './pages/admin/Departments'
@@ -32,6 +33,7 @@ import { AdminSecurity } from './pages/admin/Security'
 import { AdminJournal } from './pages/admin/Journal'
 import { AdminSettings } from './pages/admin/Settings'
 import { AdminPermissions } from './pages/admin/Permissions'
+import { AdminAnnouncements } from './pages/admin/Announcements'
 
 export default function App() {
   return (
@@ -70,6 +72,7 @@ export default function App() {
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Navigate to="/app/messages" replace />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="annonces" element={<Announcements />} />
           <Route path="documents" element={<Documents />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="equipes" element={<Teams />} />
@@ -87,6 +90,7 @@ export default function App() {
           <Route path="securite" element={<AdminSecurity />} />
           <Route path="journal" element={<AdminJournal />} />
           <Route path="permissions" element={<AdminPermissions />} />
+          <Route path="annonces" element={<AdminAnnouncements />} />
           <Route path="parametres" element={<AdminSettings />} />
         </Route>
 

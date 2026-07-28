@@ -12,6 +12,26 @@ export interface CreateTeamParams {
 }
 
 export const TeamService = {
+  async getTeamConversationId(teamId: string): Promise<string | null> {
+    const { data } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('type', 'team')
+      .eq('reference_id', teamId)
+      .single()
+    return data?.id ?? null
+  },
+
+  async ensureTeamConversation(teamId: string, orgId: string, memberIds: string[]): Promise<void> {
+    console.log('[ensureTeamConversation] calling RPC ensure_team_conversation', { teamId, orgId, members: memberIds.length })
+    const { data, error } = await supabase.rpc('ensure_team_conversation', {
+      p_org_id: orgId,
+      p_team_id: teamId,
+      p_members: memberIds,
+    })
+    console.log('[ensureTeamConversation] RPC result:', data, 'error:', error?.message)
+  },
+
   async create(params: CreateTeamParams): Promise<{ teamId: string | null; error: string | null }> {
     const { data: team, error } = await supabase
       .from('teams')
@@ -28,17 +48,35 @@ export const TeamService = {
     if (error) return { teamId: null, error: error.message }
 
     // Add owner as first member with owner role
-    await supabase.from('team_members').insert({
+    const { error: memberErr } = await supabase.from('team_members').insert({
       team_id: team.id,
       user_id: params.ownerId,
       role: 'owner',
     })
+    console.log('[TEAM][CREATE] team_members insert error:', memberErr?.message)
 
-    // Seed default permissions
-    const defaults = ['send_messages', 'upload_files', 'view_members']
-    await supabase.from('team_permissions').insert(
-      defaults.map(p => ({ team_id: team.id, permission_name: p, enabled: true }))
-    )
+    // Create team conversation via RPC (bypasses RLS for conversation + members)
+    await supabase.rpc('ensure_team_conversation', {
+      p_org_id: params.organizationId,
+      p_team_id: team.id,
+      p_members: [params.ownerId],
+    })
+
+    // Seed the 4 UI-visible permission keys (all enabled by default, except admin_space)
+    await supabase.from('team_permissions').insert([
+      { team_id: team.id, permission_name: 'invite_members',   enabled: true },
+      { team_id: team.id, permission_name: 'manage_documents', enabled: true },
+      { team_id: team.id, permission_name: 'manage_events',    enabled: true },
+      { team_id: team.id, permission_name: 'admin_space',      enabled: false },
+    ])
+
+    // Create a dedicated folder for this team's documents
+    await supabase.from('folders').insert({
+      organization_id: params.organizationId,
+      team_id: team.id,
+      name: params.name,
+      parent_id: null,
+    })
 
     await supabase.from('audit_logs').insert({
       organization_id: params.organizationId,
@@ -95,6 +133,8 @@ export const TeamService = {
   },
 
   async update(teamId: string, updates: Partial<Pick<TeamRow, 'name' | 'description' | 'color' | 'owner_id'>>, organizationId: string, actorId: string): Promise<{ error: string | null }> {
+    // Fetch name before update in case it changed (ensures audit log is always populated)
+    const { data: existing } = await supabase.from('teams').select('name').eq('id', teamId).single()
     const { error } = await supabase.from('teams').update(updates).eq('id', teamId)
     if (!error) {
       await supabase.from('audit_logs').insert({
@@ -102,12 +142,15 @@ export const TeamService = {
         user_id: actorId,
         action: 'team_updated',
         target_id: teamId,
+        target_name: updates.name ?? existing?.name ?? '',
       })
     }
     return { error: error?.message ?? null }
   },
 
   async delete(teamId: string, organizationId: string, actorId: string): Promise<{ error: string | null }> {
+    // Fetch name before delete — after deletion the row is gone
+    const { data: existing } = await supabase.from('teams').select('name').eq('id', teamId).single()
     const { error } = await supabase.from('teams').delete().eq('id', teamId)
     if (!error) {
       await supabase.from('audit_logs').insert({
@@ -115,6 +158,7 @@ export const TeamService = {
         user_id: actorId,
         action: 'team_deleted',
         target_id: teamId,
+        target_name: existing?.name ?? '',
       })
     }
     return { error: error?.message ?? null }
@@ -126,12 +170,38 @@ export const TeamService = {
   },
 
   async addMember(teamId: string, userId: string, role: 'admin' | 'member' = 'member'): Promise<{ error: string | null }> {
+    console.log('[TEAM][ADD_MEMBER] teamId:', teamId, 'userId:', userId, 'role:', role)
     const { error } = await supabase.from('team_members').upsert({ team_id: teamId, user_id: userId, role })
+    console.log('[TEAM][ADD_MEMBER] upsert error:', error?.message)
+    if (!error) {
+      const convId = await this.getTeamConversationId(teamId)
+      if (convId) {
+        const { error: convErr } = await supabase.from('conversation_members').upsert({ conversation_id: convId, user_id: userId })
+        console.log('[TEAM][ADD_MEMBER] conversation_members upsert error:', convErr?.message)
+      }
+      // Notify the added member
+      const { data: team } = await supabase.from('teams').select('name').eq('id', teamId).single()
+      if (team) {
+        await supabase.rpc('notify_users', {
+          p_user_ids: [userId],
+          p_type: 'team_member_added',
+          p_payload: { text: `Vous avez été ajouté à l'équipe "${team.name}".`, teamId },
+        })
+      }
+    }
     return { error: error?.message ?? null }
   },
 
   async removeMember(teamId: string, userId: string): Promise<{ error: string | null }> {
+    console.log('[TEAM][REMOVE_MEMBER] teamId:', teamId, 'userId:', userId)
     const { error } = await supabase.from('team_members').delete().eq('team_id', teamId).eq('user_id', userId)
+    console.log('[TEAM][REMOVE_MEMBER] delete error:', error?.message)
+    if (!error) {
+      const convId = await this.getTeamConversationId(teamId)
+      if (convId) {
+        await supabase.from('conversation_members').delete().eq('conversation_id', convId).eq('user_id', userId)
+      }
+    }
     return { error: error?.message ?? null }
   },
 

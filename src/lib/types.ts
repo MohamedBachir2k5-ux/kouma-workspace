@@ -16,7 +16,7 @@ export interface Organization {
   language: string
   sector: string | null
   size: string | null          // null — computed from member count, never stored
-  plan: 'starter' | 'business'
+  plan: 'free' | 'business' | 'enterprise'
   createdAt: string
 }
 
@@ -37,6 +37,7 @@ export interface User {
   // 'deleted' = gone through offboarding (7-day recovery window)
   status: 'active' | 'invited' | 'suspended' | 'deleted'
   createdAt: string
+  deletedAt?: string | null
 }
 
 export interface Department {
@@ -105,15 +106,19 @@ export interface Folder {
   createdAt: string
 }
 
+export type DocumentVisibility = 'personal' | 'team' | 'group' | 'org'
+
 export interface Document {
   id: string
   organizationId: string
   folderId?: string
   teamId?: string
+  conversationId?: string
   ownerId: string
   name: string
   type: string
   size: number
+  visibility: DocumentVisibility
   createdAt: string
 }
 
@@ -136,6 +141,7 @@ export interface Event {
   status: EventStatus
   modifiedAt?: string
   cancelReason?: string
+  rsvp?: Record<string, 'accepted' | 'declined' | 'pending'>
 }
 
 // ── Subscriptions ─────────────────────────────────────────────────────────────
@@ -145,7 +151,7 @@ export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'payment_faile
 export interface Subscription {
   id: string
   organizationId: string
-  plan: 'starter' | 'business'
+  plan: 'free' | 'business' | 'enterprise'
   status: SubscriptionStatus
   currency: string
   amount: number
@@ -198,6 +204,8 @@ export type AuditAction =
   | 'permission_changed'
   | 'admin_promoted'
   | 'admin_demoted'
+  | 'event_created'
+  | 'document_downloaded'
   | 'recovery_initiated'
   | 'recovery_key_accessed'
   | 'recovery_completed'

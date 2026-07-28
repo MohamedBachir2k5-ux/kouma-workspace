@@ -3,6 +3,7 @@ import type { Channel, Message, ChannelType } from '../lib/types'
 import { CryptoService } from './crypto.service'
 import { KeyService } from './key.service'
 import { cryptoSession } from '../lib/crypto-session'
+import { devlog } from '../lib/devlog'
 
 type MessageRow = {
   id: string
@@ -60,6 +61,13 @@ async function ensureConvKey(conversationId: string, orgId: string): Promise<Cry
 
 export const MessageService = {
 
+  async markConversationRead(conversationId: string, userId: string): Promise<void> {
+    await supabase.rpc('mark_conversation_read', {
+      p_conversation_id: conversationId,
+      p_user_id: userId,
+    })
+  },
+
   async getConversations(orgId: string, userId: string): Promise<Channel[]> {
     const { data: memberships } = await supabase
       .from('conversation_members')
@@ -83,7 +91,7 @@ export const MessageService = {
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, firstname, lastname')
+      .select('id, firstname, lastname, email')
       .in('id', allMemberIds)
 
     const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
@@ -101,6 +109,16 @@ export const MessageService = {
       ;(teams ?? []).forEach(t => { teamNameMap[t.id] = t.name })
     }
 
+    // Unread counts via RPC (single query, uses last_read_at from conversation_members)
+    const { data: unreadRows } = await supabase.rpc('get_unread_counts', {
+      p_user_id: userId,
+      p_org_id: orgId,
+    })
+    const unreadMap: Record<string, number> = {}
+    ;(unreadRows ?? []).forEach((r: { conversation_id: string; unread_count: number }) => {
+      unreadMap[r.conversation_id] = Number(r.unread_count)
+    })
+
     return convs.map(c => {
       const members = (c as unknown as { conversation_members: { user_id: string }[] })
         .conversation_members.map(m => m.user_id)
@@ -109,7 +127,7 @@ export const MessageService = {
       if (c.type === 'direct') {
         const otherId = members.find(id => id !== userId) ?? ''
         const p = profileMap[otherId]
-        name = p ? `${p.firstname} ${p.lastname}` : 'Direct'
+        name = p ? `${p.firstname ?? ''} ${p.lastname ?? ''}`.trim() || p.email : 'Direct'
       } else if (c.type === 'team' && c.reference_id) {
         name = teamNameMap[c.reference_id] ?? 'Équipe'
       } else {
@@ -128,6 +146,7 @@ export const MessageService = {
         type: c.type as ChannelType,
         teamId: c.type === 'team' ? c.reference_id ?? undefined : undefined,
         members,
+        unreadCount: unreadMap[c.id] ?? 0,
       } satisfies Channel
     })
   },
@@ -159,6 +178,7 @@ export const MessageService = {
     content: string,
     orgId: string,
     files?: string[],
+    convType?: string,
   ): Promise<Message | null> {
     let finalContent = content
     let encrypted = false
@@ -173,7 +193,7 @@ export const MessageService = {
       }
     }
 
-    const { data } = await supabase
+    const { data, error: sendErr } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
@@ -186,23 +206,52 @@ export const MessageService = {
       .select()
       .single()
 
+    if (sendErr) devlog.supabaseError('MessageService', 'send', 'messages', sendErr)
     if (!data) return null
+
+    // Notify all other participants for all conversation types (fire-and-forget)
+    supabase
+      .from('conversation_members')
+      .select('user_id')
+      .eq('conversation_id', conversationId)
+      .neq('user_id', senderId)
+      .then(({ data: others }) => {
+        if (others?.length) {
+          const isFile = content.startsWith('📎')
+          const preview = isFile ? content : content.slice(0, 80)
+          supabase.rpc('notify_users', {
+            p_user_ids: others.map(o => o.user_id),
+            p_type: 'new_message',
+            p_payload: { text: preview, conversationId, convType: convType ?? 'group' },
+          })
+        }
+      })
+
     // Return the plaintext version for immediate local display
     return rowToMessage({ ...(data as unknown as MessageRow), content, content_encrypted: false })
   },
 
-  async createGroupConversation(orgId: string, memberIds: string[]): Promise<{ id: string | null; error: string | null }> {
-    const { data: conv, error } = await supabase
-      .from('conversations')
-      .insert({ organization_id: orgId, type: 'group', reference_id: null })
-      .select()
-      .single()
-    if (error || !conv) return { id: null, error: error?.message ?? null }
+  async createDirectConversation(orgId: string, userId1: string, userId2: string): Promise<{ id: string | null; error: string | null }> {
+    console.log('[createDirect] calling RPC create_direct_conversation', { orgId, userId1, userId2 })
+    const { data, error } = await supabase.rpc('create_direct_conversation', {
+      p_org_id: orgId,
+      p_user1: userId1,
+      p_user2: userId2,
+    })
+    console.log('[createDirect] RPC result:', data, 'error:', error?.message)
+    if (error) return { id: null, error: error.message }
+    return { id: data as string, error: null }
+  },
 
-    await supabase.from('conversation_members').insert(
-      memberIds.map(uid => ({ conversation_id: conv.id, user_id: uid }))
-    )
-    return { id: conv.id, error: null }
+  async createGroupConversation(orgId: string, memberIds: string[]): Promise<{ id: string | null; error: string | null }> {
+    console.log('[MESSAGING][CREATE_GROUP] calling RPC', { orgId, members: memberIds.length })
+    const { data, error } = await supabase.rpc('create_group_conversation', {
+      p_org_id: orgId,
+      p_members: memberIds,
+    })
+    console.log('[MESSAGING][CREATE_GROUP] result:', data, 'error:', error?.message)
+    if (error) return { id: null, error: error.message }
+    return { id: data as string, error: null }
   },
 
   // Phase 4: Realtime — decrypts message before passing to callback.
@@ -348,5 +397,50 @@ export const MessageService = {
       .eq('conversation_id', conversationId)
       .eq('user_id', userId)
     return { error: error?.message ?? null }
+  },
+
+  // Returns last_read_at per user_id for all members of the conversation
+  async getReadStatus(conversationId: string): Promise<Record<string, string>> {
+    const { data } = await supabase
+      .from('conversation_members')
+      .select('user_id, last_read_at')
+      .eq('conversation_id', conversationId)
+    if (!data) return {}
+    return Object.fromEntries(data.filter(r => r.last_read_at).map(r => [r.user_id, r.last_read_at as string]))
+  },
+
+  async getReactions(conversationId: string): Promise<Record<string, { emoji: string; userId: string }[]>> {
+    const { data: msgs } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('conversation_id', conversationId)
+    if (!msgs?.length) return {}
+    const msgIds = msgs.map(m => m.id)
+    const { data } = await supabase
+      .from('message_reactions')
+      .select('message_id, emoji, user_id')
+      .in('message_id', msgIds)
+    if (!data) return {}
+    const map: Record<string, { emoji: string; userId: string }[]> = {}
+    for (const r of data) {
+      if (!map[r.message_id]) map[r.message_id] = []
+      map[r.message_id].push({ emoji: r.emoji, userId: r.user_id })
+    }
+    return map
+  },
+
+  async addReaction(messageId: string, userId: string, emoji: string): Promise<void> {
+    await supabase.from('message_reactions').upsert(
+      { message_id: messageId, user_id: userId, emoji },
+      { onConflict: 'message_id,user_id,emoji' }
+    )
+  },
+
+  async removeReaction(messageId: string, userId: string, emoji: string): Promise<void> {
+    await supabase.from('message_reactions')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji)
   },
 }

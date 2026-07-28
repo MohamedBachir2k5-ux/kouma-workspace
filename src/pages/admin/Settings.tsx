@@ -10,11 +10,11 @@ import { formatFileSize, formatShortDate } from '../../lib/utils'
 import type { SupportedCurrency } from '../../config/pricing'
 
 function orgInitials(name: string) {
-  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2)
+  return name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
 export function AdminSettings() {
-  const { currentOrg, currentSubscription } = useAuth()
+  const { currentOrg, currentSubscription, updateCurrentOrg } = useAuth()
 
   const [orgForm, setOrgForm] = useState({
     name:    currentOrg.name,
@@ -44,9 +44,9 @@ export function AdminSettings() {
   const plan = currentSubscription.plan
   const planPrices = PRICING[currency][plan]
   const discounted = discountedPrice(planPrices.monthly, planPrices.discountPercent)
-  const otherPlan = plan === 'starter' ? 'business' : 'starter'
-  const otherPrices = PRICING[currency][otherPlan]
-  const otherDiscounted = discountedPrice(otherPrices.monthly, otherPrices.discountPercent)
+  const nextPlan = plan === 'free' ? 'business' : plan === 'business' ? 'enterprise' : null
+  const otherPrices = nextPlan ? PRICING[currency][nextPlan] : null
+  const otherDiscounted = otherPrices ? discountedPrice(otherPrices.monthly, otherPrices.discountPercent) : 0
 
   const [memberCount, setMemberCount] = useState(0)
   const [storageUsed, setStorageUsed] = useState(0)
@@ -77,13 +77,17 @@ export function AdminSettings() {
     reader.readAsDataURL(file)
     setSaved(false)
     const { logoUrl, error } = await OrganizationService.uploadLogo(currentOrg.id, file)
-    if (!error && logoUrl) setLogoPreview(logoUrl)
+    if (!error && logoUrl) {
+      setLogoPreview(logoUrl)
+      updateCurrentOrg({ logoUrl })
+    }
   }
 
   async function handleUpgrade() {
     setUpgrading(true)
     setUpgradeError(null)
-    const { redirectUrl, error } = await PaymentService.upgradeSubscription(currentOrg.id, 'business', currency, true)
+    const target = nextPlan ?? 'enterprise'
+    const { redirectUrl, error } = await PaymentService.upgradeSubscription(currentOrg.id, target, currency, true)
     setUpgrading(false)
     if (error) { setUpgradeError(error); return }
     if (redirectUrl) { window.location.href = redirectUrl; return }
@@ -91,7 +95,7 @@ export function AdminSettings() {
   }
 
   async function save() {
-    await OrganizationService.update(currentOrg.id, {
+    const { error } = await OrganizationService.update(currentOrg.id, {
       name: orgForm.name,
       email: orgForm.email,
       phone: orgForm.phone || null,
@@ -99,6 +103,9 @@ export function AdminSettings() {
       city: orgForm.city || null,
       sector: orgForm.type || null,
     })
+    if (!error) {
+      updateCurrentOrg({ name: orgForm.name, email: orgForm.email, phone: orgForm.phone || undefined, website: orgForm.website || undefined, city: orgForm.city || undefined, sector: orgForm.type || undefined })
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -152,11 +159,11 @@ export function AdminSettings() {
           </div>
 
           {[
-            { field: 'name',    label: "Nom de l'organisation", placeholder: 'Nimba Industries SA' },
-            { field: 'email',   label: 'Email administrateur',  placeholder: 'it@organisation.com' },
-            { field: 'phone',   label: 'Téléphone',             placeholder: '+224 620 00 00 00' },
+            { field: 'name',    label: "Nom de l'organisation", placeholder: "Nom de votre organisation" },
+            { field: 'email',   label: 'Email administrateur',  placeholder: 'admin@organisation.com' },
+            { field: 'phone',   label: 'Téléphone',             placeholder: '+XX XXXX XXXX' },
             { field: 'website', label: 'Site web',              placeholder: 'https://www.organisation.com' },
-            { field: 'city',    label: 'Ville',                 placeholder: 'Conakry' },
+            { field: 'city',    label: 'Ville',                 placeholder: 'Votre ville' },
           ].map(({ field, label, placeholder }) => (
             <div key={field}>
               <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{label}</label>
@@ -209,9 +216,15 @@ export function AdminSettings() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-indigo-light text-xs line-through">{formatPrice(planPrices.monthly, currency)}</div>
-                <div className="text-white font-bold">{formatPrice(discounted, currency)}</div>
-                <div className="text-indigo-light text-xs">par mois · −{planPrices.discountPercent}% lancement</div>
+                {planPrices.monthly === 0 ? (
+                  <div className="text-white font-bold">Gratuit</div>
+                ) : (
+                  <>
+                    <div className="text-indigo-light text-xs line-through">{formatPrice(planPrices.monthly, currency)}</div>
+                    <div className="text-white font-bold">{formatPrice(discounted, currency)}</div>
+                    <div className="text-indigo-light text-xs">par mois · −{planPrices.discountPercent}% lancement</div>
+                  </>
+                )}
               </div>
             </div>
             <div className="space-y-2 text-sm text-muted">
@@ -240,18 +253,23 @@ export function AdminSettings() {
             </div>
           </div>
 
-          {plan === 'starter' && (
+          {nextPlan && otherPrices && (
             <div className="bg-surface rounded-xl border border-border p-6">
-              <h2 className="text-sm font-bold text-ink mb-3">Passer au plan Business</h2>
+              <h2 className="text-sm font-bold text-ink mb-3">
+                Passer au plan {nextPlan === 'business' ? 'Business' : 'Enterprise'}
+              </h2>
               <p className="text-sm text-muted mb-4 leading-relaxed">
-                Plus de {userLimit} collaborateurs ou besoin de {STORAGE.business} ?
-                Le plan Business offre plus de capacité avec les mêmes fonctionnalités.
-                Essai de {TRIAL_DAYS} jours inclus.
+                {nextPlan === 'business'
+                  ? `Plus de ${userLimit} collaborateurs ou besoin de ${STORAGE.business} ? Le plan Business offre plus de capacité avec les mêmes fonctionnalités. Essai de ${TRIAL_DAYS} jours inclus.`
+                  : `Plus de ${PLAN_USER_LIMITS.business} collaborateurs ou besoin de ${STORAGE.enterprise} ? Le plan Enterprise offre une capacité illimitée avec les mêmes fonctionnalités.`
+                }
               </p>
               <div className="flex items-center justify-between p-4 bg-bg rounded-xl mb-4">
                 <div>
-                  <div className="font-bold text-navy">Business</div>
-                  <div className="text-xs text-muted">Utilisateurs illimités · {STORAGE.business}</div>
+                  <div className="font-bold text-navy capitalize">{nextPlan}</div>
+                  <div className="text-xs text-muted">
+                    {PLAN_USER_LIMITS[nextPlan] ? `Jusqu'à ${PLAN_USER_LIMITS[nextPlan]} utilisateurs` : 'Utilisateurs illimités'} · {STORAGE[nextPlan]}
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-faint line-through">{formatPrice(otherPrices.monthly, currency)}/mois</div>
@@ -265,7 +283,7 @@ export function AdminSettings() {
               <button onClick={handleUpgrade} disabled={upgrading}
                 className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2">
                 {upgrading && <Loader2 size={15} className="animate-spin" />}
-                {upgrading ? 'Redirection...' : 'Passer au plan Business'}
+                {upgrading ? 'Redirection...' : `Passer au plan ${nextPlan === 'business' ? 'Business' : 'Enterprise'}`}
               </button>
             </div>
           )}

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Smartphone, Shield, LogOut, AlertTriangle, Clock, Loader2, Monitor, Tablet } from 'lucide-react'
+import { Smartphone, Shield, LogOut, AlertTriangle, Clock, Loader2, Monitor, Tablet, User } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SessionService } from '../../services/session.service'
 import type { SessionRecord } from '../../services/session.service'
+
+type OrgSessionRecord = SessionRecord & { userEmail?: string; userName?: string }
 
 function formatRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -23,8 +25,8 @@ function DeviceIcon({ platform }: { platform: string | null }) {
 }
 
 export function AdminSecurity() {
-  const { currentUser, currentSessionId } = useAuth()
-  const [sessions, setSessions] = useState<SessionRecord[]>([])
+  const { currentUser, currentOrg, currentSessionId } = useAuth()
+  const [sessions, setSessions] = useState<OrgSessionRecord[]>([])
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [revoking, setRevoking] = useState<string | null>(null)
   const SESSION_KEY = `session_duration_${currentUser.id}`
@@ -32,11 +34,11 @@ export function AdminSecurity() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    SessionService.list(currentUser.id).then(data => {
+    SessionService.listByOrg(currentOrg.id).then(data => {
       setSessions(data)
       setLoadingSessions(false)
     })
-  }, [currentUser.id])
+  }, [currentOrg.id])
 
   async function revokeSession(id: string) {
     setRevoking(id)
@@ -86,12 +88,18 @@ export function AdminSecurity() {
                   <DeviceIcon platform={s.platform} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <span className="text-sm font-semibold text-ink">{s.deviceName ?? 'Appareil inconnu'}</span>
                     {isCurrent && (
                       <span className="px-1.5 py-0.5 bg-success/10 text-success text-[10px] font-semibold rounded-full">Session actuelle</span>
                     )}
                   </div>
+                  {s.userName && (
+                    <div className="flex items-center gap-1 text-xs text-indigo font-medium mb-0.5">
+                      <User size={10} />
+                      {s.userName}
+                    </div>
+                  )}
                   <div className="text-xs text-muted">{s.browser ?? '—'} · {s.platform ?? '—'}</div>
                   <div className="flex items-center gap-1 text-[10px] text-faint mt-0.5">
                     <Clock size={10} />

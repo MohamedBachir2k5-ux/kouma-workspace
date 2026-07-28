@@ -9,7 +9,11 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
-    "test:watch": "vitest --config vitest.config.ts"
+    "test:watch": "vitest --config vitest.config.ts",
+    "maildev": "node /Users/bachirtoure/.npm-global/lib/node_modules/maildev/bin/maildev --smtp 1025 --web 1080 --no-open",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "test:e2e": "node test/e2e/runner.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",

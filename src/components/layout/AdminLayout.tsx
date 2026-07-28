@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { NavLink, Outlet, Link, Navigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, UsersRound,
-  HardDrive, Lock, ScrollText, Settings, ShieldCheck, Menu, X, LogOut,
+  HardDrive, Lock, ScrollText, Settings, Menu, X, LogOut, Megaphone,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import { NotificationBell } from '../ui/NotificationBell'
 
 function orgInitials(name: string) {
-  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2)
+  return name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
 const navItems = [
@@ -17,19 +17,25 @@ const navItems = [
   { to: '/admin/utilisateurs',    icon: Users,           label: 'Utilisateurs' },
   { to: '/admin/departements',    icon: Building2,       label: 'Départements' },
   { to: '/admin/equipes',         icon: UsersRound,      label: 'Équipes' },
+  { to: '/admin/annonces',        icon: Megaphone,       label: 'Annonces' },
   { to: '/admin/stockage',        icon: HardDrive,       label: 'Stockage' },
   { to: '/admin/securite',        icon: Lock,            label: 'Sécurité' },
-  { to: '/admin/permissions',     icon: ShieldCheck,     label: 'Permissions' },
   { to: '/admin/journal',         icon: ScrollText,      label: "Journal d'activité" },
   { to: '/admin/parametres',      icon: Settings,        label: 'Paramètres' },
 ]
 
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { currentOrg, currentUser, signOut } = useAuth()
+  const { currentOrg, currentUser, signOut, loading, isOrgReady } = useAuth()
   const { checking } = useRequireAuth('/connexion/admin')
 
-  if (checking) return null
+  if (checking || loading) return (
+    <div className="min-h-dvh bg-bg flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-navy border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+  if (!isOrgReady) return <Navigate to="/creer" replace />
+  if (currentUser.role === 'member') return <Navigate to="/app/messages" replace />
 
   return (
     <div className="flex h-dvh bg-bg overflow-hidden">
@@ -40,13 +46,16 @@ export function AdminLayout() {
         }`}
       >
         <div className="flex items-center justify-between px-5 h-16 border-b border-navy-muted shrink-0">
-          <Link to="/admin/tableau-de-bord" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo flex items-center justify-center">
-              <span className="text-white font-bold text-sm">{orgInitials(currentOrg.name)}</span>
+          <Link to="/admin/tableau-de-bord" className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-indigo flex items-center justify-center shrink-0 overflow-hidden">
+              {currentOrg.logoUrl
+                ? <img src={currentOrg.logoUrl} alt="" className="w-full h-full object-cover" />
+                : <span className="text-white font-bold text-sm">{orgInitials(currentOrg.name)}</span>
+              }
             </div>
-            <div>
-              <div className="text-white font-semibold text-sm">Administration</div>
-              <div className="text-indigo-light text-xs">{currentOrg.name}</div>
+            <div className="min-w-0">
+              <div className="text-white font-semibold text-sm truncate">Administration</div>
+              <div className="text-indigo-light text-xs truncate">{currentOrg.name}</div>
             </div>
           </Link>
           <button onClick={() => setMobileOpen(false)} className="md:hidden text-indigo-light hover:text-white">

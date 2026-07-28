@@ -92,7 +92,7 @@ export function UserLogin() {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="fatou@entreprise.gn"
+                  placeholder="vous@organisation.com"
                   required
                   autoFocus
                   className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent transition-all"

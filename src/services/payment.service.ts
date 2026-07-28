@@ -8,7 +8,7 @@ import { PRICING, discountedPrice } from '../config/pricing'
 
 export interface CreatePaymentParams {
   organizationId: string
-  plan: 'starter' | 'business'
+  plan: 'free' | 'business' | 'enterprise'
   currency: SupportedCurrency
   applyDiscount: boolean
 }

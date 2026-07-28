@@ -9,6 +9,18 @@ export interface SessionRecord {
   createdAt: string
   lastSeenAt: string
   revoked: boolean
+  isCurrent?: boolean
+}
+
+const FINGERPRINT_KEY = 'kouma_device_fp'
+
+function getOrCreateFingerprint(): string {
+  let fp = localStorage.getItem(FINGERPRINT_KEY)
+  if (!fp) {
+    fp = crypto.randomUUID()
+    localStorage.setItem(FINGERPRINT_KEY, fp)
+  }
+  return fp
 }
 
 function parseUserAgent(): { deviceName: string; browser: string; platform: string } {
@@ -36,9 +48,15 @@ function parseUserAgent(): { deviceName: string; browser: string; platform: stri
 export const SessionService = {
   async register(userId: string): Promise<string | null> {
     const { deviceName, browser, platform } = parseUserAgent()
+    const fingerprint = getOrCreateFingerprint()
+
+    // UPSERT: same device always maps to the same row — prevents duplicate sessions on every page reload
     const { data } = await supabase
       .from('user_sessions')
-      .insert({ user_id: userId, device_name: deviceName, browser, platform })
+      .upsert(
+        { user_id: userId, device_fingerprint: fingerprint, device_name: deviceName, browser, platform, last_seen_at: new Date().toISOString() },
+        { onConflict: 'user_id,device_fingerprint', ignoreDuplicates: false }
+      )
       .select('id')
       .single()
     return data?.id ?? null
@@ -59,6 +77,7 @@ export const SessionService = {
       .eq('revoked', false)
       .order('last_seen_at', { ascending: false })
     if (!data) return []
+    const currentFp = localStorage.getItem(FINGERPRINT_KEY)
     return data.map(r => ({
       id: r.id,
       userId: r.user_id,
@@ -68,6 +87,7 @@ export const SessionService = {
       createdAt: r.created_at,
       lastSeenAt: r.last_seen_at,
       revoked: r.revoked,
+      isCurrent: r.device_fingerprint === currentFp,
     }))
   },
 
@@ -87,5 +107,42 @@ export const SessionService = {
 
   async deleteSession(sessionId: string): Promise<void> {
     await supabase.from('user_sessions').delete().eq('id', sessionId)
+  },
+
+  async listByOrg(orgId: string): Promise<(SessionRecord & { userEmail?: string; userName?: string })[]> {
+    const { data: members } = await supabase
+      .from('organization_members')
+      .select('user_id, profiles!organization_members_user_id_fkey(email, firstname, lastname)')
+      .eq('organization_id', orgId)
+      .neq('status', 'deleted')
+    if (!members) return []
+
+    const userIds = members.map(m => m.user_id)
+    const { data } = await supabase
+      .from('user_sessions')
+      .select('*')
+      .in('user_id', userIds)
+      .eq('revoked', false)
+      .order('last_seen_at', { ascending: false })
+    if (!data) return []
+
+    const currentFp = localStorage.getItem(FINGERPRINT_KEY)
+    return data.map(r => {
+      const member = members.find(m => m.user_id === r.user_id)
+      const profile = member?.profiles as { email?: string; firstname?: string; lastname?: string } | null
+      return {
+        id: r.id,
+        userId: r.user_id,
+        deviceName: r.device_name,
+        browser: r.browser,
+        platform: r.platform,
+        createdAt: r.created_at,
+        lastSeenAt: r.last_seen_at,
+        revoked: r.revoked,
+        isCurrent: r.device_fingerprint === currentFp,
+        userEmail: profile?.email,
+        userName: profile ? `${profile.firstname ?? ''} ${profile.lastname ?? ''}`.trim() : undefined,
+      }
+    })
   },
 }

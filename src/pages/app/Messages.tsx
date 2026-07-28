@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Hash, User, Lock, Paperclip, FolderInput, Check, Info, ArrowLeft, X, Bell, BellOff, Star, Link2, Image, Crown, FileText, LogOut, Loader2 } from 'lucide-react'
+import { Search, Plus, Hash, User, Users, Lock, Paperclip, FolderInput, Check, Info, ArrowLeft, X, Bell, BellOff, Star, Link2, Image, Crown, FileText, LogOut, Loader2, Calendar, BarChart2, Download } from 'lucide-react'
+import { PollService } from '../../services/poll.service'
+import type { Poll } from '../../services/poll.service'
 import { useAuth } from '../../contexts/AuthContext'
 import { MessageService } from '../../services/message.service'
 import { UserService } from '../../services/user.service'
 import { TeamService } from '../../services/team.service'
+import { DocumentService } from '../../services/document.service'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { formatTime, formatFileSize } from '../../lib/utils'
-import type { Channel, Message, User as AppUser, Team } from '../../lib/types'
+import type { Channel, Message, User as AppUser, Team, Folder } from '../../lib/types'
 
 /* ── Types ── */
 type ConvType = 'direct' | 'group' | 'team'
@@ -19,6 +22,7 @@ interface Attachment {
   size: number
   type: string
   url?: string
+  storagePath?: string
 }
 
 function fileIcon(type: string) {
@@ -72,13 +76,13 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
           <div>
             <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Participants ({selected.length})</label>
             <div className="max-h-44 overflow-y-auto border border-border rounded-xl divide-y divide-border">
-              {orgUsers.filter(u => u.id !== currentUser.id && u.status === 'active').map(u => (
+              {orgUsers.filter(u => u.id !== currentUser.id && u.status === 'active' && u.role === 'member').map(u => (
                 <button key={u.id} type="button" onClick={() => toggle(u.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${selected.includes(u.id) ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
                   <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium text-ink truncate">{u.firstName} {u.lastName}</div>
-                    <div className="text-[10px] text-muted">{u.role}</div>
+                    <div className="text-[10px] text-muted">{u.jobTitle ?? 'Collaborateur'}</div>
                   </div>
                   {selected.includes(u.id) && <Check size={13} className="text-indigo shrink-0" />}
                 </button>
@@ -98,18 +102,87 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
   )
 }
 
+/* ── New direct message modal ── */
+function NewDirectModal({ onClose, contacts, onCreated }: {
+  onClose: () => void
+  contacts: AppUser[]
+  onCreated: (channelId: string) => void
+}) {
+  const { currentUser, currentOrg } = useAuth()
+  const [query, setQuery] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  const filtered = contacts.filter(u =>
+    !query || `${u.firstName} ${u.lastName}`.toLowerCase().includes(query.toLowerCase())
+  )
+
+  async function select(userId: string) {
+    if (creating) return
+    setCreating(true)
+    console.log('[Direct] orgId:', currentOrg.id, 'me:', currentUser.id, 'target:', userId)
+    const result = await MessageService.createDirectConversation(currentOrg.id, currentUser.id, userId)
+    console.log('[Direct] createDirectConversation result:', result)
+    if (result.id) onCreated(result.id)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-navy text-base">Nouveau message direct</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+        </div>
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un collaborateur…" autoFocus
+          className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo mb-3" />
+        <div className="max-h-60 overflow-y-auto border border-border rounded-xl divide-y divide-border">
+          {filtered.length === 0 ? (
+            <p className="text-xs text-muted text-center py-6">Aucun collaborateur trouvé.</p>
+          ) : filtered.map(u => (
+            <button key={u.id} type="button" onClick={() => select(u.id)} disabled={creating}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-bg transition-colors disabled:opacity-50">
+              <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-ink truncate">{u.firstName} {u.lastName}</div>
+                <div className="text-[10px] text-muted">{u.jobTitle ?? u.role}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Promote modal ── */
 function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void }) {
-  const [destination, setDestination] = useState<'root' | 'f1' | 'f2'>('root')
+  const { currentOrg, currentUser } = useAuth()
+  const [folders, setFolders] = useState<(Folder | { id: null; name: string })[]>([])
+  const [folderId, setFolderId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const options = [
-    { id: 'root', label: 'Bibliothèque générale', desc: "Document accessible à toute l'organisation, sans classement par équipe." },
-    { id: 'f1',   label: 'Finance',               desc: "Visible uniquement par les membres de l'équipe Finance." },
-    { id: 'f2',   label: 'Ressources Humaines',   desc: "Visible uniquement par les membres de l'équipe RH." },
-  ] as const
+  useEffect(() => {
+    DocumentService.listFolders(currentOrg.id).then(fs => {
+      setFolders([{ id: null, name: 'Bibliothèque générale' } as { id: null; name: string }, ...fs])
+    })
+  }, [currentOrg.id])
 
-  function confirm() { setDone(true); setTimeout(onClose, 1400) }
+  async function confirm() {
+    if (!file.storagePath || saving) return
+    setSaving(true)
+    setError(null)
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+    const { error: err } = await DocumentService.promoteFromPath(
+      file.storagePath, currentOrg.id, currentUser.id,
+      file.name, ext, file.size, folderId ?? undefined,
+    )
+    setSaving(false)
+    if (err) { setError(err); return }
+    setDone(true)
+    setTimeout(onClose, 1400)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -129,31 +202,255 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
           </div>
         </div>
         <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Destination</label>
-        <div className="space-y-2 mb-4">
-          {options.map(opt => (
-            <button key={opt.id} type="button" onClick={() => setDestination(opt.id)}
+        <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+          {folders.map(opt => (
+            <button key={opt.id ?? 'root'} type="button" onClick={() => setFolderId(opt.id)}
               className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${
-                destination === opt.id ? 'border-indigo bg-indigo-pale' : 'border-border hover:border-indigo/30'
+                folderId === opt.id ? 'border-indigo bg-indigo-pale' : 'border-border hover:border-indigo/30'
               }`}>
               <div className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
-                destination === opt.id ? 'border-indigo bg-indigo' : 'border-border'
+                folderId === opt.id ? 'border-indigo bg-indigo' : 'border-border'
               }`}>
-                {destination === opt.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                {folderId === opt.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
               </div>
-              <div>
-                <div className="text-sm font-semibold text-ink">{opt.label}</div>
-                <div className="text-xs text-muted mt-0.5 leading-relaxed">{opt.desc}</div>
-              </div>
+              <div className="text-sm font-semibold text-ink">{opt.name}</div>
             </button>
           ))}
+          {folders.length === 0 && (
+            <p className="text-xs text-muted text-center py-3">Chargement des dossiers…</p>
+          )}
         </div>
+        {error && <p className="text-xs text-danger mb-3">{error}</p>}
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
-          <button onClick={confirm}
-            className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
-            {done ? 'Ajouté !' : 'Confirmer'}
+          <button onClick={confirm} disabled={saving || !file.storagePath}
+            className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
+            {saving ? 'Enregistrement…' : done ? 'Ajouté !' : 'Confirmer'}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Inline image viewer ── */
+function InlineImage({ storagePath, fileName, conversationId, orgId, isMe }: {
+  storagePath: string; fileName: string; conversationId: string; orgId: string; isMe: boolean
+}) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null)
+  const [lightbox, setLightbox] = useState(false)
+  useEffect(() => {
+    MessageService.getSignedUrl(storagePath).then(setSignedUrl)
+  }, [storagePath])
+  if (!signedUrl) return (
+    <div className="w-40 h-24 rounded-xl bg-bg border border-border flex items-center justify-center">
+      <Loader2 size={16} className="text-faint animate-spin" />
+    </div>
+  )
+  return (
+    <>
+      <button type="button" onClick={() => setLightbox(true)}
+        className={`rounded-xl overflow-hidden border ${isMe ? 'border-indigo/20' : 'border-border'} hover:opacity-90 transition-opacity`}>
+        <img src={signedUrl} alt={fileName} className="max-w-[200px] max-h-[160px] object-cover block" />
+      </button>
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(false)}>
+          <img src={signedUrl} alt={fileName} className="max-w-full max-h-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+    </>
+  )
+}
+
+/* ── Poll widget ── */
+function PollWidget({ pollId, currentUserId, orgUsers, cachedPoll, onPollLoaded, onVote }: {
+  pollId: string; currentUserId: string; orgUsers: AppUser[]
+  cachedPoll?: Poll; onPollLoaded: (p: Poll) => void; onVote: (pollId: string, optionId: string) => void
+}) {
+  const [poll, setPoll] = useState<Poll | null>(cachedPoll ?? null)
+  useEffect(() => {
+    if (!cachedPoll) {
+      PollService.getById(pollId).then(p => { if (p) { setPoll(p); onPollLoaded(p) } })
+    } else {
+      setPoll(cachedPoll)
+    }
+  }, [pollId, cachedPoll])
+  if (!poll) return <div className="px-4 py-2.5 bg-surface border border-border rounded-2xl text-xs text-muted">Chargement du sondage…</div>
+  const totalVotes = poll.options.reduce((s, o) => s + o.voteCount, 0)
+  const myVote = poll.options.find(o => o.voters.includes(currentUserId))
+  return (
+    <div className="bg-surface border border-border rounded-2xl p-4 w-64">
+      <div className="flex items-center gap-2 mb-3">
+        <BarChart2 size={14} className="text-indigo shrink-0" />
+        <span className="text-xs font-semibold text-indigo uppercase tracking-wide">Sondage</span>
+      </div>
+      <p className="text-sm font-semibold text-ink mb-3 leading-snug">{poll.question}</p>
+      <div className="space-y-2">
+        {poll.options.map(opt => {
+          const pct = totalVotes > 0 ? Math.round((opt.voteCount / totalVotes) * 100) : 0
+          const isMyChoice = opt.voters.includes(currentUserId)
+          return (
+            <button key={opt.id} type="button"
+              onClick={() => !myVote && onVote(pollId, opt.id)}
+              disabled={!!myVote}
+              className={`w-full text-left relative overflow-hidden rounded-lg border transition-colors ${isMyChoice ? 'border-indigo bg-indigo-pale' : myVote ? 'border-border bg-bg' : 'border-border hover:border-indigo/40 hover:bg-bg'}`}>
+              <div className="absolute inset-0 left-0 bg-indigo/10 transition-all" style={{ width: myVote ? `${pct}%` : '0%' }} />
+              <div className="relative flex items-center justify-between px-3 py-2">
+                <span className={`text-xs font-medium ${isMyChoice ? 'text-indigo' : 'text-ink'}`}>{opt.text}</span>
+                {myVote && <span className="text-[10px] text-muted">{pct}%</span>}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[10px] text-faint mt-2">{totalVotes} vote{totalVotes > 1 ? 's' : ''}{myVote ? ' · Déjà voté' : ''}</p>
+    </div>
+  )
+}
+
+/* ── Poll creation form ── */
+function PollForm({ onClose, onSubmit }: {
+  onClose: () => void
+  onSubmit: (question: string, options: string[], multipleChoice: boolean) => void
+}) {
+  const [question, setQuestion] = useState('')
+  const [options, setOptions] = useState(['', ''])
+  const [multiple, setMultiple] = useState(false)
+  function addOption() { if (options.length < 6) setOptions(p => [...p, '']) }
+  function setOption(i: number, v: string) { setOptions(p => p.map((o, idx) => idx === i ? v : o)) }
+  const canSubmit = question.trim() && options.filter(o => o.trim()).length >= 2
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-navy text-base">Créer un sondage</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Question</label>
+            <input value={question} onChange={e => setQuestion(e.target.value)} autoFocus
+              placeholder="Votre question…"
+              className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Options</label>
+            <div className="space-y-2">
+              {options.map((opt, i) => (
+                <input key={i} value={opt} onChange={e => setOption(i, e.target.value)}
+                  placeholder={`Option ${i + 1}`}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
+              ))}
+              {options.length < 6 && (
+                <button onClick={addOption} className="text-xs text-indigo font-medium hover:underline">+ Ajouter une option</button>
+              )}
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={multiple} onChange={e => setMultiple(e.target.checked)} className="rounded" />
+            <span className="text-xs text-ink">Choix multiple</span>
+          </label>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button disabled={!canSubmit} onClick={() => onSubmit(question.trim(), options.filter(o => o.trim()), multiple)}
+            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">Créer</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Quick meeting form ── */
+function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreated, prefillParticipants }: {
+  orgUsers: AppUser[]; currentUser: AppUser; currentOrg: { id: string }
+  onClose: () => void
+  onCreated: (title: string, startAt: string, endAt: string, participants: string[]) => void
+  prefillParticipants?: string[]
+}) {
+  const navigate = useNavigate()
+  const today = new Date().toISOString().split('T')[0]
+  const [title, setTitle] = useState('')
+  const [date, setDate] = useState(today)
+  const [timeStart, setTimeStart] = useState('09:00')
+  const [timeEnd, setTimeEnd] = useState('10:00')
+  const [selected, setSelected] = useState<string[]>(prefillParticipants ?? [])
+  const hasPrefill = (prefillParticipants?.length ?? 0) > 0
+  const members = orgUsers.filter(u => u.id !== currentUser.id && u.status === 'active')
+  function toggle(id: string) { setSelected(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]) }
+  const canSubmit = title.trim() && date && timeStart && timeEnd
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-navy text-base">Programmer une réunion</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+        </div>
+        <div className="space-y-3">
+          <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder="Titre de la réunion"
+            className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
+          <div className="grid grid-cols-3 gap-2">
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="col-span-1 px-2 py-2.5 bg-bg border border-border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo" />
+            <input type="time" value={timeStart} onChange={e => setTimeStart(e.target.value)}
+              className="px-2 py-2.5 bg-bg border border-border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo" />
+            <input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)}
+              className="px-2 py-2.5 bg-bg border border-border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo" />
+          </div>
+          {hasPrefill ? (
+            <div>
+              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Participants ({selected.length})</label>
+              <div className="flex flex-wrap gap-1.5">
+                {selected.map(id => {
+                  const u = members.find(m => m.id === id)
+                  if (!u) return null
+                  return (
+                    <span key={id} className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 bg-indigo-pale rounded-full text-xs font-medium text-indigo">
+                      <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                      {u.firstName}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          ) : members.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Participants</label>
+              <div className="max-h-32 overflow-y-auto border border-border rounded-xl divide-y divide-border">
+                {members.map(u => (
+                  <button key={u.id} type="button" onClick={() => toggle(u.id)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${selected.includes(u.id) ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
+                    <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                    <span className="flex-1 font-medium text-ink truncate">{u.firstName} {u.lastName}</span>
+                    {selected.includes(u.id) && <Check size={12} className="text-indigo shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button disabled={!canSubmit} onClick={() => {
+            const startAt = new Date(`${date}T${timeStart}:00`).toISOString()
+            const endAt = new Date(`${date}T${timeEnd}:00`).toISOString()
+            onCreated(title.trim(), startAt, endAt, selected)
+            onClose()
+          }} className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">Créer</button>
+        </div>
+        <button
+          onClick={() => {
+            const ids = prefillParticipants?.length ? prefillParticipants : selected
+            const params = new URLSearchParams()
+            if (ids.length) params.set('participants', ids.join(','))
+            if (title.trim()) params.set('title', title.trim())
+            onClose()
+            navigate(`/app/agenda?${params.toString()}`)
+          }}
+          className="w-full mt-2 text-xs text-indigo hover:underline text-center"
+        >
+          Ouvrir dans l'Agenda complet →
+        </button>
       </div>
     </div>
   )
@@ -434,18 +731,21 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
 }
 
 /* ── Conversation list ── */
-function ConvList({ channels, onSelect, selected, onNewGroup }: {
+function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
   channels: Channel[]
   onSelect: (id: string) => void
   selected: string | null
+  onNewDirect: () => void
   onNewGroup: () => void
 }) {
   const [query, setQuery] = useState('')
+  const [showNewMenu, setShowNewMenu] = useState(false)
 
   const byType: Record<ConvType, Channel[]> = { direct: [], group: [], team: [] }
   channels.forEach(c => {
     const filtered = !query || c.name.toLowerCase().includes(query.toLowerCase())
-    if (filtered) byType[c.type as ConvType].push(c)
+    const bucket = byType[c.type as ConvType]
+    if (filtered && bucket) bucket.push(c)
   })
 
   const sections: { type: ConvType; items: Channel[] }[] = [
@@ -464,10 +764,29 @@ function ConvList({ channels, onSelect, selected, onNewGroup }: {
       <div className="px-4 pt-4 pb-3 shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-ink">Messagerie</h2>
-          <button onClick={onNewGroup} title="Nouveau groupe"
-            className="w-8 h-8 rounded-full bg-indigo-pale flex items-center justify-center text-indigo hover:bg-indigo hover:text-white transition-colors">
-            <Plus size={16} />
-          </button>
+          <div className="relative">
+            <button onClick={() => setShowNewMenu(m => !m)} title="Nouvelle conversation"
+              className="w-8 h-8 rounded-full bg-indigo-pale flex items-center justify-center text-indigo hover:bg-indigo hover:text-white transition-colors">
+              <Plus size={16} />
+            </button>
+            {showNewMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowNewMenu(false)} />
+                <div className="absolute right-0 top-9 z-50 bg-surface border border-border rounded-xl shadow-xl overflow-hidden w-48">
+                  <button onClick={() => { setShowNewMenu(false); onNewDirect() }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-ink hover:bg-bg">
+                    <User size={14} className="text-indigo shrink-0" />
+                    Message direct
+                  </button>
+                  <button onClick={() => { setShowNewMenu(false); onNewGroup() }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-ink hover:bg-bg border-t border-border">
+                    <Users size={14} className="text-indigo shrink-0" />
+                    Nouveau groupe
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
@@ -535,14 +854,30 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
   const [showInfo, setShowInfo] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>([])
+  const [showPlusMenu, setShowPlusMenu] = useState(false)
+  const [showPollForm, setShowPollForm] = useState(false)
+  const [showMeetingForm, setShowMeetingForm] = useState(false)
+  const [polls, setPolls] = useState<Record<string, Poll>>({})
+  const [readStatus, setReadStatus] = useState<Record<string, string>>({})
+  const [reactions, setReactions] = useState<Record<string, { emoji: string; userId: string }[]>>({})
+  const [emojiPickerMsgId, setEmojiPickerMsgId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load messages on channel change
+  const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
+
+  // Load messages on channel change + mark as read + load read status
   useEffect(() => {
     setMessages([])
     setLocalAttachments([])
+    setReadStatus({})
+    setReactions({})
     MessageService.getMessages(channel.id, currentOrg.id).then(setMessages)
+    MessageService.markConversationRead(channel.id, currentUser.id).then(() => {
+      MessageService.getReadStatus(channel.id).then(setReadStatus)
+    })
+    MessageService.getReactions(channel.id).then(setReactions)
   }, [channel.id])
 
   // Realtime subscription
@@ -568,23 +903,75 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
     const { path, url, error } = await MessageService.uploadAttachment(currentOrg.id, channel.id, f)
     setUploading(false)
     if (error || !path) return
-    const att: Attachment = { id: `a${Date.now()}`, name: f.name, size: f.size, type: f.type || 'application/octet-stream', url: url ?? undefined }
+    const att: Attachment = { id: `a${Date.now()}`, name: f.name, size: f.size, type: f.type || 'application/octet-stream', url: url ?? undefined, storagePath: path }
     setLocalAttachments(prev => [...prev, att])
-    // Store the storage path in files[] so recipients can decrypt; display name in content
-    await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path])
+    await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path], channel.type)
   }
 
   async function handleSend() {
     const trimmed = text.trim()
     if (!trimmed) return
     setText('')
-    // Optimistic: add locally (Realtime will confirm)
-    await MessageService.send(channel.id, currentUser.id, trimmed, currentOrg.id)
+    await MessageService.send(channel.id, currentUser.id, trimmed, currentOrg.id, undefined, channel.type)
+  }
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    e.target.value = ''
+    setShowPlusMenu(false)
+    setUploading(true)
+    const { path, url, error } = await MessageService.uploadAttachment(currentOrg.id, channel.id, f)
+    setUploading(false)
+    if (error || !path) return
+    const att: Attachment = { id: `a${Date.now()}`, name: f.name, size: f.size, type: f.type || 'image/jpeg', url: url ?? undefined, storagePath: path }
+    setLocalAttachments(prev => [...prev, att])
+    await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path], channel.type)
+  }
+
+  async function handlePollCreate(question: string, options: string[], multipleChoice: boolean) {
+    setShowPollForm(false)
+    const poll = await PollService.create({
+      conversationId: channel.id,
+      organizationId: currentOrg.id,
+      creatorId: currentUser.id,
+      question,
+      options,
+      multipleChoice,
+    })
+    if (poll) {
+      setPolls(prev => ({ ...prev, [poll.id]: poll }))
+      await MessageService.send(channel.id, currentUser.id, `__poll__:${poll.id}`, currentOrg.id, undefined, channel.type)
+    }
+  }
+
+  async function handleVote(pollId: string, optionId: string) {
+    const updated = await PollService.vote(pollId, optionId, currentUser.id)
+    if (updated) setPolls(prev => ({ ...prev, [pollId]: updated }))
   }
 
   async function handleLeave() {
     await MessageService.leaveConversation(channel.id, currentUser.id)
     onLeaveChannel(channel.id)
+  }
+
+  async function toggleReaction(messageId: string, emoji: string) {
+    const existing = reactions[messageId] ?? []
+    const hasReacted = existing.some(r => r.userId === currentUser.id && r.emoji === emoji)
+    if (hasReacted) {
+      await MessageService.removeReaction(messageId, currentUser.id, emoji)
+      setReactions(prev => ({
+        ...prev,
+        [messageId]: (prev[messageId] ?? []).filter(r => !(r.userId === currentUser.id && r.emoji === emoji)),
+      }))
+    } else {
+      await MessageService.addReaction(messageId, currentUser.id, emoji)
+      setReactions(prev => ({
+        ...prev,
+        [messageId]: [...(prev[messageId] ?? []), { emoji, userId: currentUser.id }],
+      }))
+    }
+    setEmojiPickerMsgId(null)
   }
 
   if (showInfo) {
@@ -677,30 +1064,128 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
           const user = getUser(msg.senderId)
           const isMe = msg.senderId === currentUser.id
           const isFileMsg = msg.files && msg.files.length > 0
+          const isPollMsg = msg.content.startsWith('__poll__:')
+          const isMeetingMsg = msg.content.startsWith('__meeting__:')
+          const pollId = isPollMsg ? msg.content.replace('__poll__:', '') : null
+          const meetingData = isMeetingMsg ? (() => { try { return JSON.parse(msg.content.slice('__meeting__:'.length)) as { title: string; startAt: string; endAt: string } } catch { return null } })() : null
+          const storagePath = isFileMsg ? msg.files![0] : null
+          const fileName = msg.content.replace('📎 ', '') || storagePath?.split('/').pop() || 'fichier'
+          const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
+          const isImageFile = isFileMsg && /^(png|jpg|jpeg|gif|webp|svg)$/.test(ext)
+          const msgReactions = reactions[msg.id] ?? []
+          const reactionGroups = msgReactions.reduce<Record<string, { emoji: string; count: number; isMine: boolean }>>((acc, r) => {
+            if (!acc[r.emoji]) acc[r.emoji] = { emoji: r.emoji, count: 0, isMine: false }
+            acc[r.emoji].count++
+            if (r.userId === currentUser.id) acc[r.emoji].isMine = true
+            return acc
+          }, {})
+          // "Vu" = at least one OTHER member has last_read_at >= message.createdAt
+          const isSeen = isMe && Object.entries(readStatus).some(
+            ([uid, ts]) => uid !== currentUser.id && new Date(ts) >= new Date(msg.createdAt)
+          )
+          const isLastMyMsg = isMe && messages.filter(m => m.senderId === currentUser.id).at(-1)?.id === msg.id
+
           return (
-            <div key={msg.id} className={`flex items-end gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+            <div key={msg.id} className={`group flex items-end gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
               {!isMe && user && <Avatar firstName={user.firstName} lastName={user.lastName} id={user.id} size="sm" />}
               <div className={`max-w-[75%] flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`}>
                 {!isMe && user && <span className="text-[11px] font-semibold text-muted ml-1">{user.firstName} {user.lastName}</span>}
-                {isFileMsg ? (
+                {isPollMsg && pollId ? (
+                  <PollWidget
+                    pollId={pollId}
+                    currentUserId={currentUser.id}
+                    orgUsers={orgUsers}
+                    cachedPoll={polls[pollId]}
+                    onPollLoaded={p => setPolls(prev => ({ ...prev, [p.id]: p }))}
+                    onVote={handleVote}
+                  />
+                ) : isFileMsg && isImageFile ? (
+                  <InlineImage
+                    storagePath={storagePath!}
+                    fileName={fileName}
+                    conversationId={channel.id}
+                    orgId={currentOrg.id}
+                    isMe={isMe}
+                  />
+                ) : isMeetingMsg && meetingData ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      const storagePath = msg.files![0]
-                      const fileName = msg.content.replace('📎 ', '') || storagePath.split('/').pop() || 'fichier'
-                      MessageService.downloadAndDecrypt(storagePath, msg.channelId, currentOrg.id, fileName)
-                    }}
-                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border text-sm ${isMe ? 'bg-indigo/10 border-indigo/20 text-indigo rounded-br-md' : 'bg-surface border-border text-ink rounded-bl-md'} hover:opacity-80 transition-opacity cursor-pointer`}
+                    onClick={() => navigate('/app/agenda')}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl border text-sm ${isMe ? 'bg-indigo/10 border-indigo/20 rounded-br-md' : 'bg-surface border-border rounded-bl-md'} hover:opacity-80 transition-opacity`}
                   >
-                    {fileIcon(msg.files![0])}
-                    <span className="truncate max-w-[160px] font-medium">{msg.content.replace('📎 ', '')}</span>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isMe ? 'bg-amber-500/20' : 'bg-amber-50'}`}>
+                      <Calendar size={15} className="text-amber-500" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <div className={`text-xs font-semibold truncate ${isMe ? 'text-ink' : 'text-ink'}`}>{meetingData.title}</div>
+                      <div className="text-[10px] text-muted mt-0.5">
+                        {new Date(meetingData.startAt).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div className="text-[10px] text-indigo mt-0.5">Voir dans l'Agenda →</div>
+                    </div>
                   </button>
+                ) : isFileMsg ? (
+                  <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border text-sm ${isMe ? 'bg-indigo/10 border-indigo/20 text-indigo rounded-br-md' : 'bg-surface border-border text-ink rounded-bl-md'}`}>
+                    {fileIcon(storagePath!)}
+                    <span className="truncate max-w-[130px] font-medium">{fileName}</span>
+                    <button
+                      type="button"
+                      onClick={() => MessageService.downloadAndDecrypt(storagePath!, msg.channelId, currentOrg.id, fileName)}
+                      className="ml-1 p-1 rounded-lg hover:bg-black/10 transition-colors shrink-0"
+                      title="Télécharger"
+                    >
+                      <Download size={13} />
+                    </button>
+                  </div>
                 ) : (
                   <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-indigo text-white rounded-br-md' : 'bg-surface border border-border text-ink rounded-bl-md'}`}>
                     {msg.content}
                   </div>
                 )}
-                <span className="text-[10px] text-faint mx-1">{formatTime(msg.createdAt)}</span>
+                {/* Reactions */}
+                {Object.values(reactionGroups).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {Object.values(reactionGroups).map(({ emoji, count, isMine }) => (
+                      <button key={emoji} type="button"
+                        onClick={() => toggleReaction(msg.id, emoji)}
+                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] border transition-colors ${
+                          isMine ? 'bg-indigo/10 border-indigo/30 text-indigo' : 'bg-surface border-border text-ink hover:bg-bg'
+                        }`}>
+                        {emoji} {count > 1 && <span>{count}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className={`flex items-center gap-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-[10px] text-faint mx-1">{formatTime(msg.createdAt)}</span>
+                  {isMe && isLastMyMsg && (
+                    <span className={`text-[10px] font-medium ${isSeen ? 'text-indigo' : 'text-faint'}`}>
+                      {isSeen ? 'Vu' : '✓'}
+                    </span>
+                  )}
+                  {/* Add reaction button — shows on hover */}
+                  <button
+                    type="button"
+                    onClick={() => setEmojiPickerMsgId(emojiPickerMsgId === msg.id ? null : msg.id)}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all text-xs"
+                    title="Réagir"
+                  >
+                    <span>😊</span>
+                  </button>
+                </div>
+                {emojiPickerMsgId === msg.id && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setEmojiPickerMsgId(null)} />
+                    <div className={`relative z-50 flex gap-1 p-1.5 bg-surface border border-border rounded-xl shadow-lg ${isMe ? 'flex-row-reverse' : ''}`}>
+                      {QUICK_EMOJIS.map(e => (
+                        <button key={e} type="button" onClick={() => toggleReaction(msg.id, e)}
+                          className="w-8 h-8 rounded-lg text-lg hover:bg-bg transition-colors flex items-center justify-center">
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )
@@ -711,11 +1196,38 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
       {/* Composer */}
       <div className="px-4 pb-4 pt-3 border-t border-border bg-surface shrink-0">
         <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
+        <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
         <div className="flex items-center gap-2">
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="p-2.5 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors shrink-0 disabled:opacity-40">
-            {uploading ? <Loader2 size={18} className="animate-spin text-indigo" /> : <Paperclip size={18} />}
-          </button>
+          {/* "+" shortcuts menu */}
+          <div className="relative shrink-0">
+            <button onClick={() => setShowPlusMenu(m => !m)} disabled={uploading}
+              className="p-2.5 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors disabled:opacity-40">
+              {uploading ? <Loader2 size={18} className="animate-spin text-indigo" /> : <Plus size={18} />}
+            </button>
+            {showPlusMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowPlusMenu(false)} />
+                <div className="absolute left-0 bottom-12 z-50 bg-surface border border-border rounded-xl shadow-xl overflow-hidden w-48">
+                  <button onClick={() => { setShowPlusMenu(false); fileRef.current?.click() }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg">
+                    <Paperclip size={14} className="text-indigo shrink-0" /> Fichier
+                  </button>
+                  <button onClick={() => { setShowPlusMenu(false); photoRef.current?.click() }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg border-t border-border">
+                    <Image size={14} className="text-emerald-500 shrink-0" /> Photo
+                  </button>
+                  <button onClick={() => { setShowPlusMenu(false); setShowMeetingForm(true) }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg border-t border-border">
+                    <Calendar size={14} className="text-amber-500 shrink-0" /> Réunion
+                  </button>
+                  <button onClick={() => { setShowPlusMenu(false); setShowPollForm(true) }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg border-t border-border">
+                    <BarChart2 size={14} className="text-indigo shrink-0" /> Sondage
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <input value={text} onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && text.trim()) { e.preventDefault(); handleSend() } }}
             placeholder={`Message ${channel.name.split(' ')[0]}…`}
@@ -728,6 +1240,33 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
           </button>
         </div>
       </div>
+
+      {showPollForm && (
+        <PollForm onClose={() => setShowPollForm(false)} onSubmit={handlePollCreate} />
+      )}
+      {showMeetingForm && (
+        <QuickMeetingForm
+          orgUsers={orgUsers}
+          currentUser={currentUser}
+          currentOrg={currentOrg}
+          prefillParticipants={channel.members.filter(id => id !== currentUser.id)}
+          onClose={() => setShowMeetingForm(false)}
+          onCreated={async (title, startAt, endAt, participants) => {
+            const { EventService } = await import('../../services/event.service')
+            await EventService.create({
+              organizationId: currentOrg.id,
+              title,
+              startAt,
+              endAt,
+              participants: [currentUser.id, ...participants],
+              createdById: currentUser.id,
+              status: 'scheduled',
+            })
+            const meetingPayload = JSON.stringify({ title, startAt, endAt })
+            await MessageService.send(channel.id, currentUser.id, `__meeting__:${meetingPayload}`, currentOrg.id, undefined, channel.type)
+          }}
+        />
+      )}
 
       {promoteFile && <PromoteModal file={promoteFile} onClose={() => setPromoteFile(null)} />}
     </div>
@@ -742,9 +1281,16 @@ export function Messages() {
   const [teams, setTeams] = useState<Team[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [showNewGroup, setShowNewGroup] = useState(false)
+  const [showNewDirect, setShowNewDirect] = useState(false)
 
-  function loadChannels() {
-    MessageService.getConversations(currentOrg.id, currentUser.id).then(setChannels)
+  // Only collaborator accounts (role='member') appear as contacts — admin-only accounts are excluded
+  const contacts = orgUsers.filter(u => u.id !== currentUser.id && u.status === 'active' && u.role === 'member')
+
+  async function loadChannels(): Promise<Channel[]> {
+    const convs = await MessageService.getConversations(currentOrg.id, currentUser.id)
+    console.log('[loadChannels] got', convs.length, 'convs:', convs.map(c => `${c.type}:${c.id.slice(0,8)}`))
+    setChannels(convs)
+    return convs
   }
 
   function handleLeaveChannel(channelId: string) {
@@ -753,9 +1299,34 @@ export function Messages() {
   }
 
   useEffect(() => {
-    loadChannels()
+    async function init() {
+      const [allTeams, convs] = await Promise.all([
+        TeamService.getByOrganizationWithMembers(currentOrg.id),
+        MessageService.getConversations(currentOrg.id, currentUser.id),
+      ])
+      console.log('[init] teams:', allTeams.map(t => `${t.name}(members:${t.members.length})`))
+      console.log('[init] convs:', convs.map(c => `${c.type}:${c.name}`))
+      setTeams(allTeams)
+
+      const myTeams = allTeams.filter(t => t.members.includes(currentUser.id))
+      const channelTeamIds = new Set(convs.filter(c => c.type === 'team').map(c => c.teamId))
+      const missing = myTeams.filter(t => !channelTeamIds.has(t.id))
+      console.log('[init] myTeams:', myTeams.map(t => t.name), 'missing channels:', missing.map(t => t.name))
+
+      if (missing.length > 0) {
+        await Promise.all(missing.map(t =>
+          TeamService.ensureTeamConversation(t.id, currentOrg.id, t.members)
+        ))
+        const updated = await MessageService.getConversations(currentOrg.id, currentUser.id)
+        console.log('[init] after backfill, convs:', updated.map(c => `${c.type}:${c.name}`))
+        setChannels(updated)
+      } else {
+        setChannels(convs)
+      }
+    }
+
+    init()
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
-    TeamService.getByOrganizationWithMembers(currentOrg.id).then(setTeams)
   }, [currentOrg.id, currentUser.id])
 
   const selectedChannel = channels.find(c => c.id === selected) ?? null
@@ -767,6 +1338,7 @@ export function Messages() {
           channels={channels}
           onSelect={setSelected}
           selected={selected}
+          onNewDirect={() => setShowNewDirect(true)}
           onNewGroup={() => setShowNewGroup(true)}
         />
       </div>
@@ -803,10 +1375,23 @@ export function Messages() {
         )}
       </div>
 
+      {showNewDirect && (
+        <NewDirectModal
+          onClose={() => setShowNewDirect(false)}
+          contacts={contacts}
+          onCreated={channelId => {
+            console.log('[onCreated] channelId:', channelId)
+            loadChannels().then(() => {
+              console.log('[onCreated] loadChannels done, setting selected:', channelId)
+              setSelected(channelId)
+            })
+          }}
+        />
+      )}
       {showNewGroup && (
         <NewGroupModal
           onClose={() => setShowNewGroup(false)}
-          orgUsers={orgUsers}
+          orgUsers={contacts}
           onCreated={loadChannels}
         />
       )}

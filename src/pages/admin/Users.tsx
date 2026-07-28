@@ -4,6 +4,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { useAuth } from '../../contexts/AuthContext'
 import { UserService } from '../../services/user.service'
 import { KeyService } from '../../services/key.service'
+import { PLAN_USER_LIMITS } from '../../config/pricing'
 import type { User } from '../../lib/types'
 
 const statusLabel: Record<User['status'], string> = {
@@ -21,25 +22,27 @@ const statusClass: Record<User['status'], string> = {
 }
 
 type InviteStep = 'idle' | 'link' | 'copied'
-type FilterValue = 'all' | 'active' | 'invited' | 'suspended'
+type FilterValue = 'all' | 'active' | 'invited' | 'suspended' | 'deleted'
 
 const FILTER_TABS: { value: FilterValue; label: string }[] = [
   { value: 'all',       label: 'Tous' },
   { value: 'active',    label: 'Actifs' },
   { value: 'invited',   label: 'Invités' },
   { value: 'suspended', label: 'Suspendus' },
+  { value: 'deleted',   label: 'Révoqués' },
 ]
 
 type ConfirmAction = { userId: string; action: 'suspend' | 'reactivate' | 'revoke' | 'promote' | 'demote' }
 
 export function AdminUsers() {
-  const { currentOrg, currentUser } = useAuth()
+  const { currentOrg, currentUser, currentSubscription } = useAuth()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterValue>('all')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteStep, setInviteStep] = useState<InviteStep>('idle')
   const [inviteLink, setInviteLink] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null)
@@ -50,7 +53,14 @@ export function AdminUsers() {
     UserService.getByOrganizationWithRole(currentOrg.id).then(setUsers)
   }, [currentOrg.id])
 
-  const visible = users.filter(u => u.status !== 'deleted')
+  const GRACE_DAYS = 7
+  function inGracePeriod(u: User) {
+    if (u.status !== 'deleted' || !u.deletedAt) return false
+    const expiry = new Date(u.deletedAt).getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000
+    return Date.now() < expiry
+  }
+  // Show deleted users only while still in grace period
+  const visible = users.filter(u => u.status !== 'deleted' || inGracePeriod(u))
   const filtered = visible.filter(u => {
     const name = `${u.firstName} ${u.lastName} ${u.email} ${u.role}`.toLowerCase()
     if (query && !name.includes(query.toLowerCase())) return false
@@ -96,10 +106,22 @@ export function AdminUsers() {
   }
 
   async function generateLink() {
+    const userLimit = PLAN_USER_LIMITS[currentSubscription.plan]
+    if (userLimit !== null) {
+      const activeSeatCount = users.filter(u => u.status === 'active' || u.status === 'invited').length
+      if (activeSeatCount >= userLimit) {
+        setInviteError(`Limite du plan ${currentSubscription.plan === 'free' ? 'Free' : 'Business'} atteinte (${userLimit} utilisateurs). Passez au plan supérieur pour inviter davantage de collaborateurs.`)
+        return
+      }
+    }
     setInviteLoading(true)
+    setInviteError(null)
     const { token, error } = await UserService.invite(currentOrg.id, currentUser.id)
     setInviteLoading(false)
-    if (error || !token) return
+    if (error || !token) {
+      setInviteError(error ?? 'Impossible de générer le lien d\'invitation.')
+      return
+    }
     setInviteLink(`${window.location.origin}/rejoindre/${token}`)
     setInviteStep('link')
   }
@@ -114,6 +136,7 @@ export function AdminUsers() {
     setShowInviteModal(false)
     setInviteLink('')
     setInviteStep('idle')
+    setInviteError(null)
   }
 
   const confirmUser = confirm ? users.find(u => u.id === confirm.userId) : null
@@ -122,7 +145,7 @@ export function AdminUsers() {
     demote:     { title: 'Rétrograder en collaborateur', body: "Les droits d'administration et l'accès aux clés de récupération seront révoqués. Les sessions actives seront fermées.", cta: 'Rétrograder', danger: true },
     suspend:    { title: "Suspendre l'accès",  body: "L'accès sera bloqué immédiatement. Le compte reste récupérable.", cta: 'Suspendre',  danger: false },
     reactivate: { title: 'Réactiver le compte', body: "L'accès sera rétabli immédiatement.",                              cta: 'Réactiver',  danger: false },
-    revoke:     { title: "Révoquer l'accès",   body: "L'accès sera définitivement supprimé. Fenêtre de récupération : 7 jours.", cta: 'Révoquer', danger: true },
+    revoke:     { title: "Révoquer l'accès",   body: `L'accès sera supprimé. Récupération possible pendant 7 jours (jusqu'au ${new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString('fr-FR')}).`, cta: 'Révoquer', danger: true },
   }
 
   return (
@@ -190,21 +213,30 @@ export function AdminUsers() {
               <Avatar firstName={user.firstName} lastName={user.lastName} id={user.id} size="sm" />
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-ink truncate">{user.firstName} {user.lastName}</div>
-                <div className="text-xs text-muted truncate md:hidden">{user.role}</div>
+                <div className="text-xs text-muted truncate md:hidden">
+                  {user.role === 'admin' ? 'Administrateur' : (user.jobTitle || 'Collaborateur')}
+                </div>
                 <div className="text-xs text-faint truncate">{user.email}</div>
               </div>
             </div>
 
             <div className="hidden md:flex items-center gap-1.5">
               {user.role === 'admin' && <Shield size={13} className="text-indigo shrink-0" />}
-              <span className="text-sm text-ink truncate">{user.role === 'admin' ? 'Administrateur' : user.role}</span>
+              <span className="text-sm text-ink truncate">
+                {user.role === 'admin' ? 'Administrateur' : (user.jobTitle || 'Collaborateur')}
+              </span>
             </div>
             <div className="hidden md:block text-sm text-muted truncate">{user.department || '—'}</div>
 
-            <div className="ml-auto md:ml-0">
+            <div className="ml-auto md:ml-0 flex flex-col items-start gap-1">
               <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusClass[user.status]}`}>
                 {statusLabel[user.status]}
               </span>
+              {user.status === 'deleted' && user.deletedAt && inGracePeriod(user) && (
+                <span className="text-[10px] text-amber font-medium">
+                  Exp. {new Date(new Date(user.deletedAt).getTime() + 7*24*60*60*1000).toLocaleDateString('fr-FR')}
+                </span>
+              )}
             </div>
 
             <div className="relative">
@@ -217,14 +249,6 @@ export function AdminUsers() {
               {menuOpen === user.id && (
                 <div className="absolute right-0 top-8 z-20 w-52 bg-surface border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden">
                   {/* Role management — admin-only, not self */}
-                  {currentUser.role === 'admin' && user.id !== currentUser.id && user.status === 'active' && user.role !== 'admin' && (
-                    <button
-                      onClick={() => openConfirm(user.id, 'promote')}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left hover:bg-bg transition-colors"
-                    >
-                      <Shield size={15} className="text-indigo" /> Promouvoir admin
-                    </button>
-                  )}
                   {currentUser.role === 'admin' && user.id !== currentUser.id && user.role === 'admin' && (
                     <button
                       onClick={() => openConfirm(user.id, 'demote')}
@@ -257,7 +281,15 @@ export function AdminUsers() {
                       <Send size={15} className="text-indigo" /> Renvoyer l'invitation
                     </button>
                   )}
-                  {user.status !== 'deleted' && (
+                  {user.status === 'deleted' && inGracePeriod(user) && (
+                    <button
+                      onClick={() => openConfirm(user.id, 'reactivate')}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left text-success hover:bg-bg transition-colors"
+                    >
+                      <UserCheck size={15} /> Restaurer le compte
+                    </button>
+                  )}
+                  {user.status !== 'deleted' && user.role !== 'admin' && (
                     <button
                       onClick={() => openConfirm(user.id, 'revoke')}
                       className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left text-danger hover:bg-bg transition-colors border-t border-border"
@@ -303,6 +335,9 @@ export function AdminUsers() {
                     Lien expirant après 7 jours
                   </div>
                 </div>
+                {inviteError && (
+                  <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2 mb-4">{inviteError}</p>
+                )}
                 <div className="flex gap-3">
                   <button onClick={closeInviteModal} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">
                     Annuler

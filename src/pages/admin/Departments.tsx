@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Building2, Users, Pencil, Trash2, MoreHorizontal, X } from 'lucide-react'
+import { Plus, Building2, Users, Pencil, Trash2, MoreHorizontal, X, Loader2 } from 'lucide-react'
 import { Avatar } from '../../components/ui/Avatar'
 import { DepartmentService } from '../../services/department.service'
 import { UserService } from '../../services/user.service'
@@ -9,17 +9,28 @@ import type { Department, User } from '../../lib/types'
 function DeptModal({ dept, onClose, onSave }: {
   dept?: Department | null
   onClose: () => void
-  onSave: (d: { name: string; code: string }) => void
+  onSave: (d: { name: string; code: string }) => Promise<string | null>
 }) {
   const [name, setName] = useState(dept?.name ?? '')
   const [code, setCode] = useState(dept?.code ?? '')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    setLoading(true)
+    setError(null)
+    const err = await onSave({ name: name.trim(), code: code.trim() })
+    setLoading(false)
+    if (!err) { onClose(); return }
+    setError(err)
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={loading ? undefined : onClose}>
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-bold text-navy text-lg">{dept ? 'Modifier' : 'Nouveau département'}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
+          <button onClick={onClose} disabled={loading} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg disabled:opacity-40"><X size={16} /></button>
         </div>
         <div className="space-y-4">
           <div>
@@ -29,7 +40,8 @@ function DeptModal({ dept, onClose, onSave }: {
               onChange={e => setName(e.target.value)}
               placeholder="Marketing"
               autoFocus
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo"
+              disabled={loading}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo disabled:opacity-50"
             />
           </div>
           <div>
@@ -38,17 +50,22 @@ function DeptModal({ dept, onClose, onSave }: {
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase().slice(0, 5))}
               placeholder="MKT"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo"
+              disabled={loading}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo disabled:opacity-50"
             />
           </div>
+          {error && (
+            <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{error}</p>
+          )}
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button onClick={onClose} disabled={loading} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">Annuler</button>
           <button
-            disabled={!name.trim() || !code.trim()}
-            onClick={() => { onSave({ name: name.trim(), code: code.trim() }); onClose() }}
-            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+            disabled={!name.trim() || !code.trim() || loading}
+            onClick={handleSave}
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
           >
+            {loading && <Loader2 size={14} className="animate-spin" />}
             {dept ? 'Enregistrer' : 'Créer'}
           </button>
         </div>
@@ -78,14 +95,18 @@ export function AdminDepartments() {
     return orgUsers.filter(u => u.department === name)
   }
 
-  async function create(data: { name: string; code: string }) {
-    const { dept } = await DepartmentService.create(currentOrg.id, data)
-    if (dept) setDepts(prev => [...prev, dept])
+  async function create(data: { name: string; code: string }): Promise<string | null> {
+    const { dept, error } = await DepartmentService.create(currentOrg.id, data)
+    if (error || !dept) return error ?? 'Erreur lors de la création du département.'
+    setDepts(prev => [...prev, dept])
+    return null
   }
 
-  async function update(id: string, data: { name: string; code: string }) {
-    await DepartmentService.update(id, data)
+  async function update(id: string, data: { name: string; code: string }): Promise<string | null> {
+    const { error } = await DepartmentService.update(id, data)
+    if (error) return error
     setDepts(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
+    return null
   }
 
   async function remove(id: string) {

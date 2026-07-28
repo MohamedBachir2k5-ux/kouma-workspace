@@ -49,6 +49,9 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   const [tab, setTab] = useState<'membres' | 'documents' | 'canal' | 'permissions' | 'parametres'>('membres')
   const [perms, setPerms] = useState<Record<string, boolean>>({})
   const [permSaved, setPermSaved] = useState(false)
+  const [selectedMemberForPerms, setSelectedMemberForPerms] = useState<string | null>(null)
+  const [memberPerms, setMemberPerms] = useState<Record<string, boolean>>({})
+  const [memberPermSaved, setMemberPermSaved] = useState(false)
   const [memberIds, setMemberIds] = useState<string[]>(team.members)
   const [memberQuery, setMemberQuery] = useState('')
   const [memberSaved, setMemberSaved] = useState(false)
@@ -61,6 +64,15 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
     DocumentService.getByTeam(team.id).then(setDocs)
   }, [team.id])
 
+  useEffect(() => {
+    if (!selectedMemberForPerms) return
+    setMemberPermSaved(false)
+    PermissionService.getMemberPerms(team.id, selectedMemberForPerms).then(loaded => {
+      const defaults = Object.fromEntries(TEAM_PERMS.map(p => [p.key, false]))
+      setMemberPerms({ ...defaults, ...loaded })
+    })
+  }, [team.id, selectedMemberForPerms])
+
   const channel = channels.find(c => c.teamId === team.id)
   const isResponsable = team.responsableId === currentUser.id
 
@@ -69,8 +81,9 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   const memberSearchResults = memberQuery.length > 1
     ? orgUsers.filter(u =>
         u.status === 'active' &&
+        u.role === 'member' &&
         !memberIds.includes(u.id) &&
-        `${u.firstName} ${u.lastName} ${u.role}`.toLowerCase().includes(memberQuery.toLowerCase())
+        `${u.firstName} ${u.lastName} ${u.jobTitle ?? ''}`.toLowerCase().includes(memberQuery.toLowerCase())
       )
     : []
 
@@ -89,10 +102,15 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
     const original = team.members
     const added = memberIds.filter(id => !original.includes(id))
     const removed = original.filter(id => !memberIds.includes(id))
-    await Promise.all([
+    const results = await Promise.all([
       ...added.map(id => TeamService.addMember(team.id, id)),
       ...removed.map(id => TeamService.removeMember(team.id, id)),
     ])
+    const firstError = results.find(r => r.error)
+    if (firstError?.error) {
+      console.error('[TEAM][SAVE_MEMBERS] error:', firstError.error)
+      return
+    }
     onTeamUpdated({ ...team, members: memberIds })
     setMemberSaved(true)
     setTimeout(() => setMemberSaved(false), 2000)
@@ -108,6 +126,13 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
     await PermissionService.updateTeamPerms(team.id, perms)
     setPermSaved(true)
     setTimeout(() => setPermSaved(false), 2000)
+  }
+
+  async function saveMemberPerms() {
+    if (!selectedMemberForPerms) return
+    await PermissionService.updateMemberPerms(team.id, selectedMemberForPerms, memberPerms)
+    setMemberPermSaved(true)
+    setTimeout(() => setMemberPermSaved(false), 2000)
   }
 
   async function saveSettings() {
@@ -171,7 +196,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-muted">{m.role}</div>
+                    <div className="text-xs text-muted">{m.jobTitle ?? (m.role === 'admin' ? 'Administrateur' : 'Collaborateur')}</div>
                   </div>
                   {isResponsable && m.id !== team.responsableId ? (
                     <button onClick={() => removeMember(m.id)}
@@ -205,7 +230,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                         <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
-                          <div className="text-xs text-muted">{u.role}</div>
+                          <div className="text-xs text-muted">{u.jobTitle ?? 'Collaborateur'}</div>
                         </div>
                         <UserPlus size={14} className="text-indigo shrink-0" />
                       </button>
@@ -277,29 +302,101 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
 
         {tab === 'permissions' && (
           <div>
-            {!isResponsable && (
-              <div className="mb-4 p-3 bg-indigo-pale rounded-xl border border-indigo/10">
-                <p className="text-xs text-indigo">Seul le responsable de l'équipe peut modifier les permissions.</p>
-              </div>
-            )}
-            <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden mb-4">
-              {TEAM_PERMS.map(perm => (
-                <div key={perm.key} className="flex items-center justify-between px-4 py-4">
-                  <div className="flex-1 min-w-0 pr-4">
-                    <div className="text-sm font-medium text-ink">{perm.label}</div>
-                    <div className="text-xs text-muted mt-0.5">{perm.desc}</div>
-                  </div>
-                  <Toggle on={perms[perm.key] ?? false} onChange={() => togglePerm(perm.key)} disabled={!isResponsable} />
+            {/* Team-level defaults (responsable only) */}
+            <div className="mb-5">
+              <div className="text-xs font-semibold text-ink uppercase tracking-wide mb-2">Permissions par défaut de l'équipe</div>
+              {!isResponsable && (
+                <div className="mb-3 p-3 bg-indigo-pale rounded-xl border border-indigo/10">
+                  <p className="text-xs text-indigo">Seul le responsable peut modifier les permissions.</p>
                 </div>
-              ))}
+              )}
+              <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden mb-3">
+                {TEAM_PERMS.map(perm => (
+                  <div key={perm.key} className="flex items-center justify-between px-4 py-3.5">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <div className="text-sm font-medium text-ink">{perm.label}</div>
+                      <div className="text-xs text-muted mt-0.5">{perm.desc}</div>
+                    </div>
+                    <Toggle on={perms[perm.key] ?? false} onChange={() => togglePerm(perm.key)} disabled={!isResponsable} />
+                  </div>
+                ))}
+              </div>
+              {isResponsable && (
+                <button onClick={savePerms}
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                    permSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
+                  }`}>
+                  {permSaved ? 'Enregistré' : 'Permissions enregistrées'}
+                </button>
+              )}
             </div>
+
+            {/* Per-member permissions (responsable only) */}
             {isResponsable && (
-              <button onClick={savePerms}
-                className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
-                  permSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
-                }`}>
-                {permSaved ? 'Enregistré' : 'Enregistrer'}
-              </button>
+              <div>
+                <div className="text-xs font-semibold text-ink uppercase tracking-wide mb-2">Permissions par membre</div>
+                <p className="text-xs text-muted mb-3">Sélectionnez un membre pour personnaliser ses permissions individuelles.</p>
+
+                {/* Member selector */}
+                <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden mb-4">
+                  {members.filter(m => m.id !== team.responsableId).map(m => (
+                    <button key={m.id} type="button"
+                      onClick={() => setSelectedMemberForPerms(prev => prev === m.id ? null : m.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                        selectedMemberForPerms === m.id ? 'bg-indigo/5' : 'hover:bg-bg'
+                      }`}>
+                      <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-ink">{m.firstName} {m.lastName}</div>
+                        <div className="text-xs text-muted">{m.jobTitle ?? m.role}</div>
+                      </div>
+                      <ChevronRight size={14} className={`text-faint transition-transform ${selectedMemberForPerms === m.id ? 'rotate-90' : ''}`} />
+                    </button>
+                  ))}
+                  {members.filter(m => m.id !== team.responsableId).length === 0 && (
+                    <div className="px-4 py-6 text-center text-xs text-muted">Aucun autre membre dans cette équipe.</div>
+                  )}
+                </div>
+
+                {/* Per-member toggles */}
+                {selectedMemberForPerms && (() => {
+                  const m = members.find(u => u.id === selectedMemberForPerms)
+                  if (!m) return null
+                  return (
+                    <div className="bg-surface rounded-xl border border-indigo/20 overflow-hidden mb-3">
+                      <div className="px-4 py-3 bg-indigo/5 border-b border-indigo/10 flex items-center gap-2">
+                        <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
+                        <span className="text-sm font-semibold text-ink">{m.firstName} {m.lastName}</span>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {TEAM_PERMS.map(perm => (
+                          <div key={perm.key} className="flex items-center justify-between px-4 py-3.5">
+                            <div className="flex-1 min-w-0 pr-4">
+                              <div className="text-sm font-medium text-ink">{perm.label}</div>
+                              <div className="text-xs text-muted mt-0.5">{perm.desc}</div>
+                            </div>
+                            <Toggle
+                              on={memberPerms[perm.key] ?? false}
+                              onChange={() => {
+                                setMemberPerms(prev => ({ ...prev, [perm.key]: !prev[perm.key] }))
+                                setMemberPermSaved(false)
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="px-4 py-3 border-t border-border">
+                        <button onClick={saveMemberPerms}
+                          className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                            memberPermSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
+                          }`}>
+                          {memberPermSaved ? 'Enregistré' : `Enregistrer pour ${m.firstName}`}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
             )}
           </div>
         )}

@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase'
-import type { Document, Folder } from '../lib/types'
+import type { Document, DocumentVisibility, Folder } from '../lib/types'
 import { cryptoSession } from '../lib/crypto-session'
 import { KeyService } from './key.service'
+import { devlog } from '../lib/devlog'
 
 type DocumentWithFile = {
   id: string
@@ -9,6 +10,10 @@ type DocumentWithFile = {
   folder_id: string | null
   owner_id: string
   title: string
+  visibility: DocumentVisibility
+  team_id: string | null
+  conversation_id: string | null
+  created_at: string
   files: {
     name: string
     type: string
@@ -22,12 +27,14 @@ function rowToDocument(r: DocumentWithFile): Document {
     id: r.id,
     organizationId: r.organization_id,
     folderId: r.folder_id ?? undefined,
-    teamId: undefined,
+    teamId: r.team_id ?? undefined,
+    conversationId: r.conversation_id ?? undefined,
     ownerId: r.owner_id,
     name: r.files?.name ?? r.title,
     type: r.files?.type ?? '',
     size: r.files?.size ?? 0,
-    createdAt: new Date().toISOString(),
+    visibility: r.visibility ?? 'org',
+    createdAt: r.created_at ?? new Date().toISOString(),
   }
 }
 
@@ -41,21 +48,28 @@ export const DocumentService = {
     return ((data ?? []) as unknown as DocumentWithFile[]).map(rowToDocument)
   },
 
+  async listByVisibility(orgId: string, visibility: DocumentVisibility, scopeId?: string): Promise<Document[]> {
+    let q = supabase
+      .from('documents')
+      .select('*, files(name, type, size, storage_path)')
+      .eq('organization_id', orgId)
+      .eq('visibility', visibility)
+      .order('created_at', { ascending: false })
+
+    if (visibility === 'team' && scopeId) q = q.eq('team_id', scopeId)
+    if (visibility === 'group' && scopeId) q = q.eq('conversation_id', scopeId)
+
+    const { data } = await q
+    return ((data ?? []) as unknown as DocumentWithFile[]).map(rowToDocument)
+  },
+
   async getByTeam(teamId: string): Promise<Document[]> {
-    const { data: folderRows } = await supabase
-      .from('folders')
-      .select('id')
-      .eq('team_id', teamId)
-
-    const folderIds = (folderRows ?? []).map((f: { id: string }) => f.id)
-    if (!folderIds.length) return []
-
     const { data } = await supabase
       .from('documents')
       .select('*, files(name, type, size, storage_path)')
-      .in('folder_id', folderIds)
+      .eq('team_id', teamId)
+      .eq('visibility', 'team')
       .order('created_at', { ascending: false })
-
     return ((data ?? []) as unknown as DocumentWithFile[]).map(rowToDocument)
   },
 
@@ -110,6 +124,9 @@ export const DocumentService = {
     userId: string,
     file: File,
     folderId?: string,
+    visibility: DocumentVisibility = 'personal',
+    teamId?: string,
+    conversationId?: string,
   ): Promise<{ document: Document | null; error: string | null }> {
     const ALLOWED_TYPES = [
       'application/pdf',
@@ -161,7 +178,7 @@ export const DocumentService = {
       .from('attachments')
       .upload(storagePath, uploadBlob, { contentType: uploadBlob.type })
 
-    if (uploadErr) return { document: null, error: uploadErr.message }
+    if (uploadErr) { devlog.supabaseError('DocumentService', 'uploadDocument:storage', 'attachments', uploadErr); return { document: null, error: uploadErr.message } }
 
     const { data: fileRecord, error: fileErr } = await supabase
       .from('files')
@@ -177,7 +194,7 @@ export const DocumentService = {
       .select()
       .single()
 
-    if (fileErr || !fileRecord) return { document: null, error: fileErr?.message ?? 'Erreur fichier.' }
+    if (fileErr || !fileRecord) { devlog.supabaseError('DocumentService', 'uploadDocument:files', 'files', fileErr); return { document: null, error: fileErr?.message ?? 'Erreur fichier.' } }
 
     const { data: docRecord, error: docErr } = await supabase
       .from('documents')
@@ -187,11 +204,64 @@ export const DocumentService = {
         title: file.name,
         file_id: fileRecord.id,
         folder_id: folderId ?? null,
+        visibility,
+        team_id: teamId ?? null,
+        conversation_id: conversationId ?? null,
+      })
+      .select('*, files(name, type, size, storage_path)')
+      .single()
+
+    if (docErr || !docRecord) { devlog.supabaseError('DocumentService', 'uploadDocument:documents', 'documents', docErr); return { document: null, error: docErr?.message ?? 'Erreur document.' } }
+
+    return { document: rowToDocument(docRecord as unknown as DocumentWithFile), error: null }
+  },
+
+  // Promote an already-uploaded attachment to a document record.
+  async promoteFromPath(
+    storagePath: string,
+    orgId: string,
+    userId: string,
+    fileName: string,
+    fileExt: string,
+    fileSize: number,
+    folderId?: string,
+  ): Promise<{ document: Document | null; error: string | null }> {
+    const { data: fileRecord, error: fileErr } = await supabase
+      .from('files')
+      .insert({
+        owner_id: userId,
+        organization_id: orgId,
+        storage_path: storagePath,
+        name: fileName,
+        type: fileExt,
+        size: fileSize,
+        category: 'document',
+      })
+      .select()
+      .single()
+
+    if (fileErr || !fileRecord) return { document: null, error: fileErr?.message ?? 'Erreur fichier.' }
+
+    const { data: docRecord, error: docErr } = await supabase
+      .from('documents')
+      .insert({
+        organization_id: orgId,
+        owner_id: userId,
+        title: fileName,
+        file_id: fileRecord.id,
+        folder_id: folderId ?? null,
       })
       .select('*, files(name, type, size, storage_path)')
       .single()
 
     if (docErr || !docRecord) return { document: null, error: docErr?.message ?? 'Erreur document.' }
+
+    await supabase.from('audit_logs').insert({
+      organization_id: orgId,
+      user_id: userId,
+      action: 'document_added',
+      target_name: fileName,
+    })
 
     return { document: rowToDocument(docRecord as unknown as DocumentWithFile), error: null }
   },
@@ -217,6 +287,13 @@ export const DocumentService = {
 
     const response = await fetch(signed.signedUrl)
     if (!response.ok) return { error: 'Téléchargement échoué.' }
+
+    // Log document access (fire-and-forget)
+    supabase.from('document_access_logs').insert({
+      document_id: documentId,
+      organization_id: orgId,
+      action: 'download',
+    }).then(() => {})
 
     const rawBuf = await response.arrayBuffer()
     let plainBuf: ArrayBuffer = rawBuf

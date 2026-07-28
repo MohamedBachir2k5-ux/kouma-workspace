@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, ChevronDown } from 'lucide-react'
+import { ArrowRight, ChevronDown, Check, AlertTriangle } from 'lucide-react'
 import { AuthService } from '../../services/auth.service'
 import { UserService } from '../../services/user.service'
 import { DepartmentService } from '../../services/department.service'
 import { KeyService } from '../../services/key.service'
+import { useAuth } from '../../contexts/AuthContext'
 import type { Department } from '../../lib/types'
 
 function PinInput({
@@ -36,12 +37,15 @@ function PinInput({
 export function JoinOrg() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
+  const { refreshCurrentOrg } = useAuth()
 
   const [invite, setInvite] = useState<{ organizationId: string } | null>(null)
   const [departments, setDepartments] = useState<Department[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [activeSession, setActiveSession] = useState(false)
 
   const [form, setForm] = useState({
     email: '',
@@ -55,6 +59,11 @@ export function JoinOrg() {
   })
 
   useEffect(() => {
+    // Detect if a user is already logged in in this browser
+    AuthService.getSession().then(session => {
+      if (session?.user) setActiveSession(true)
+    })
+
     if (!token) { setLoadError('Lien d\'invitation invalide.'); return }
     UserService.getInviteByToken(token).then(async data => {
       if (!data) { setLoadError('Ce lien d\'invitation est invalide ou a expiré.'); return }
@@ -83,7 +92,10 @@ export function JoinOrg() {
     setLoading(true)
     setError(null)
 
-    const { userId, error: signUpError } = await AuthService.signUp({
+    let userId: string | null = null
+    let isExistingAccount = false
+
+    const { userId: newUserId, error: signUpError } = await AuthService.signUp({
       email: form.email.trim(),
       password: form.pin,
       firstName: form.firstName.trim(),
@@ -91,18 +103,35 @@ export function JoinOrg() {
       phone: form.phone.trim() || undefined,
     })
 
-    if (signUpError || !userId) {
+    if (signUpError === 'Cette adresse email est déjà utilisée.') {
+      // Account was partially created (e.g. prior failed attempt) — sign in and continue
+      const { userId: existingId, error: signInError } = await AuthService.signIn({
+        email: form.email.trim(),
+        password: form.pin,
+      })
+      if (signInError || !existingId) {
+        setError('Ce compte existe déjà. Vérifiez votre code PIN ou connectez-vous directement.')
+        setLoading(false)
+        return
+      }
+      userId = existingId
+      isExistingAccount = true
+    } else if (signUpError || !newUserId) {
       setError(signUpError ?? 'Erreur lors de la création du compte.')
       setLoading(false)
       return
+    } else {
+      userId = newUserId
     }
 
-    // Generate E2E key pair wrapped with PIN
-    const { error: keyError } = await KeyService.generateAndStoreUserKeys(userId, form.pin)
-    if (keyError) {
-      setError('Erreur lors de la génération des clés de chiffrement.')
-      setLoading(false)
-      return
+    // Generate E2E key pair (skip for existing accounts — keys already generated)
+    if (!isExistingAccount) {
+      const { error: keyError } = await KeyService.generateAndStoreUserKeys(userId, form.pin)
+      if (keyError) {
+        setError('Erreur lors de la génération des clés de chiffrement.')
+        setLoading(false)
+        return
+      }
     }
 
     const { error: joinError } = await UserService.acceptInvite(token, userId, {
@@ -110,13 +139,26 @@ export function JoinOrg() {
       jobTitle: form.jobTitle.trim() || undefined,
     })
 
-    if (joinError) {
+    console.log('[JoinOrg] acceptInvite result:', { joinError, userId, token })
+
+    // "already a member" is a success condition (account was stuck mid-flow)
+    if (joinError && joinError !== 'Vous êtes déjà membre de cette organisation.') {
       setError(joinError)
       setLoading(false)
       return
     }
 
-    navigate('/connexion/utilisateur')
+    // Reload the org context — if this returns false the member wasn't inserted
+    const orgFound = await refreshCurrentOrg()
+    if (!orgFound) {
+      setError('Erreur lors du chargement de l\'organisation. Veuillez rafraîchir la page.')
+      setLoading(false)
+      return
+    }
+
+    setSuccess(true)
+    setLoading(false)
+    setTimeout(() => navigate('/app/messages', { replace: true }), 2000)
   }
 
   if (loadError) {
@@ -125,6 +167,20 @@ export function JoinOrg() {
         <div className="w-full max-w-sm text-center">
           <p className="text-sm text-danger mb-4">{loadError}</p>
           <Link to="/" className="text-sm text-indigo hover:underline">Retour à l'accueil</Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm text-center">
+          <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-5">
+            <Check size={28} className="text-success" />
+          </div>
+          <h2 className="text-xl font-bold text-navy mb-2">Compte créé avec succès</h2>
+          <p className="text-sm text-muted leading-relaxed">Bienvenue dans votre organisation. Vous allez être redirigé vers votre espace collaborateur…</p>
         </div>
       </div>
     )
@@ -142,6 +198,14 @@ export function JoinOrg() {
       </Link>
 
       <div className="w-full max-w-sm">
+        {activeSession && (
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+            <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 leading-relaxed">
+              Un compte est déjà connecté dans ce navigateur. Créer un nouveau compte ici remplacera la session active. Pour éviter cela, ouvrez ce lien dans une fenêtre de navigation privée.
+            </p>
+          </div>
+        )}
         <div className="bg-surface rounded-2xl border border-border p-6 md:p-8">
           <div className="mb-6">
             <h1 className="text-xl font-bold text-navy mb-1">Créer votre compte</h1>
@@ -175,7 +239,7 @@ export function JoinOrg() {
                 <input
                   value={form.firstName}
                   onChange={e => update('firstName', e.target.value)}
-                  placeholder="Aminata"
+                  placeholder="Votre prénom"
                   disabled={!ready}
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                 />
@@ -185,7 +249,7 @@ export function JoinOrg() {
                 <input
                   value={form.lastName}
                   onChange={e => update('lastName', e.target.value)}
-                  placeholder="Diallo"
+                  placeholder="Votre nom"
                   disabled={!ready}
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                 />
@@ -201,7 +265,7 @@ export function JoinOrg() {
                 type="tel"
                 value={form.phone}
                 onChange={e => update('phone', e.target.value)}
-                placeholder="+224 620 00 00 00"
+                placeholder="+XX XXXX XXXX"
                 disabled={!ready}
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
               />

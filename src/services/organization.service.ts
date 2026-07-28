@@ -22,49 +22,26 @@ export interface OrganizationResult {
 }
 
 export const OrganizationService = {
+  // Atomic creation via SECURITY DEFINER RPC — org + admin member + trial subscription
+  // in a single transaction. No RLS dependency between steps.
   async create(params: CreateOrganizationParams): Promise<OrganizationResult> {
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({
-        name: params.name,
-        email: params.email,
-        phone: params.phone ?? null,
-        website: params.website ?? null,
-        country: params.country,
-        currency: params.currency,
-        language: params.language,
-        sector: params.sector ?? null,
-        size: params.size ?? null,
-        plan: 'starter',
-        logo_url: null,
-      })
-      .select()
-      .single()
-
-    if (orgError) return { organizationId: null, error: orgError.message }
-
-    // Add admin as organization owner
-    const { error: memberError } = await supabase.from('organization_members').insert({
-      organization_id: org.id,
-      user_id: params.adminUserId,
-      role: 'admin',
-      status: 'active',
+    type RpcFn = (fn: string, args: object) => Promise<{ data: unknown; error: { message: string } | null }>
+    const { data, error } = await (supabase.rpc as unknown as RpcFn)('create_organization_with_admin', {
+      p_name:     params.name,
+      p_email:    params.email,
+      p_phone:    params.phone    ?? null,
+      p_website:  params.website  ?? null,
+      p_country:  params.country,
+      p_city:     null,
+      p_currency: params.currency,
+      p_language: params.language,
+      p_sector:   params.sector   ?? null,
+      p_admin_id: params.adminUserId,
+      p_plan:     'free',
     })
 
-    if (memberError) return { organizationId: null, error: memberError.message }
-
-    // Activate 15-day trial subscription
-    await this.startTrial(org.id, params.currency)
-
-    // Create audit log entry
-    await supabase.from('audit_logs').insert({
-      organization_id: org.id,
-      user_id: params.adminUserId,
-      action: 'organization_created',
-      target_name: params.name,
-    })
-
-    return { organizationId: org.id, error: null }
+    if (error) return { organizationId: null, error: error.message }
+    return { organizationId: data as string, error: null }
   },
 
   async startTrial(organizationId: string, currency: SupportedCurrency): Promise<void> {
@@ -75,12 +52,12 @@ export const OrganizationService = {
 
     await supabase.from('subscriptions').insert({
       organization_id: organizationId,
-      plan: 'starter',
+      plan: 'free',
       status: 'trial',
       currency,
-      amount: prices.starter.monthly,
+      amount: prices.free.monthly,
       trial_ends_at: trialEndsAt.toISOString(),
-      discount_percent: prices.starter.discountPercent,
+      discount_percent: prices.free.discountPercent,
     })
   },
 
@@ -99,7 +76,7 @@ export const OrganizationService = {
       .select('organization_id, organizations(*)')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .single()
+      .maybeSingle()
 
     if (!data) return null
     const org = (data as unknown as { organizations: OrganizationRow }).organizations
@@ -127,7 +104,7 @@ export const OrganizationService = {
       .from('subscriptions')
       .select('*')
       .eq('organization_id', organizationId)
-      .single()
+      .maybeSingle()
     return data ?? null
   },
 

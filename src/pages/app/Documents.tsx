@@ -73,10 +73,20 @@ function NewFolderModal({ onClose, onCreated }: {
   )
 }
 
+type SpaceTab = 'personal' | 'team' | 'org'
+
+const SPACE_TABS: { value: SpaceTab; label: string }[] = [
+  { value: 'personal', label: 'Mes documents' },
+  { value: 'team',     label: 'Équipes' },
+  { value: 'org',      label: 'Bibliothèque' },
+]
+
 export function Documents() {
-  const { currentOrg, currentUser } = useAuth()
+  const { currentOrg, currentUser, storageQuotaBytes } = useAuth()
+  const isAdmin = currentUser.role === 'admin'
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [space, setSpace] = useState<SpaceTab>('personal')
   const [query, setQuery] = useState('')
   const [activeFolder, setActiveFolder] = useState<string | null>(null)
   const [docs, setDocs] = useState<Document[]>([])
@@ -110,7 +120,13 @@ export function Documents() {
     return FOLDER_COLORS[idx % FOLDER_COLORS.length]
   }
 
-  const filtered = docs.filter(doc => {
+  const spaceDocs = docs.filter(d => {
+    if (space === 'personal') return d.visibility === 'personal' && d.ownerId === currentUser.id
+    if (space === 'team') return d.visibility === 'team'
+    return d.visibility === 'org'
+  })
+
+  const filtered = spaceDocs.filter(doc => {
     if (query && !doc.name.toLowerCase().includes(query.toLowerCase())) return false
     if (activeFolder && doc.folderId !== activeFolder) return false
     return true
@@ -124,13 +140,23 @@ export function Documents() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
+
+    const currentUsed = docs.reduce((sum, d) => sum + d.size, 0)
+    if (storageQuotaBytes > 0 && currentUsed + file.size > storageQuotaBytes) {
+      setUploadError('Quota de stockage dépassé. Supprimez des fichiers ou passez à un plan supérieur.')
+      return
+    }
+
     setUploading(true)
     setUploadError(null)
 
+    const uploadVisibility = space === 'org' ? 'org' : space === 'team' ? 'team' : 'personal'
     const { document: newDoc, error } = await DocumentService.uploadDocument(
       currentOrg.id,
       currentUser.id,
       file,
+      undefined,
+      uploadVisibility,
     )
 
     setUploading(false)
@@ -158,17 +184,33 @@ export function Documents() {
 
       {/* Header */}
       <div className="sticky top-0 z-10 bg-bg px-4 pt-4 pb-3 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-ink">Documents</h2>
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || (space === 'org' && !isAdmin)}
+            title={space === 'org' && !isAdmin ? 'Seuls les administrateurs peuvent importer dans la bibliothèque' : undefined}
             className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity">
             {uploading
               ? <><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Import…</span></>
               : <><Upload size={14} /><span className="hidden sm:inline">Importer</span></>
             }
           </button>
+        </div>
+
+        {/* Space tabs */}
+        <div className="flex gap-1.5 mb-3">
+          {SPACE_TABS.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => { setSpace(tab.value); setActiveFolder(null) }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                space === tab.value ? 'bg-navy text-white' : 'bg-surface border border-border text-muted hover:bg-bg'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {uploadError && (
@@ -213,14 +255,16 @@ export function Documents() {
                 </div>
               </button>
             ))}
-            <button
-              onClick={() => setShowNewFolder(true)}
-              className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-border hover:border-indigo/40 transition-colors text-left">
-              <div className="w-9 h-9 rounded-lg bg-bg flex items-center justify-center">
-                <Plus size={18} className="text-muted" />
-              </div>
-              <span className="text-sm text-muted">Nouveau dossier</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setShowNewFolder(true)}
+                className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-border hover:border-indigo/40 transition-colors text-left">
+                <div className="w-9 h-9 rounded-lg bg-bg flex items-center justify-center">
+                  <Plus size={18} className="text-muted" />
+                </div>
+                <span className="text-sm text-muted">Nouveau dossier</span>
+              </button>
+            )}
           </div>
         </div>
 

@@ -15,8 +15,8 @@ function profileToUser(p: ProfileRow, orgId: string): User {
   return {
     id: p.id,
     organizationId: orgId,
-    firstName: p.firstname,
-    lastName: p.lastname,
+    firstName: p.firstname ?? '',
+    lastName: p.lastname ?? '',
     email: p.email,
     phone: p.phone ?? undefined,
     avatarUrl: p.avatar_url ?? undefined,
@@ -68,7 +68,7 @@ function subRowToSubscription(r: SubscriptionRow): Subscription {
 
 function isSupabaseConfigured(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  return Boolean(url && url.startsWith('https://') && !url.includes('your-project'))
+  return Boolean(url && !url.includes('your-project') && (url.startsWith('https://') || url.startsWith('http://')))
 }
 
 // ── Shape ─────────────────────────────────────────────────────────────────────
@@ -79,8 +79,12 @@ interface AuthContextValue {
   currentSubscription: Subscription
   storageQuotaBytes: number
   loading: boolean
+  isOrgReady: boolean
   currentSessionId: string | null
+  orgLoadError: string | null
   signOut: () => Promise<void>
+  updateCurrentOrg: (updates: Partial<Organization>) => void
+  refreshCurrentOrg: () => Promise<boolean>
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -91,15 +95,26 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
+  const [isOrgReady, setIsOrgReady] = useState(false)
   const [currentUser, setCurrentUser] = useState<User>(mockUser)
   const [currentOrg, setCurrentOrg] = useState<Organization>(MOCK_ORG)
   const [currentSubscription, setCurrentSubscription] = useState<Subscription>(MOCK_SUBSCRIPTION)
   const [storageQuotaBytes, setStorageQuotaBytes] = useState(mockStorageQuotaBytes)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [orgLoadError, setOrgLoadError] = useState<string | null>(null)
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Keeps isOrgReady readable synchronously so hydrateFromSession can't override
+  // a true value that refreshCurrentOrg already committed (race-condition guard).
+  const isOrgReadyRef = useRef(false)
+
+  function setOrgReady(ready: boolean) {
+    isOrgReadyRef.current = ready
+    setIsOrgReady(ready)
+  }
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
+      setOrgReady(true)
       setLoading(false)
       return
     }
@@ -111,15 +126,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           OrganizationService.getForUser(userId),
         ])
 
-        if (!profile || !orgRow) return
+        if (!profile) {
+          // Profile missing — JWT is orphaned (account deleted). Force sign out.
+          await supabase.auth.signOut()
+          return
+        }
+        if (!orgRow) {
+          if (!isOrgReadyRef.current) {
+            setOrgLoadError('Aucune organisation trouvée pour ce compte. Veuillez compléter l\'inscription.')
+            setOrgReady(false)
+          }
+          return
+        }
+        setOrgLoadError(null)
 
-        const subRow = await OrganizationService.getSubscription(orgRow.id)
+        const [subRow, memberInfo] = await Promise.all([
+          OrganizationService.getSubscription(orgRow.id),
+          UserService.getMemberInfo(userId, orgRow.id),
+        ])
 
-        setCurrentUser(profileToUser(profile, orgRow.id))
+        const user = profileToUser(profile, orgRow.id)
+        user.role = memberInfo?.role ?? 'member'
+        user.jobTitle = memberInfo?.jobTitle
+        user.department = memberInfo?.department
+        setCurrentUser(user)
         setCurrentOrg(orgRowToOrganization(orgRow))
+        setOrgReady(true)
         if (subRow) {
           setCurrentSubscription(subRowToSubscription(subRow))
-          setStorageQuotaBytes(STORAGE_BYTES[subRow.plan as keyof typeof STORAGE_BYTES] ?? STORAGE_BYTES.starter)
+          setStorageQuotaBytes(STORAGE_BYTES[subRow.plan as keyof typeof STORAGE_BYTES] ?? STORAGE_BYTES.free)
         }
 
         // Register session on new login
@@ -135,8 +170,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }, 5 * 60 * 1000)
           }
         }
-      } catch {
-        // Network error or RLS denied — keep mock fallback
+      } catch (e) {
+        console.error('[AuthContext] hydrateFromSession error:', e)
+        setOrgLoadError(`Erreur de chargement : ${(e as Error).message}`)
       } finally {
         setLoading(false)
       }
@@ -152,16 +188,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     // Re-hydrate on login / token refresh / sign-out
-    const { data: { subscription } } = AuthService.onAuthChange((userId) => {
+    const { data: { subscription } } = AuthService.onAuthChange((userId, event) => {
       if (userId) {
         setLoading(true)
-        hydrateFromSession(userId, true)
+        hydrateFromSession(userId, event === 'SIGNED_IN')
       } else {
         setCurrentUser(mockUser)
         setCurrentOrg(MOCK_ORG)
         setCurrentSubscription(MOCK_SUBSCRIPTION)
         setStorageQuotaBytes(mockStorageQuotaBytes)
         setCurrentSessionId(null)
+        setOrgReady(false)
         if (heartbeatRef.current) clearInterval(heartbeatRef.current)
         setLoading(false)
       }
@@ -172,6 +209,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current)
     }
   }, [])
+
+  function updateCurrentOrg(updates: Partial<Organization>) {
+    setCurrentOrg(prev => ({ ...prev, ...updates }))
+  }
+
+  async function refreshCurrentOrg(): Promise<boolean> {
+    const session = await supabase.auth.getSession()
+    const userId = session.data.session?.user?.id
+    if (!userId) {
+      console.error('[AuthContext] refreshCurrentOrg: no active session')
+      setLoading(false)
+      return false
+    }
+    const [profile, orgRow] = await Promise.all([
+      UserService.getById(userId),
+      OrganizationService.getForUser(userId),
+    ])
+    if (!orgRow) {
+      console.error('[AuthContext] refreshCurrentOrg: org not found for user', userId, '— acceptInvite may have failed silently')
+      setLoading(false)
+      return false
+    }
+    const memberInfo = await UserService.getMemberInfo(userId, orgRow.id)
+    setCurrentOrg(orgRowToOrganization(orgRow))
+    setOrgReady(true)
+    setOrgLoadError(null)
+    if (profile) {
+      const user = profileToUser(profile, orgRow.id)
+      user.role = memberInfo?.role ?? 'member'
+      user.jobTitle = memberInfo?.jobTitle
+      user.department = memberInfo?.department
+      setCurrentUser(user)
+    }
+    setLoading(false)
+    return true
+  }
 
   async function signOut() {
     if (isSupabaseConfigured()) {
@@ -188,8 +261,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentSubscription,
       storageQuotaBytes,
       loading,
+      isOrgReady,
       currentSessionId,
+      orgLoadError,
       signOut,
+      updateCurrentOrg,
+      refreshCurrentOrg,
     }}>
       {children}
     </AuthContext.Provider>

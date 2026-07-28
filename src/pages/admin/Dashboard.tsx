@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Users, HardDrive, MessageSquare, FileText, UserCheck, UserX, Activity, TrendingUp } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { AlertTriangle } from 'lucide-react'
 import { AuditService } from '../../services/audit.service'
 import { DocumentService } from '../../services/document.service'
 import { UserService } from '../../services/user.service'
@@ -37,7 +38,7 @@ const ACTION_COLOR: Record<string, string> = {
 }
 
 export function AdminDashboard() {
-  const { currentOrg, storageQuotaBytes } = useAuth()
+  const { currentOrg, storageQuotaBytes, orgLoadError } = useAuth()
 
   const [orgUsers, setOrgUsers] = useState<User[]>([])
   const [docs, setDocs] = useState<Document[]>([])
@@ -89,6 +90,16 @@ export function AdminDashboard() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl">
+      {orgLoadError && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-6">
+          <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Organisation non chargée</p>
+            <p className="text-xs text-amber-700 mt-0.5">{orgLoadError}</p>
+            <p className="text-xs text-amber-700 mt-1">Les données affichées sont des données de démonstration. Complétez l'inscription ou reconnectez-vous avec un compte lié à une organisation.</p>
+          </div>
+        </div>
+      )}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-ink">Bonjour, bonne journée.</h1>
         <p className="text-sm text-muted mt-1">Console d'administration — {currentOrg.name}</p>

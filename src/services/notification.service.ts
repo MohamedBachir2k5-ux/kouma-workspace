@@ -45,4 +45,19 @@ export const NotificationService = {
       .eq('user_id', userId)
       .eq('read', false)
   },
+
+  async markAllByConversation(userId: string, conversationId: string): Promise<void> {
+    const { data: toMark } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('type', 'new_message')
+      .eq('read', false)
+    if (!toMark || toMark.length === 0) return
+    const ids = toMark
+      .filter(r => String((r.payload as Record<string, unknown>)?.conversationId) === conversationId)
+      .map(r => r.id)
+    if (ids.length === 0) return
+    await supabase.from('notifications').update({ read: true }).in('id', ids)
+  },
 }

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
 import type { User } from '../lib/types'
+import { devlog } from '../lib/devlog'
 
 export const UserService = {
   async getById(id: string): Promise<ProfileRow | null> {
@@ -8,7 +9,7 @@ export const UserService = {
       .from('profiles')
       .select('*')
       .eq('id', id)
-      .single()
+      .maybeSingle()
     return data ?? null
   },
 
@@ -37,11 +38,27 @@ export const UserService = {
     status: 'active' | 'suspended' | 'deleted',
     actorId: string,
   ): Promise<{ error: string | null }> {
+    // Fetch name before update for audit log
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('firstname, lastname, email')
+      .eq('id', userId)
+      .single()
+    const targetName = profile
+      ? ((`${profile.firstname ?? ''} ${profile.lastname ?? ''}`).trim() || profile.email)
+      : ''
+
+    const updates: Record<string, unknown> = { status }
+    if (status === 'deleted') updates.deleted_at = new Date().toISOString()
+    if (status === 'active') updates.deleted_at = null
+
     const { error } = await supabase
       .from('organization_members')
-      .update({ status })
+      .update(updates)
       .eq('user_id', userId)
       .eq('organization_id', organizationId)
+
+    if (error) devlog.supabaseError('UserService', `updateStatus:${status}`, 'organization_members', error)
 
     if (!error) {
       const actionMap = { active: 'user_activated', suspended: 'user_suspended', deleted: 'user_revoked' }
@@ -51,13 +68,35 @@ export const UserService = {
         action: actionMap[status],
         target_id: userId,
         target_type: 'user',
+        target_name: targetName,
       })
+
+      // Revoke all sessions immediately on suspend or delete
+      if (status === 'suspended' || status === 'deleted') {
+        await supabase
+          .from('user_sessions')
+          .update({ revoked: true })
+          .eq('user_id', userId)
+      }
     }
 
     return { error: error?.message ?? null }
   },
 
   async invite(organizationId: string, actorId: string): Promise<{ token: string | null; error: string | null }> {
+    // Reuse any valid unexpired invitation (avoids multiple active tokens)
+    const { data: existing } = await supabase
+      .from('invitations')
+      .select('token, expires_at')
+      .eq('organization_id', organizationId)
+      .eq('status', 'sent')
+      .gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existing) return { token: existing.token, error: null }
+
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7)
 
@@ -87,41 +126,23 @@ export const UserService = {
     userId: string,
     meta?: { departmentId?: string; jobTitle?: string },
   ): Promise<{ error: string | null }> {
-    const { data: invite, error: fetchError } = await supabase
-      .from('invitations')
-      .select('*')
-      .eq('token', token)
-      .eq('status', 'sent')
-      .gt('expires_at', new Date().toISOString())
-      .single()
-
-    if (fetchError || !invite) return { error: 'Lien d\'invitation invalide ou expiré.' }
-
-    const { error: memberError } = await supabase.from('organization_members').insert({
-      organization_id: invite.organization_id,
-      user_id: userId,
-      role: 'member',
-      status: 'active',
-      department_id: meta?.departmentId ?? null,
-      job_title: meta?.jobTitle ?? null,
+    type RpcFn = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+    const { data, error } = await (supabase.rpc as unknown as RpcFn)('accept_member_invite', {
+      p_token: token,
+      p_user_id: userId,
+      p_department_id: meta?.departmentId ?? null,
+      p_job_title: meta?.jobTitle ?? null,
     })
-
-    if (memberError) return { error: memberError.message }
-
-    await supabase
-      .from('invitations')
-      .update({ status: 'accepted' })
-      .eq('id', invite.id)
-
-    return { error: null }
+    if (error) return { error: error.message }
+    const result = data as { error: string | null } | null
+    return { error: result?.error ?? null }
   },
 
   async getByOrganizationWithRole(organizationId: string): Promise<User[]> {
     const { data } = await supabase
       .from('organization_members')
-      .select('role, status, department_id, job_title, departments(name), profiles(*)')
+      .select('role, status, deleted_at, department_id, job_title, departments(name), profiles(*)')
       .eq('organization_id', organizationId)
-      .neq('status', 'deleted')
 
     if (!data) return []
 
@@ -130,6 +151,7 @@ export const UserService = {
       type MemberRow = {
         role: string
         status: string
+        deleted_at: string | null
         department_id: string | null
         job_title: string | null
         departments: { name: string } | null
@@ -141,8 +163,8 @@ export const UserService = {
       result.push({
         id: p.id,
         organizationId,
-        firstName: p.firstname,
-        lastName: p.lastname,
+        firstName: p.firstname ?? '',
+        lastName: p.lastname ?? '',
         email: p.email,
         phone: p.phone ?? undefined,
         avatarUrl: p.avatar_url ?? undefined,
@@ -150,6 +172,7 @@ export const UserService = {
         language: p.language,
         role: m.role,
         status: m.status as User['status'],
+        deletedAt: m.deleted_at ?? null,
         department: m.departments?.name ?? undefined,
         jobTitle: m.job_title ?? undefined,
         createdAt: p.created_at,
@@ -158,15 +181,28 @@ export const UserService = {
     return result
   },
 
-  async getInviteByToken(token: string): Promise<{ organizationId: string } | null> {
+  async getMemberInfo(userId: string, orgId: string): Promise<{ role: string; status: string; jobTitle?: string; department?: string } | null> {
     const { data } = await supabase
-      .from('invitations')
-      .select('organization_id')
-      .eq('token', token)
-      .eq('status', 'sent')
-      .gt('expires_at', new Date().toISOString())
-      .single()
-    return data ? { organizationId: data.organization_id } : null
+      .from('organization_members')
+      .select('role, status, job_title, departments(name)')
+      .eq('user_id', userId)
+      .eq('organization_id', orgId)
+      .maybeSingle()
+    if (!data) return null
+    const d = data as unknown as { role: string; status: string; job_title: string | null; departments: { name: string } | null }
+    return {
+      role: d.role,
+      status: d.status,
+      jobTitle: d.job_title ?? undefined,
+      department: d.departments?.name ?? undefined,
+    }
+  },
+
+  async getInviteByToken(token: string): Promise<{ organizationId: string } | null> {
+    type RpcFn = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+    const { data, error } = await (supabase.rpc as unknown as RpcFn)('get_org_for_invite', { p_token: token })
+    if (error || !data) return null
+    return { organizationId: data as string }
   },
 
   async getAdminCount(organizationId: string): Promise<number> {
@@ -184,6 +220,15 @@ export const UserService = {
     targetUserId: string,
     actorId: string,
   ): Promise<{ error: string | null }> {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('firstname, lastname, email')
+      .eq('id', targetUserId)
+      .single()
+    const targetName = profile
+      ? ((`${profile.firstname ?? ''} ${profile.lastname ?? ''}`).trim() || profile.email)
+      : ''
+
     const { error } = await supabase
       .from('organization_members')
       .update({ role: 'admin' })
@@ -198,6 +243,13 @@ export const UserService = {
       action: 'admin_promoted',
       target_id: targetUserId,
       target_type: 'user',
+      target_name: targetName,
+    })
+
+    await supabase.rpc('notify_users', {
+      p_user_ids: [targetUserId],
+      p_type: 'role_changed',
+      p_payload: { text: "Vous avez été promu administrateur de l'organisation." },
     })
 
     return { error: null }
@@ -208,13 +260,20 @@ export const UserService = {
     targetUserId: string,
     actorId: string,
   ): Promise<{ error: string | null }> {
-    // Guard: at least 1 admin must remain
     const adminCount = await this.getAdminCount(organizationId)
     if (adminCount <= 1) {
-      return { error: 'Impossible de retirer le dernier administrateur. Promouvez d\'abord un autre collaborateur.' }
+      return { error: "Impossible de retirer le dernier administrateur. Promouvez d'abord un autre collaborateur." }
     }
 
-    // 1. Demote role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('firstname, lastname, email')
+      .eq('id', targetUserId)
+      .single()
+    const targetName = profile
+      ? ((`${profile.firstname ?? ''} ${profile.lastname ?? ''}`).trim() || profile.email)
+      : ''
+
     const { error: roleError } = await supabase
       .from('organization_members')
       .update({ role: 'member' })
@@ -223,26 +282,30 @@ export const UserService = {
 
     if (roleError) return { error: roleError.message }
 
-    // 2. Remove access to org recovery keys (E2E escrow)
     await supabase
       .from('org_recovery_keys')
       .delete()
       .eq('organization_id', organizationId)
       .eq('admin_user_id', targetUserId)
 
-    // 3. Revoke all sessions
     await supabase
       .from('user_sessions')
       .update({ revoked: true })
       .eq('user_id', targetUserId)
 
-    // 4. Audit log
     await supabase.from('audit_logs').insert({
       organization_id: organizationId,
       user_id: actorId,
       action: 'admin_demoted',
       target_id: targetUserId,
       target_type: 'user',
+      target_name: targetName,
+    })
+
+    await supabase.rpc('notify_users', {
+      p_user_ids: [targetUserId],
+      p_type: 'role_changed',
+      p_payload: { text: "Vos droits d'administration ont été révoqués." },
     })
 
     return { error: null }
@@ -284,7 +347,7 @@ export const UserService = {
     const profiles = data.map(row => (row as unknown as { profiles: ProfileRow }).profiles).filter(Boolean)
     const q = query.toLowerCase()
     return profiles.filter(p =>
-      `${p.firstname} ${p.lastname} ${p.email}`.toLowerCase().includes(q)
+      `${p.firstname ?? ''} ${p.lastname ?? ''} ${p.email}`.toLowerCase().includes(q)
     )
   },
 }

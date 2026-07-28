@@ -1,11 +1,12 @@
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
+import { devlog } from '../lib/devlog'
 
 export interface SignUpParams {
   email: string
   password: string
-  firstName: string
-  lastName: string
+  firstName?: string
+  lastName?: string
   phone?: string
   country?: string
   language?: string
@@ -28,26 +29,28 @@ export const AuthService = {
       password: params.password,
       options: {
         data: {
-          firstname: params.firstName,
-          lastname: params.lastName,
+          firstname: params.firstName ?? '',
+          lastname: params.lastName ?? '',
         },
       },
     })
 
     if (error) {
+      devlog.error('AuthService', 'signUp', 'auth.users', error.message)
       const msg = /already registered|already been registered/i.test(error.message)
         ? 'Cette adresse email est déjà utilisée.'
         : error.message
       return { userId: null, error: msg }
     }
     if (!data.user) return { userId: null, error: 'Création du compte échouée.' }
+    devlog.info('AuthService', 'signUp:ok', { userId: data.user.id })
 
     // The on_auth_user_created trigger may already have created a basic profile row.
     // Use upsert so additional fields (phone, language…) are always written.
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: data.user.id,
-      firstname: params.firstName,
-      lastname: params.lastName,
+      firstname: params.firstName ?? null,
+      lastname: params.lastName ?? null,
       email: params.email,
       phone: params.phone ?? null,
       country: params.country ?? null,
@@ -66,7 +69,8 @@ export const AuthService = {
       password: params.password,
     })
 
-    if (error) return { userId: null, error: error.message }
+    if (error) { devlog.error('AuthService', 'signIn', 'auth', error.message); return { userId: null, error: error.message } }
+    devlog.info('AuthService', 'signIn:ok', { userId: data.user?.id })
     return { userId: data.user?.id ?? null, error: null }
   },
 
@@ -87,7 +91,7 @@ export const AuthService = {
       .from('profiles')
       .select('*')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
 
     return data ?? null
   },
@@ -104,9 +108,12 @@ export const AuthService = {
     return { error: error?.message ?? null }
   },
 
-  onAuthChange(callback: (userId: string | null) => void) {
-    return supabase.auth.onAuthStateChange((_event, session) => {
-      callback(session?.user?.id ?? null)
+  onAuthChange(callback: (userId: string | null, event: string) => void) {
+    return supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION is already handled by the getSession() call above the listener.
+      // Skipping it prevents a double hydrateFromSession on every page load.
+      if (event === 'INITIAL_SESSION') return
+      callback(session?.user?.id ?? null, event)
     })
   },
 }

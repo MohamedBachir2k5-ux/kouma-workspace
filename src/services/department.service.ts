@@ -27,7 +27,7 @@ export const DepartmentService = {
   // The RPC validates the invitation token and returns only the matching org's departments.
   // This replaces the former anon USING(true) SELECT policy (which exposed all orgs).
   async listByInviteToken(token: string): Promise<Department[]> {
-    const { data } = await supabase.rpc('get_departments_for_invite', { p_token: token })
+    const { data } = await (supabase.rpc as unknown as (fn: string, args: object) => Promise<{ data: unknown }>)('get_departments_for_invite', { p_token: token })
     if (!data) return []
     return (data as { id: string; name: string; code: string; organization_id: string }[]).map(r => ({
       id: r.id,

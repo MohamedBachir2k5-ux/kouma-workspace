@@ -1037,10 +1037,10 @@ export type Database = {
           country: string | null
           created_at: string
           email: string
-          firstname: string
+          firstname: string | null
           id: string
           language: string
-          lastname: string
+          lastname: string | null
           phone: string | null
           status: string
         }
@@ -1049,10 +1049,10 @@ export type Database = {
           country?: string | null
           created_at?: string
           email: string
-          firstname: string
+          firstname?: string | null
           id: string
           language?: string
-          lastname: string
+          lastname?: string | null
           phone?: string | null
           status?: string
         }
@@ -1061,10 +1061,10 @@ export type Database = {
           country?: string | null
           created_at?: string
           email?: string
-          firstname?: string
+          firstname?: string | null
           id?: string
           language?: string
-          lastname?: string
+          lastname?: string | null
           phone?: string | null
           status?: string
         }

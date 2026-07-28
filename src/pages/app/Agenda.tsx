@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
-import { Plus, Clock, Users, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Calendar, Search, X, MapPin, Link as LinkIcon } from 'lucide-react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Plus, Clock, Users, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Calendar, Search, X, MapPin, Link as LinkIcon, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { EventService } from '../../services/event.service'
 import { UserService } from '../../services/user.service'
 import { TeamService } from '../../services/team.service'
@@ -56,7 +57,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
   }, [])
 
   const searchResults = query.length > 0
-    ? orgUsers.filter(u => u.status === 'active' && `${u.firstName} ${u.lastName}`.toLowerCase().includes(query.toLowerCase()))
+    ? orgUsers.filter(u => u.status === 'active' && u.role === 'member' && `${u.firstName} ${u.lastName}`.toLowerCase().includes(query.toLowerCase()))
     : []
 
   function add(id: string) { if (!participants.includes(id)) onChange([...participants, id]) }
@@ -116,7 +117,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
                 <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
-                  <div className="text-xs text-muted">{u.role}</div>
+                  <div className="text-xs text-muted">{u.jobTitle ?? 'Collaborateur'}</div>
                 </div>
                 {participants.includes(u.id) && <CheckCircle2 size={14} className="text-indigo shrink-0" />}
               </button>
@@ -176,8 +177,9 @@ function emptyForm(): EventForm {
   return { title: '', date: today, timeStart: '09:00', timeEnd: '10:00', location: '', externalLink: '', participants: [], description: '' }
 }
 
-function EventModal({ event, orgUsers, myTeams, myGroups, onClose, onSave }: {
+function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSave }: {
   event?: Event | null
+  prefill?: Partial<EventForm>
   orgUsers: User[]
   myTeams: Team[]
   myGroups: Channel[]
@@ -185,7 +187,7 @@ function EventModal({ event, orgUsers, myTeams, myGroups, onClose, onSave }: {
   onSave: (form: EventForm) => void
 }) {
   const [form, setForm] = useState<EventForm>(() => {
-    if (!event) return emptyForm()
+    if (!event) return { ...emptyForm(), ...prefill }
     const start = new Date(event.startAt)
     const end = new Date(event.endAt)
     return {
@@ -299,12 +301,24 @@ function EventModal({ event, orgUsers, myTeams, myGroups, onClose, onSave }: {
 
 export function Agenda() {
   const { currentUser, currentOrg } = useAuth()
+  const [searchParams] = useSearchParams()
   const today = new Date()
   const [viewDate, setViewDate] = useState({ year: today.getFullYear(), month: today.getMonth() })
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate())
-  const [showCreate, setShowCreate] = useState(false)
+  const [showCreate, setShowCreate] = useState(() => searchParams.has('participants') || searchParams.has('title'))
   const [editEvent, setEditEvent] = useState<Event | null>(null)
+
+  // Pre-fill from navigation params (e.g. from Messages: ?participants=id1,id2&title=...)
+  const createPrefill = useMemo<Partial<EventForm>>(() => {
+    const raw = searchParams.get('participants')
+    const title = searchParams.get('title') ?? ''
+    return {
+      participants: raw ? raw.split(',').filter(Boolean) : [],
+      title,
+    }
+  }, [searchParams])
   const [filterStatus, setFilterStatus] = useState<EventStatus | 'all'>('all')
+  const [filterScope, setFilterScope] = useState<'all' | 'mine'>('all')
   const [events, setEvents] = useState<Event[]>([])
   const [orgUsers, setOrgUsers] = useState<User[]>([])
   const [myTeams, setMyTeams] = useState<Team[]>([])
@@ -341,9 +355,13 @@ export function Agenda() {
     })
   }
 
+  const scopedEvents = filterScope === 'mine'
+    ? events.filter(e => e.participants.includes(currentUser.id) || e.createdById === currentUser.id)
+    : events
+
   const baseEvents = selectedDay
-    ? events.filter(e => { const d = new Date(e.startAt); return d.getDate() === selectedDay && d.getMonth() === month && d.getFullYear() === year })
-    : events.filter(e => new Date(e.startAt) >= today).slice(0, 10)
+    ? scopedEvents.filter(e => { const d = new Date(e.startAt); return d.getDate() === selectedDay && d.getMonth() === month && d.getFullYear() === year })
+    : scopedEvents.filter(e => new Date(e.startAt) >= today).slice(0, 10)
 
   const selectedEvents = baseEvents.filter(e => filterStatus === 'all' || e.status === filterStatus)
 
@@ -352,6 +370,9 @@ export function Agenda() {
   async function createEvent(form: EventForm) {
     const startAt = new Date(`${form.date}T${form.timeStart}:00`).toISOString()
     const endAt = new Date(`${form.date}T${form.timeEnd}:00`).toISOString()
+    if (hasConflict(startAt, endAt)) {
+      if (!window.confirm('Vous avez déjà une réunion à ce créneau. Créer quand même ?')) return
+    }
     const event = await EventService.create({
       organizationId: currentOrg.id,
       title: form.title,
@@ -380,6 +401,27 @@ export function Agenda() {
   async function markDone(id: string) {
     await EventService.markDone(id, currentOrg.id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'done' as EventStatus } : e))
+  }
+
+  async function respondToEvent(id: string, response: 'accepted' | 'declined') {
+    await EventService.respondToEvent(id, currentUser.id, response)
+    setEvents(prev => prev.map(e => e.id === id
+      ? { ...e, rsvp: { ...(e.rsvp ?? {}), [currentUser.id]: response } }
+      : e
+    ))
+  }
+
+  function hasConflict(startAt: string, endAt: string, excludeId?: string): boolean {
+    const newStart = new Date(startAt).getTime()
+    const newEnd = new Date(endAt).getTime()
+    return events.some(e => {
+      if (excludeId && e.id === excludeId) return false
+      if (e.status === 'cancelled') return false
+      if (!e.participants.includes(currentUser.id)) return false
+      const s = new Date(e.startAt).getTime()
+      const en = new Date(e.endAt).getTime()
+      return newStart < en && newEnd > s
+    })
   }
 
   return (
@@ -428,6 +470,18 @@ export function Agenda() {
           </div>
         </div>
 
+        {/* Scope filter */}
+        <div className="flex gap-2 mb-2">
+          {(['all', 'mine'] as const).map(s => (
+            <button key={s} onClick={() => setFilterScope(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filterScope === s ? 'bg-indigo text-white' : 'bg-surface border border-border text-muted hover:bg-bg'
+              }`}>
+              {s === 'all' ? 'Toutes les réunions' : 'Mes réunions'}
+            </button>
+          ))}
+        </div>
+
         {/* Status filter */}
         <div className="flex gap-2 mb-4 flex-wrap">
           {([['all','Tous'],['scheduled','Planifiés'],['modified','Modifiés'],['cancelled','Annulés'],['done','Terminés']] as const).map(([id, label]) => (
@@ -448,6 +502,10 @@ export function Agenda() {
             {selectedEvents.map(event => {
               const start = new Date(event.startAt)
               const isDisabled = event.status === 'cancelled' || event.status === 'done'
+              const isCreator = event.createdById === currentUser.id
+              const canModify = isCreator || currentUser.role === 'admin'
+              const isParticipant = event.participants.includes(currentUser.id) && !isCreator
+              const myRsvp = event.rsvp?.[currentUser.id]
 
               return (
                 <div key={event.id} className={`bg-surface rounded-xl border p-4 transition-colors ${isDisabled ? 'border-border opacity-70' : 'border-border hover:border-indigo/30'}`}>
@@ -496,8 +554,8 @@ export function Agenda() {
                         </div>
                       </div>
 
-                      {/* Actions */}
-                      {!isDisabled && (
+                      {/* Creator/admin actions */}
+                      {!isDisabled && canModify && (
                         <div className="flex gap-2 flex-wrap">
                           <button onClick={() => setEditEvent(event)}
                             className="px-2.5 py-1 text-[11px] font-medium text-indigo border border-indigo/20 rounded-lg hover:bg-indigo-pale transition-colors">
@@ -510,6 +568,22 @@ export function Agenda() {
                           <button onClick={() => markDone(event.id)}
                             className="px-2.5 py-1 text-[11px] font-medium text-success border border-success/20 rounded-lg hover:bg-success/5 transition-colors">
                             Terminer
+                          </button>
+                        </div>
+                      )}
+                      {/* RSVP for participants (non-creator) */}
+                      {!isDisabled && isParticipant && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-muted uppercase tracking-wide font-semibold">Ma réponse :</span>
+                          <button
+                            onClick={() => respondToEvent(event.id, 'accepted')}
+                            className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border transition-colors ${myRsvp === 'accepted' ? 'bg-success/10 border-success text-success' : 'border-border text-muted hover:border-success hover:text-success'}`}>
+                            <ThumbsUp size={10} /> Accepter
+                          </button>
+                          <button
+                            onClick={() => respondToEvent(event.id, 'declined')}
+                            className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border transition-colors ${myRsvp === 'declined' ? 'bg-danger/10 border-danger text-danger' : 'border-border text-muted hover:border-danger hover:text-danger'}`}>
+                            <ThumbsDown size={10} /> Décliner
                           </button>
                         </div>
                       )}
@@ -537,6 +611,7 @@ export function Agenda() {
       {(showCreate || editEvent) && (
         <EventModal
           event={editEvent}
+          prefill={editEvent ? undefined : createPrefill}
           orgUsers={orgUsers}
           myTeams={myTeams}
           myGroups={myGroups}

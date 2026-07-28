@@ -6,6 +6,7 @@ import { CURRENCY_LABELS } from '../../config/pricing'
 import { AuthService } from '../../services/auth.service'
 import { OrganizationService } from '../../services/organization.service'
 import { KeyService } from '../../services/key.service'
+import { useAuth } from '../../contexts/AuthContext'
 import type { SupportedCurrency } from '../../config/pricing'
 
 const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
@@ -33,6 +34,7 @@ function currencyNameForCountry(countryName: string): string {
 }
 
 export function CreateOrg() {
+  const { refreshCurrentOrg } = useAuth()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [countryOpen, setCountryOpen] = useState(false)
@@ -41,11 +43,11 @@ export function CreateOrg() {
   const [error, setError] = useState<string | null>(null)
   const [breakglassPhrase, setBreakglassPhrase] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
   const [form, setForm] = useState({
     orgName: '', orgType: '', orgTypeOther: '',
     country: '', city: '', address: '', website: '',
     language: 'fr', currency: '',
-    adminFirstName: '', adminLastName: '',
     email: '', emailSecondary: '', phone: '', phoneSecondary: '',
     password: '', confirmPassword: '',
   })
@@ -68,8 +70,6 @@ export function CreateOrg() {
     }
     if (step === 1) {
       return !!(
-        form.adminFirstName &&
-        form.adminLastName &&
         form.email &&
         form.phone &&
         form.password.length >= 6 &&
@@ -86,8 +86,6 @@ export function CreateOrg() {
     const { userId, error: signUpError } = await AuthService.signUp({
       email: form.email,
       password: form.password,
-      firstName: form.adminFirstName,
-      lastName: form.adminLastName,
       phone: form.phone || undefined,
       country: form.country || undefined,
       language: form.language,
@@ -102,7 +100,7 @@ export function CreateOrg() {
     // Generate admin key pair (loads into CryptoSession)
     const { error: keyError } = await KeyService.generateAndStoreUserKeys(userId, form.password)
     if (keyError) {
-      setError('Erreur lors de la génération des clés de chiffrement.')
+      setError(`Clés E2E : ${keyError}`)
       setLoading(false)
       return
     }
@@ -138,6 +136,7 @@ export function CreateOrg() {
       return
     }
 
+    await refreshCurrentOrg()
     setBreakglassPhrase(phrase)
     setStep(3)
     setLoading(false)
@@ -149,7 +148,7 @@ export function CreateOrg() {
   )
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-dvh bg-bg flex flex-col items-center px-4 py-12">
       <Link to="/" className="flex items-center gap-2 mb-10">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -194,10 +193,11 @@ export function CreateOrg() {
                   <input
                     value={form.orgName}
                     onChange={e => update('orgName', e.target.value)}
-                    placeholder="Nimba Industries SA"
+                    placeholder="Nom de votre organisation"
                     autoFocus
-                    className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent"
+                    className={`w-full px-4 py-3 bg-bg border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent ${showValidation && !form.orgName ? 'border-danger' : 'border-border'}`}
                   />
+                  {showValidation && !form.orgName && <p className="mt-1 text-xs text-danger">Champ requis</p>}
                 </div>
 
                 <div>
@@ -233,6 +233,7 @@ export function CreateOrg() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Pays *</label>
+                    {showValidation && !form.country && <p className="mb-1 text-xs text-danger">Sélectionnez un pays dans la liste</p>}
                     <div ref={countryRef} className="relative">
                       <input
                         value={countryOpen ? countryQuery : form.country}
@@ -251,7 +252,8 @@ export function CreateOrg() {
                             <button
                               key={c.code}
                               type="button"
-                              onMouseDown={() => {
+                              onPointerDown={(e) => {
+                                e.preventDefault()
                                 update('country', c.name)
                                 setCountryQuery('')
                                 setCountryOpen(false)
@@ -272,9 +274,10 @@ export function CreateOrg() {
                     <input
                       value={form.city}
                       onChange={e => update('city', e.target.value)}
-                      placeholder="Conakry"
-                      className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
+                      placeholder="Votre ville"
+                      className={`w-full px-3 py-3 bg-bg border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy ${showValidation && !form.city ? 'border-danger' : 'border-border'}`}
                     />
+                    {showValidation && !form.city && <p className="mt-1 text-xs text-danger">Champ requis</p>}
                   </div>
                 </div>
 
@@ -344,28 +347,6 @@ export function CreateOrg() {
               </p>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Prénom *</label>
-                    <input
-                      value={form.adminFirstName}
-                      onChange={e => update('adminFirstName', e.target.value)}
-                      placeholder="Mamadou"
-                      autoFocus
-                      className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Nom *</label>
-                    <input
-                      value={form.adminLastName}
-                      onChange={e => update('adminLastName', e.target.value)}
-                      placeholder="Diallo"
-                      className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
                     Email principal *
@@ -376,8 +357,9 @@ export function CreateOrg() {
                     onChange={e => update('email', e.target.value)}
                     placeholder="admin@organisation.com"
                     autoFocus
-                    className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
+                    className={`w-full px-4 py-3 bg-bg border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy ${showValidation && !form.email ? 'border-danger' : 'border-border'}`}
                   />
+                  {showValidation && !form.email && <p className="mt-1 text-xs text-danger">Champ requis</p>}
                 </div>
 
                 <div>
@@ -400,7 +382,7 @@ export function CreateOrg() {
                       type="tel"
                       value={form.phone}
                       onChange={e => update('phone', e.target.value)}
-                      placeholder="+224 620 00 00 00"
+                      placeholder="+XX XXXX XXXX"
                       className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
                     />
                   </div>
@@ -412,7 +394,7 @@ export function CreateOrg() {
                       type="tel"
                       value={form.phoneSecondary}
                       onChange={e => update('phoneSecondary', e.target.value)}
-                      placeholder="+224 660 00 00 00"
+                      placeholder="+XX XXXX XXXX"
                       className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
                     />
                   </div>
@@ -464,7 +446,6 @@ export function CreateOrg() {
                   { label: 'Ville', value: form.city },
                   { label: 'Langue', value: languages.find(l => l.value === form.language)?.label ?? form.language },
                   { label: 'Devise', value: currencyNameForCountry(form.country) || '—' },
-                  { label: 'Administrateur', value: `${form.adminFirstName} ${form.adminLastName}` },
                   { label: 'Email administrateur', value: form.email },
                   { label: 'Téléphone', value: form.phone },
                 ].map(({ label, value }, idx, arr) => (
@@ -536,9 +517,12 @@ export function CreateOrg() {
             ) : step < 2 ? (
               <button
                 type="button"
-                onClick={() => setStep(step + 1)}
-                disabled={!canNext()}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (!canNext()) { setShowValidation(true); return }
+                  setShowValidation(false)
+                  setStep(step + 1)
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy-light transition-colors"
               >
                 Suivant <ArrowRight size={15} />
               </button>

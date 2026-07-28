@@ -33,22 +33,22 @@ export const MOCK_ORG: Organization = {
   language: 'fr',
   sector: 'Secteur privé',
   size: null,
-  plan: 'starter',
+  plan: 'free',
   createdAt: '2025-01-10',
 }
 
 export const MOCK_SUBSCRIPTION: Subscription = {
   id: 'sub1',
   organizationId: 'org1',
-  plan: 'starter',
+  plan: 'free',
   status: 'active',
   currency: 'GNF',
-  amount: PRICING.GNF.starter.monthly,
+  amount: PRICING.GNF.free.monthly,
   trialEndsAt: null,
   startDate: '2026-01-23',
   renewsAt: '2026-08-23',
   endDate: null,
-  discountPercent: PRICING.GNF.starter.discountPercent,
+  discountPercent: PRICING.GNF.free.discountPercent,
   discountEndsAt: '2027-07-23',
 }
 

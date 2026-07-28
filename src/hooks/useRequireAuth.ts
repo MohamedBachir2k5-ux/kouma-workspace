@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 
 function isConfigured(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  return Boolean(url && url.startsWith('https://') && !url.includes('your-project'))
+  return Boolean(url && !url.includes('your-project') && (url.startsWith('https://') || url.startsWith('http://')))
 }
 
 export function useRequireAuth(loginPath: string) {

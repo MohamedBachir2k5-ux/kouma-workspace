@@ -45,7 +45,9 @@ export function formatShortDate(iso: string): string {
 }
 
 export function initials(firstName: string, lastName: string): string {
-  return `${firstName[0]}${lastName[0]}`.toUpperCase()
+  const f = firstName?.[0] ?? ''
+  const l = lastName?.[0] ?? ''
+  return (f + l).toUpperCase() || '?'
 }
 
 export function avatarColor(id: string): string {

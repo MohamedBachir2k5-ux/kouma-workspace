@@ -19,9 +19,10 @@ function ResponsableSearch({ value, onChange, users }: {
 
   const selected = users.find(u => u.id === value)
   const results = query.length > 0
-    ? users.filter(u => u.status === 'active' && (
-        `${u.firstName} ${u.lastName} ${u.role}`.toLowerCase().includes(query.toLowerCase())
-      ))
+    ? users.filter(u =>
+        u.status === 'active' &&
+        `${u.firstName} ${u.lastName} ${u.jobTitle ?? ''}`.toLowerCase().includes(query.toLowerCase())
+      )
     : []
 
   useEffect(() => {
@@ -42,7 +43,7 @@ function ResponsableSearch({ value, onChange, users }: {
           <Avatar firstName={selected.firstName} lastName={selected.lastName} id={selected.id} size="sm" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-ink">{selected.firstName} {selected.lastName}</div>
-            <div className="text-xs text-muted">{selected.role}</div>
+            <div className="text-xs text-muted">{selected.jobTitle || (selected.role === 'admin' ? 'Administrateur' : 'Collaborateur')}</div>
           </div>
           <button type="button" onClick={clear} className="text-muted hover:text-ink">
             <X size={15} />
@@ -68,7 +69,7 @@ function ResponsableSearch({ value, onChange, users }: {
               <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
               <div className="min-w-0">
                 <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
-                <div className="text-xs text-muted">{u.role}</div>
+                <div className="text-xs text-muted">{u.jobTitle || (u.role === 'admin' ? 'Administrateur' : 'Collaborateur')}</div>
               </div>
             </button>
           ))}

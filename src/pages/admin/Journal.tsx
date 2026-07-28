@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { UserCheck, UserX, Users, ShieldCheck, FileText, Link as LinkIcon, Pencil, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { UserCheck, UserX, Users, ShieldCheck, FileText, Link as LinkIcon, Pencil, Search, ChevronLeft, ChevronRight, Shield } from 'lucide-react'
 import { AuditService } from '../../services/audit.service'
 import { UserService } from '../../services/user.service'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,19 +8,21 @@ import type { AuditLog, AuditAction, User } from '../../lib/types'
 const PAGE_SIZE = 5
 
 const actionConfig: Partial<Record<AuditAction, { icon: typeof UserCheck; label: string; color: string }>> = {
-  user_joined:         { icon: UserCheck,   label: 'Membre ajouté',      color: 'bg-success/10 text-success' },
-  user_suspended:      { icon: UserX,       label: 'Membre suspendu',    color: 'bg-amber/10 text-amber' },
-  user_revoked:        { icon: UserX,       label: 'Accès révoqué',      color: 'bg-danger/10 text-danger' },
-  user_activated:      { icon: UserCheck,   label: 'Membre réactivé',    color: 'bg-success/10 text-success' },
-  team_created:        { icon: Users,       label: 'Équipe créée',       color: 'bg-indigo/10 text-indigo' },
-  team_updated:        { icon: Pencil,      label: 'Équipe modifiée',    color: 'bg-indigo/10 text-indigo' },
-  team_deleted:        { icon: Users,       label: 'Équipe supprimée',   color: 'bg-danger/10 text-danger' },
-  permission_changed:  { icon: ShieldCheck, label: 'Permission modifiée',color: 'bg-navy/10 text-navy' },
-  document_added:      { icon: FileText,    label: 'Document ajouté',    color: 'bg-success/10 text-success' },
-  document_deleted:    { icon: FileText,    label: 'Document supprimé',  color: 'bg-danger/10 text-danger' },
-  invite_generated:    { icon: LinkIcon,    label: "Invitation générée", color: 'bg-muted/10 text-muted' },
-  subscription_changed:{ icon: ShieldCheck, label: 'Abonnement modifié', color: 'bg-navy/10 text-navy' },
-  organization_created:{ icon: UserCheck,   label: 'Organisation créée', color: 'bg-success/10 text-success' },
+  user_joined:         { icon: UserCheck,   label: 'Membre ajouté',       color: 'bg-success/10 text-success' },
+  user_suspended:      { icon: UserX,       label: 'Membre suspendu',     color: 'bg-amber/10 text-amber' },
+  user_revoked:        { icon: UserX,       label: 'Accès révoqué',       color: 'bg-danger/10 text-danger' },
+  user_activated:      { icon: UserCheck,   label: 'Membre réactivé',     color: 'bg-success/10 text-success' },
+  team_created:        { icon: Users,       label: 'Équipe créée',        color: 'bg-indigo/10 text-indigo' },
+  team_updated:        { icon: Pencil,      label: 'Équipe modifiée',     color: 'bg-indigo/10 text-indigo' },
+  team_deleted:        { icon: Users,       label: 'Équipe supprimée',    color: 'bg-danger/10 text-danger' },
+  permission_changed:  { icon: ShieldCheck, label: 'Permission modifiée', color: 'bg-navy/10 text-navy' },
+  document_added:      { icon: FileText,    label: 'Document ajouté',     color: 'bg-success/10 text-success' },
+  document_deleted:    { icon: FileText,    label: 'Document supprimé',   color: 'bg-danger/10 text-danger' },
+  invite_generated:    { icon: LinkIcon,    label: "Invitation générée",  color: 'bg-muted/10 text-muted' },
+  subscription_changed:{ icon: ShieldCheck, label: 'Abonnement modifié',  color: 'bg-navy/10 text-navy' },
+  organization_created:{ icon: UserCheck,   label: 'Organisation créée',  color: 'bg-success/10 text-success' },
+  admin_promoted:      { icon: Shield,      label: 'Admin promu',         color: 'bg-indigo/10 text-indigo' },
+  admin_demoted:       { icon: Shield,      label: 'Admin rétrogradé',    color: 'bg-amber/10 text-amber' },
 }
 
 const fallbackConfig = { icon: ShieldCheck, label: 'Action', color: 'bg-muted/10 text-muted' }
@@ -29,7 +31,6 @@ const filterOptions: { value: 'all' | AuditAction; label: string }[] = [
   { value: 'all',              label: 'Tout' },
   { value: 'user_joined',      label: 'Membres' },
   { value: 'team_created',     label: 'Équipes' },
-  { value: 'permission_changed', label: 'Permissions' },
   { value: 'document_added',   label: 'Documents' },
 ]
 
@@ -40,20 +41,23 @@ function formatTs(iso: string) {
 }
 
 function actionText(log: AuditLog): string {
+  const name = log.targetName || null
   switch (log.action) {
-    case 'user_joined':          return `${log.targetName} a rejoint le workspace`
-    case 'user_suspended':       return `${log.targetName} a été suspendu`
-    case 'user_revoked':         return `Accès de ${log.targetName} révoqué`
-    case 'user_activated':       return `${log.targetName} a été réactivé`
-    case 'team_created':         return `Équipe « ${log.targetName} » créée`
-    case 'team_updated':         return `Équipe « ${log.targetName} » modifiée`
-    case 'team_deleted':         return `Équipe « ${log.targetName} » supprimée`
-    case 'permission_changed':   return `Permissions de ${log.targetName} modifiées`
-    case 'document_added':       return `Document « ${log.targetName} » ajouté`
-    case 'document_deleted':     return `Document « ${log.targetName} » supprimé`
+    case 'user_joined':          return name ? `${name} a rejoint le workspace` : 'Un collaborateur a rejoint le workspace'
+    case 'user_suspended':       return name ? `${name} a été suspendu` : 'Un collaborateur a été suspendu'
+    case 'user_revoked':         return name ? `Accès de ${name} révoqué` : 'Accès révoqué'
+    case 'user_activated':       return name ? `${name} a été réactivé` : 'Un collaborateur a été réactivé'
+    case 'team_created':         return name ? `Équipe « ${name} » créée` : 'Équipe créée'
+    case 'team_updated':         return name ? `Équipe « ${name} » modifiée` : 'Équipe modifiée'
+    case 'team_deleted':         return name ? `Équipe « ${name} » supprimée` : 'Équipe supprimée'
+    case 'permission_changed':   return name ? `Permissions de ${name} modifiées` : 'Permissions modifiées'
+    case 'document_added':       return name ? `Document « ${name} » ajouté` : 'Document ajouté'
+    case 'document_deleted':     return name ? `Document « ${name} » supprimé` : 'Document supprimé'
     case 'invite_generated':     return "Lien d'invitation généré"
     case 'subscription_changed': return 'Abonnement modifié'
     case 'organization_created': return 'Organisation créée'
+    case 'admin_promoted':       return name ? `${name} a été promu administrateur` : 'Un membre a été promu administrateur'
+    case 'admin_demoted':        return name ? `${name} n'est plus administrateur` : 'Un administrateur a été rétrogradé'
     default: return log.action
   }
 }

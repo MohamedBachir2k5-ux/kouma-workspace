@@ -4,7 +4,7 @@ import { Check, ChevronDown } from 'lucide-react'
 import { PublicNav } from '../components/layout/PublicNav'
 import { SiteFooter } from './Landing'
 import {
-  PRICING, STORAGE, TRIAL_DAYS, CURRENCY_LABELS,
+  PRICING, STORAGE, PLAN_USER_LIMITS, TRIAL_DAYS, CURRENCY_LABELS,
   discountedPrice, formatPrice,
   type SupportedCurrency,
 } from '../config/pricing'
@@ -12,9 +12,9 @@ import {
 const CURRENCIES = Object.keys(CURRENCY_LABELS) as SupportedCurrency[]
 
 const PLAN_FEATURES = {
-  starter: [
-    '100 utilisateurs inclus',
-    `${STORAGE.starter} de stockage`,
+  free: [
+    '25 utilisateurs inclus',
+    `${STORAGE.free} de stockage`,
     'Messagerie interne illimitée',
     'Espaces d\'équipe',
     'Groupes de discussion',
@@ -25,11 +25,18 @@ const PLAN_FEATURES = {
     'Support par email',
   ],
   business: [
-    'Utilisateurs illimités',
+    'Jusqu\'à 100 utilisateurs',
     `${STORAGE.business} de stockage`,
-    'Tout ce que comprend Starter',
+    'Tout ce que comprend Free',
     'Accompagnement à l\'onboarding',
     'Support prioritaire',
+  ],
+  enterprise: [
+    'Utilisateurs illimités',
+    `${STORAGE.enterprise} de stockage`,
+    'Tout ce que comprend Business',
+    'SLA personnalisé',
+    'Support dédié',
   ],
 }
 
@@ -38,20 +45,28 @@ export function Pricing() {
 
   const plans = [
     {
-      id: 'starter' as const,
-      name: 'Starter',
-      target: 'Jusqu\'à 100 utilisateurs',
+      id: 'free' as const,
+      name: 'Free',
+      target: 'Jusqu\'à 25 utilisateurs',
       desc: 'Pour les organisations qui lancent leur espace de travail numérique.',
       highlight: false,
-      cta: 'Démarrer l\'essai gratuit',
+      cta: 'Créer mon espace gratuit',
     },
     {
       id: 'business' as const,
       name: 'Business',
-      target: 'Utilisateurs illimités',
+      target: `Jusqu'à ${PLAN_USER_LIMITS.business} utilisateurs`,
       desc: 'Pour les organisations qui ont besoin de plus de capacité et d\'espace.',
       highlight: true,
       cta: 'Démarrer l\'essai gratuit',
+    },
+    {
+      id: 'enterprise' as const,
+      name: 'Enterprise',
+      target: 'Utilisateurs illimités',
+      desc: 'Pour les grandes organisations sans contrainte de capacité.',
+      highlight: false,
+      cta: 'Contacter les ventes',
     },
   ]
 
@@ -103,7 +118,7 @@ export function Pricing() {
           )}
 
           {currency && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {plans.map((plan) => {
               const p = PRICING[currency][plan.id]
               const discounted = discountedPrice(p.monthly, p.discountPercent)
@@ -128,25 +143,40 @@ export function Pricing() {
                     <p className={`text-sm leading-relaxed mb-5 ${plan.highlight ? 'text-indigo-light' : 'text-muted'}`}>
                       {plan.desc}
                     </p>
-                    <div className="mb-1">
-                      <span className={`text-xs line-through ${plan.highlight ? 'text-indigo-light/70' : 'text-faint'}`}>
-                        {formatPrice(p.monthly, currency)}/mois
-                      </span>
-                      <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded ${plan.highlight ? 'bg-indigo text-white' : 'bg-indigo-pale text-indigo'}`}>
-                        −{p.discountPercent}%
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className={`text-3xl font-bold ${plan.highlight ? 'text-white' : 'text-navy'}`}>
-                        {formatPrice(discounted, currency)}
-                      </span>
-                      <span className={`text-sm font-medium ${plan.highlight ? 'text-indigo-light' : 'text-muted'}`}>
-                        /mois
-                      </span>
-                    </div>
-                    <p className={`text-xs mt-1 ${plan.highlight ? 'text-indigo-light/80' : 'text-faint'}`}>
-                      prix après remise première année
-                    </p>
+                    {p.monthly === 0 ? (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-3xl font-bold ${plan.highlight ? 'text-white' : 'text-navy'}`}>
+                            Gratuit
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-1 ${plan.highlight ? 'text-indigo-light/80' : 'text-faint'}`}>
+                          sans engagement
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-1">
+                          <span className={`text-xs line-through ${plan.highlight ? 'text-indigo-light/70' : 'text-faint'}`}>
+                            {formatPrice(p.monthly, currency)}/mois
+                          </span>
+                          <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded ${plan.highlight ? 'bg-indigo text-white' : 'bg-indigo-pale text-indigo'}`}>
+                            −{p.discountPercent}%
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-3xl font-bold ${plan.highlight ? 'text-white' : 'text-navy'}`}>
+                            {formatPrice(discounted, currency)}
+                          </span>
+                          <span className={`text-sm font-medium ${plan.highlight ? 'text-indigo-light' : 'text-muted'}`}>
+                            /mois
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-1 ${plan.highlight ? 'text-indigo-light/80' : 'text-faint'}`}>
+                          prix après remise première année
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   <ul className="space-y-3 flex-1">
@@ -187,11 +217,11 @@ export function Pricing() {
                   a: 'L\'administrateur révoque l\'accès depuis la console. Le compte est désactivé immédiatement. Les documents et contenus partagés dans les espaces collectifs restent disponibles pour l\'organisation.',
                 },
                 {
-                  q: 'Les fonctionnalités sont-elles les mêmes dans les deux plans ?',
-                  a: `Oui. Vous accédez exactement aux mêmes fonctionnalités dans les deux plans. La différence porte sur le nombre d\'utilisateurs (100 vs illimité) et le stockage (${STORAGE.starter} vs ${STORAGE.business}).`,
+                  q: 'Les fonctionnalités sont-elles les mêmes dans tous les plans ?',
+                  a: `Oui. Vous accédez exactement aux mêmes fonctionnalités dans tous les plans. La différence porte sur le nombre d\'utilisateurs (25 / 100 / illimité) et le stockage (${STORAGE.free} / ${STORAGE.business} / ${STORAGE.enterprise}).`,
                 },
                 {
-                  q: 'Comment passer du plan Starter au plan Business ?',
+                  q: 'Comment passer d\'un plan à un autre ?',
                   a: 'Directement depuis les paramètres de votre workspace. La migration est immédiate, vos données et équipes sont conservées intégralement.',
                 },
               ].map(({ q, a }) => (
