@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom'
 import { MessageSquare, FileText, Calendar, Users, User, Megaphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +7,8 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import { Avatar } from '../ui/Avatar'
 import { NotificationBell } from '../ui/NotificationBell'
 import { PWAInstallBanner } from '../ui/PWAInstallBanner'
+import { PinUnlockModal } from '../ui/PinUnlockModal'
+import { cryptoSession } from '../../lib/crypto-session'
 
 function orgInitials(name: string) {
   return name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
@@ -55,15 +58,36 @@ function FullPageSpinner() {
 
 export function AppLayout() {
   const { t } = useTranslation()
-  const { currentUser, currentOrg, loading, isOrgReady } = useAuth()
+  const { currentUser, currentOrg, loading, isOrgReady, signOut } = useAuth()
   const { checking } = useRequireAuth('/connexion/utilisateur')
   const navigate = useNavigate()
+
+  // Show PIN unlock modal when the Supabase session is valid but CryptoSession was lost
+  // (happens after a page refresh — private key is in-memory only)
+  const [cryptoLoaded, setCryptoLoaded] = useState(() => cryptoSession.isLoaded)
+
+  useEffect(() => {
+    if (cryptoSession.isLoaded) setCryptoLoaded(true)
+  }, [isOrgReady])
 
   if (checking || loading) return <FullPageSpinner />
   if (!isOrgReady) return <Navigate to="/creer" replace />
 
   return (
     <div className="flex flex-col h-dvh bg-bg">
+      {!cryptoLoaded && isOrgReady && (
+        <PinUnlockModal
+          userId={currentUser.id}
+          orgId={currentOrg.id}
+          firstName={currentUser.firstName}
+          lastName={currentUser.lastName}
+          email={currentUser.email}
+          avatarUrl={currentUser.avatarUrl}
+          isAdmin={currentUser.role === 'admin'}
+          onUnlocked={() => setCryptoLoaded(true)}
+          onSignOut={signOut}
+        />
+      )}
       {/* Top bar — mobile */}
       <header className="flex items-center justify-between px-4 h-14 bg-surface border-b border-border shrink-0 md:hidden">
         <div className="flex items-center gap-2">
@@ -77,7 +101,7 @@ export function AppLayout() {
         </div>
         <div className="flex items-center gap-1">
           <NotificationBell variant="light" />
-          <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} id={currentUser.id} size="sm" />
+          <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} id={currentUser.id} size="sm" src={currentUser.avatarUrl} />
         </div>
       </header>
 
@@ -121,11 +145,11 @@ export function AppLayout() {
               <NotificationBell variant="dark" />
             </div>
             <div onClick={() => navigate('/app/profil')} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-navy-light cursor-pointer transition-colors">
-              <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} id={currentUser.id} size="sm" />
+              <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} id={currentUser.id} size="sm" src={currentUser.avatarUrl} />
               <div className="min-w-0">
                 <div className="text-white text-sm font-medium truncate">{currentUser.firstName} {currentUser.lastName}</div>
                 <div className="text-indigo-light text-xs truncate">
-                  {currentUser.role === 'admin' ? 'Administrateur' : (currentUser.jobTitle || 'Collaborateur')}
+                  {currentUser.role === 'admin' ? t('common.administrator') : (currentUser.jobTitle || t('common.collaborator'))}
                 </div>
               </div>
             </div>

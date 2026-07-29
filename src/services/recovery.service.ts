@@ -9,6 +9,11 @@ export const RecoveryService = {
   // ── OTP (used by both admin and collaborator recovery) ─────────────────────
 
   async sendRecoveryOtp(email: string): Promise<{ error: string | null }> {
+    // Server-side rate limit: max 5 OTP requests per email per 2 minutes
+    type RpcFn = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+    const { data: limitErr } = await (supabase.rpc as unknown as RpcFn)('check_otp_rate_limit', { p_email: email })
+    if (limitErr) return { error: limitErr as string }
+
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
     return { error: error?.message ?? null }
   },
@@ -30,12 +35,38 @@ export const RecoveryService = {
   // 6. Update Supabase auth password
   // 7. Audit log
 
+  // Log recovery initiation after OTP verification (before breakglass phrase is entered).
+  async logRecoveryInitiated(userId: string, orgId: string): Promise<void> {
+    try {
+      await supabase.from('audit_logs').insert({
+        organization_id: orgId,
+        user_id: userId,
+        action: 'recovery_initiated',
+        target_id: userId,
+        target_type: 'user',
+        detail: 'Identité vérifiée — accès breakglass demandé',
+      })
+    } catch { /* non-blocking */ }
+  },
+
   async adminBreakglassRecovery(
     orgId: string,
     userId: string,
     breakglassPhrase: string,
     newPassword: string,
+    deviceInfo?: string,
   ): Promise<{ error: string | null }> {
+    // Log the breakglass attempt immediately — before phrase verification so that
+    // failed attempts (wrong phrase) are also captured in the audit trail.
+    supabase.from('audit_logs').insert({
+      organization_id: orgId,
+      user_id: userId,
+      action: 'breakglass_used',
+      target_id: userId,
+      target_type: 'user',
+      detail: deviceInfo ? `Clé breakglass utilisée · ${deviceInfo}` : 'Clé breakglass utilisée',
+    }).catch(() => {})
+
     try {
       // 1. Fetch breakglass-protected row (any row with bg_encrypted_key in this org)
       const { data: bgRow, error: bgErr } = await supabase
@@ -62,11 +93,24 @@ export const RecoveryService = {
       const newAdminPub = cryptoSession.userPub
       if (!newAdminPub) return { error: 'Erreur de session cryptographique.' }
 
-      // 4. Re-encrypt all conversation keys for admin via org recovery key
-      const { data: recoveryKeys } = await supabase
-        .from('conversation_recovery_keys')
-        .select('conversation_id, encrypted_key, eph_public_key, ecies_iv')
+      // 4. Re-encrypt conversation keys for admin — team conversations only.
+      // Direct messages and private group conversations are intentionally excluded:
+      // the admin never participates in them and must not gain access through recovery.
+      const { data: teamConvIds } = await supabase
+        .from('conversations')
+        .select('id')
         .eq('organization_id', orgId)
+        .eq('type', 'team')
+
+      const teamIds = (teamConvIds ?? []).map(c => c.id)
+
+      const { data: recoveryKeys } = teamIds.length > 0
+        ? await supabase
+            .from('conversation_recovery_keys')
+            .select('conversation_id, encrypted_key, eph_public_key, ecies_iv')
+            .eq('organization_id', orgId)
+            .in('conversation_id', teamIds)
+        : { data: [] }
 
       if (recoveryKeys?.length) {
         const keyRows: Array<{ conversation_id: string; user_id: string; encrypted_key: string; eph_public_key: string; ecies_iv: string }> = []
@@ -118,7 +162,9 @@ export const RecoveryService = {
         action: 'recovery_completed',
         target_id: userId,
         target_type: 'user',
-        detail: 'Récupération administrateur via clé breakglass',
+        detail: deviceInfo
+          ? `Récupération administrateur via clé breakglass · ${deviceInfo}`
+          : 'Récupération administrateur via clé breakglass',
       })
 
       return { error: null }
