@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import i18n from '../i18n/index'
 import { tracerSetContext } from '../lib/tracer'
 import type { User, Organization, Subscription } from '../lib/types'
 import { mockUser, MOCK_ORG, MOCK_SUBSCRIPTION, mockStorageQuotaBytes } from '../lib/mock'
@@ -8,6 +9,7 @@ import { AuthService } from '../services/auth.service'
 import { OrganizationService } from '../services/organization.service'
 import { UserService } from '../services/user.service'
 import { SessionService } from '../services/session.service'
+import { PushService } from '../services/push.service'
 import type { ProfileRow, OrganizationRow, SubscriptionRow } from '../lib/database.types'
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
@@ -44,6 +46,7 @@ function orgRowToOrganization(r: OrganizationRow): Organization {
     sector: r.sector,
     size: r.size,
     plan: r.plan as Organization['plan'],
+    primaryColor: r.primary_color ?? null,
     createdAt: r.created_at,
   }
 }
@@ -107,6 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Keeps isOrgReady readable synchronously so hydrateFromSession can't override
   // a true value that refreshCurrentOrg already committed (race-condition guard).
   const isOrgReadyRef = useRef(false)
+  // Tracks whether a real session was ever established so we can redirect on unexpected SIGNED_OUT.
+  const wasAuthenticatedRef = useRef(false)
 
   function setOrgReady(ready: boolean) {
     isOrgReadyRef.current = ready
@@ -151,8 +156,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user.jobTitle = memberInfo?.jobTitle
         user.department = memberInfo?.department
         setCurrentUser(user)
-        setCurrentOrg(orgRowToOrganization(orgRow))
+        const org = orgRowToOrganization(orgRow)
+        setCurrentOrg(org)
         tracerSetContext(user.id, orgRow.id)
+
+        // Apply user language from DB
+        const lang = user.language || org.language || 'fr'
+        if (lang !== i18n.language) {
+          i18n.changeLanguage(lang)
+          localStorage.setItem('kouma_lang', lang)
+        }
+
+        // Apply org primary color as CSS variable — validate hex to prevent CSS injection
+        if (org.primaryColor && /^#[0-9a-fA-F]{3,8}$/.test(org.primaryColor)) {
+          document.documentElement.style.setProperty('--color-navy', org.primaryColor)
+        } else {
+          document.documentElement.style.removeProperty('--color-navy')
+        }
+        wasAuthenticatedRef.current = true
         setOrgReady(true)
         if (subRow) {
           setCurrentSubscription(subRowToSubscription(subRow))
@@ -195,14 +216,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true)
         hydrateFromSession(userId, event === 'SIGNED_IN')
       } else {
+        const hadSession = wasAuthenticatedRef.current
         setCurrentUser(mockUser)
         setCurrentOrg(MOCK_ORG)
         setCurrentSubscription(MOCK_SUBSCRIPTION)
         setStorageQuotaBytes(mockStorageQuotaBytes)
         setCurrentSessionId(null)
         setOrgReady(false)
+        wasAuthenticatedRef.current = false
         if (heartbeatRef.current) clearInterval(heartbeatRef.current)
         setLoading(false)
+        // Token expired or revoked externally — redirect to login so the user
+        // re-authenticates instead of remaining on a protected page with broken state.
+        if (hadSession && event === 'SIGNED_OUT') {
+          window.location.href = '/connexion'
+        }
       }
     })
 
@@ -251,6 +279,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     tracerSetContext(undefined, undefined)
     if (isSupabaseConfigured()) {
+      // Clean up push subscription before session is invalidated
+      if (currentUser?.id) await PushService.unsubscribe(currentUser.id).catch(() => {})
       if (currentSessionId) await SessionService.deleteSession(currentSessionId)
       await AuthService.signOut()
     }

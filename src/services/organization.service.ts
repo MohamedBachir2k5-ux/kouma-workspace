@@ -9,6 +9,7 @@ export interface CreateOrganizationParams {
   phone?: string
   website?: string
   country: string
+  city?: string
   currency: SupportedCurrency
   language: string
   sector?: string
@@ -32,7 +33,7 @@ export const OrganizationService = {
       p_phone:    params.phone    ?? null,
       p_website:  params.website  ?? null,
       p_country:  params.country,
-      p_city:     null,
+      p_city:     params.city ?? null,
       p_currency: params.currency,
       p_language: params.language,
       p_sector:   params.sector   ?? null,
@@ -83,7 +84,7 @@ export const OrganizationService = {
     return org ?? null
   },
 
-  async update(id: string, updates: Partial<Pick<OrganizationRow, 'name' | 'email' | 'phone' | 'website' | 'logo_url' | 'country' | 'currency' | 'language' | 'sector' | 'size' | 'city'>>): Promise<{ error: string | null }> {
+  async update(id: string, updates: Partial<Pick<OrganizationRow, 'name' | 'email' | 'phone' | 'website' | 'logo_url' | 'country' | 'currency' | 'language' | 'sector' | 'size' | 'city' | 'primary_color'>>): Promise<{ error: string | null }> {
     const { error } = await supabase
       .from('organizations')
       .update(updates)
@@ -139,5 +140,29 @@ export const OrganizationService = {
       .select('size')
       .eq('organization_id', organizationId)
     return (data ?? []).reduce((sum, f) => sum + f.size, 0)
+  },
+
+  async getSecuritySettings(organizationId: string): Promise<{ inviteExpiryDays: number | null; sessionDurationDays: number }> {
+    const { data } = await supabase
+      .from('org_security_settings')
+      .select('invite_expiry_days, session_duration_days')
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+    return {
+      inviteExpiryDays: data?.invite_expiry_days ?? 7,
+      sessionDurationDays: data?.session_duration_days ?? 30,
+    }
+  },
+
+  async saveSecuritySettings(organizationId: string, settings: { inviteExpiryDays: number | null; sessionDurationDays: number }): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('org_security_settings')
+      .upsert({
+        organization_id: organizationId,
+        invite_expiry_days: settings.inviteExpiryDays,
+        session_duration_days: settings.sessionDurationDays,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'organization_id' })
+    return { error: error?.message ?? null }
   },
 }

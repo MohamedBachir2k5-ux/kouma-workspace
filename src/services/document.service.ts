@@ -160,16 +160,17 @@ export const DocumentService = {
       try {
         const buf = await file.arrayBuffer()
         const fileKey = await KeyService.initFileKey(storagePath, orgId)
-        if (fileKey.key) {
-          const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
-          const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey.key, buf)
-          const out = new Uint8Array(12 + cipherBuf.byteLength)
-          out.set(iv, 0)
-          out.set(new Uint8Array(cipherBuf), 12)
-          uploadBlob = new Blob([out], { type: 'application/octet-stream' })
+        if (!fileKey.key) {
+          return { document: null, error: 'Clé de chiffrement indisponible. Rechargez la page.' }
         }
+        const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
+        const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey.key, buf)
+        const out = new Uint8Array(12 + cipherBuf.byteLength)
+        out.set(iv, 0)
+        out.set(new Uint8Array(cipherBuf), 12)
+        uploadBlob = new Blob([out], { type: 'application/octet-stream' })
       } catch {
-        // Fall back to plaintext on crypto failure
+        return { document: null, error: 'Erreur de chiffrement. Le document n\'a pas été envoyé.' }
       }
     }
 
@@ -249,6 +250,7 @@ export const DocumentService = {
         title: fileName,
         file_id: fileRecord.id,
         folder_id: folderId ?? null,
+        visibility: 'personal',
       })
       .select('*, files(name, type, size, storage_path)')
       .single()
@@ -263,6 +265,14 @@ export const DocumentService = {
     })
 
     return { document: rowToDocument(docRecord as unknown as DocumentWithFile), error: null }
+  },
+
+  async deleteDocument(documentId: string): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', documentId)
+    return { error: error?.message ?? null }
   },
 
   // Download a document and decrypt it if the file key is available.
