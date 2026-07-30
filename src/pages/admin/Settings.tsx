@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { Building2, CreditCard, Bell, Camera, Loader2, Palette, BookOpen, HelpCircle, Mail, ExternalLink } from 'lucide-react'
 
-// TODO: replace with real URLs before go-live
-const SUPPORT_GUIDE_URL   = '#'
-const SUPPORT_EMAIL       = 'support@kouma.app'
-const SUPPORT_CONTACT_URL = '#'
+// TODO: replace SUPPORT_GUIDE_URL with real doc URL before go-live
+const SUPPORT_GUIDE_URL = '#'
+const SUPPORT_EMAIL     = 'support@kouma.app'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { DocumentService } from '../../services/document.service'
@@ -467,14 +466,14 @@ export function AdminSettings() {
             <ExternalLink size={13} className="text-faint group-hover:text-muted transition-colors shrink-0" />
           </a>
 
-          <a href={SUPPORT_CONTACT_URL} target="_blank" rel="noopener noreferrer"
+          <a href={`mailto:${SUPPORT_EMAIL}`}
             className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-bg transition-colors group">
             <div className="w-8 h-8 rounded-lg bg-amber/10 flex items-center justify-center shrink-0">
               <HelpCircle size={15} className="text-amber" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-ink">Formulaire de contact</div>
-              <div className="text-xs text-muted">Envoyer une demande à l'équipe</div>
+              <div className="text-xs text-muted">Écrire directement à l'équipe</div>
             </div>
             <ExternalLink size={13} className="text-faint group-hover:text-muted transition-colors shrink-0" />
           </a>
