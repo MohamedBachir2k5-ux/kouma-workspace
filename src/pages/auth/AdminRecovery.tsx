@@ -5,6 +5,13 @@ import { RecoveryService } from '../../services/recovery.service'
 
 type Step = 'email' | 'otp' | 'credentials' | 'done'
 
+function getDeviceInfo(): string {
+  const ua = navigator.userAgent
+  const mobile = /Mobi|Android/i.test(ua) ? 'Mobile' : 'Desktop'
+  const browser = /Edg/i.test(ua) ? 'Edge' : /Chrome/i.test(ua) ? 'Chrome' : /Firefox/i.test(ua) ? 'Firefox' : /Safari/i.test(ua) ? 'Safari' : 'Navigateur'
+  return `${browser} · ${mobile}`
+}
+
 export function AdminRecovery() {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('email')
@@ -19,6 +26,11 @@ export function AdminRecovery() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
+  const [otpAttempts, setOtpAttempts] = useState(0)
+  const [otpLockedUntil, setOtpLockedUntil] = useState<number | null>(null)
+
+  const OTP_MAX = 5
+  const OTP_LOCKOUT_MS = 2 * 60 * 1000
 
   async function sendOtp() {
     if (!email.trim()) return
@@ -27,21 +39,42 @@ export function AdminRecovery() {
     const { error: err } = await RecoveryService.sendRecoveryOtp(email.trim())
     setLoading(false)
     if (err) { setError(err); return }
+    setOtpAttempts(0)
+    setOtpLockedUntil(null)
     setStep('otp')
   }
 
   async function verifyOtp() {
     if (otp.length !== 6) return
+
+    if (otpLockedUntil && Date.now() < otpLockedUntil) {
+      const remaining = Math.ceil((otpLockedUntil - Date.now()) / 60000)
+      setError(`Trop de tentatives. Réessayez dans ${remaining} minute${remaining > 1 ? 's' : ''}.`)
+      return
+    }
+
     setLoading(true)
     setError(null)
     const { userId: uid, error: err } = await RecoveryService.verifyOtp(email.trim(), otp.trim())
-    if (err || !uid) { setError(err ?? 'Code invalide.'); setLoading(false); return }
+    if (err || !uid) {
+      const next = otpAttempts + 1
+      setOtpAttempts(next)
+      if (next >= OTP_MAX) {
+        setOtpLockedUntil(Date.now() + OTP_LOCKOUT_MS)
+        setError('Trop de tentatives. Attendez 2 minutes avant de réessayer.')
+      } else {
+        setError(err ?? `Code invalide. (${next}/${OTP_MAX} tentatives)`)
+      }
+      setLoading(false)
+      return
+    }
 
     const oid = await RecoveryService.getOrgIdForUser(uid)
     if (!oid) { setError('Organisation introuvable pour ce compte.'); setLoading(false); return }
 
     setUserId(uid)
     setOrgId(oid)
+    RecoveryService.logRecoveryInitiated(uid, oid)
     setLoading(false)
     setStep('credentials')
   }
@@ -50,7 +83,7 @@ export function AdminRecovery() {
     if (!phrase.trim() || password.length < 6 || password !== confirmPassword) return
     setLoading(true)
     setError(null)
-    const { error: err } = await RecoveryService.adminBreakglassRecovery(orgId, userId, phrase.trim(), password)
+    const { error: err } = await RecoveryService.adminBreakglassRecovery(orgId, userId, phrase.trim(), password, getDeviceInfo())
     setLoading(false)
     if (err) { setError(err); return }
     setStep('done')

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, ChevronDown, Check, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AuthService } from '../../services/auth.service'
 import { UserService } from '../../services/user.service'
 import { DepartmentService } from '../../services/department.service'
@@ -35,6 +36,7 @@ function PinInput({
 }
 
 export function JoinOrg() {
+  const { t } = useTranslation()
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
   const { refreshCurrentOrg } = useAuth()
@@ -59,26 +61,36 @@ export function JoinOrg() {
   })
 
   useEffect(() => {
-    // Detect if a user is already logged in in this browser
     AuthService.getSession().then(session => {
       if (session?.user) setActiveSession(true)
     })
 
-    if (!token) { setLoadError('Lien d\'invitation invalide.'); return }
+    if (!token) { setLoadError(t('joinOrg.invalidLink')); return }
     UserService.getInviteByToken(token).then(async data => {
-      if (!data) { setLoadError('Ce lien d\'invitation est invalide ou a expiré.'); return }
+      if (!data) { setLoadError(t('joinOrg.expiredLink')); return }
       setInvite(data)
       const depts = await DepartmentService.listByInviteToken(token)
       setDepartments(depts)
     })
-  }, [token])
+  }, [token, t])
 
   function update(field: keyof typeof form, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  function isWeakPin(p: string): boolean {
+    if (/^(\d)\1{5}$/.test(p)) return true
+    const d = p.split('').map(Number)
+    let asc = true, desc = true
+    for (let i = 1; i < d.length; i++) {
+      if (d[i] !== d[i-1] + 1) asc = false
+      if (d[i] !== d[i-1] - 1) desc = false
+    }
+    return asc || desc
+  }
+
   const deptRequired = departments.length > 0
-  const pinValid = /^\d{6}$/.test(form.pin) && form.pin === form.confirmPin
+  const pinValid = /^\d{6}$/.test(form.pin) && form.pin === form.confirmPin && !isWeakPin(form.pin)
   const valid =
     form.email.trim().includes('@') &&
     form.firstName.trim().length > 0 &&
@@ -104,31 +116,29 @@ export function JoinOrg() {
     })
 
     if (signUpError === 'Cette adresse email est déjà utilisée.') {
-      // Account was partially created (e.g. prior failed attempt) — sign in and continue
       const { userId: existingId, error: signInError } = await AuthService.signIn({
         email: form.email.trim(),
         password: form.pin,
       })
       if (signInError || !existingId) {
-        setError('Ce compte existe déjà. Vérifiez votre code PIN ou connectez-vous directement.')
+        setError(t('joinOrg.accountExists'))
         setLoading(false)
         return
       }
       userId = existingId
       isExistingAccount = true
     } else if (signUpError || !newUserId) {
-      setError(signUpError ?? 'Erreur lors de la création du compte.')
+      setError(signUpError ?? t('joinOrg.errorAccount'))
       setLoading(false)
       return
     } else {
       userId = newUserId
     }
 
-    // Generate E2E key pair (skip for existing accounts — keys already generated)
     if (!isExistingAccount) {
       const { error: keyError } = await KeyService.generateAndStoreUserKeys(userId, form.pin)
       if (keyError) {
-        setError('Erreur lors de la génération des clés de chiffrement.')
+        setError(t('joinOrg.errorKeys'))
         setLoading(false)
         return
       }
@@ -139,19 +149,15 @@ export function JoinOrg() {
       jobTitle: form.jobTitle.trim() || undefined,
     })
 
-    console.log('[JoinOrg] acceptInvite result:', { joinError, userId, token })
-
-    // "already a member" is a success condition (account was stuck mid-flow)
     if (joinError && joinError !== 'Vous êtes déjà membre de cette organisation.') {
       setError(joinError)
       setLoading(false)
       return
     }
 
-    // Reload the org context — if this returns false the member wasn't inserted
     const orgFound = await refreshCurrentOrg()
     if (!orgFound) {
-      setError('Erreur lors du chargement de l\'organisation. Veuillez rafraîchir la page.')
+      setError(t('joinOrg.errorOrg'))
       setLoading(false)
       return
     }
@@ -166,7 +172,7 @@ export function JoinOrg() {
       <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm text-center">
           <p className="text-sm text-danger mb-4">{loadError}</p>
-          <Link to="/" className="text-sm text-indigo hover:underline">Retour à l'accueil</Link>
+          <Link to="/" className="text-sm text-indigo hover:underline">{t('joinOrg.backToHome')}</Link>
         </div>
       </div>
     )
@@ -179,8 +185,8 @@ export function JoinOrg() {
           <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-5">
             <Check size={28} className="text-success" />
           </div>
-          <h2 className="text-xl font-bold text-navy mb-2">Compte créé avec succès</h2>
-          <p className="text-sm text-muted leading-relaxed">Bienvenue dans votre organisation. Vous allez être redirigé vers votre espace collaborateur…</p>
+          <h2 className="text-xl font-bold text-navy mb-2">{t('joinOrg.successTitle')}</h2>
+          <p className="text-sm text-muted leading-relaxed">{t('joinOrg.successText')}</p>
         </div>
       </div>
     )
@@ -201,17 +207,13 @@ export function JoinOrg() {
         {activeSession && (
           <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
             <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800 leading-relaxed">
-              Un compte est déjà connecté dans ce navigateur. Créer un nouveau compte ici remplacera la session active. Pour éviter cela, ouvrez ce lien dans une fenêtre de navigation privée.
-            </p>
+            <p className="text-xs text-amber-800 leading-relaxed">{t('joinOrg.sessionWarning')}</p>
           </div>
         )}
         <div className="bg-surface rounded-2xl border border-border p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-xl font-bold text-navy mb-1">Créer votre compte</h1>
-            <p className="text-sm text-muted leading-relaxed">
-              Vous avez été invité à rejoindre un espace de travail Kouma.
-            </p>
+            <h1 className="text-xl font-bold text-navy mb-1">{t('joinOrg.pageTitle')}</h1>
+            <p className="text-sm text-muted leading-relaxed">{t('joinOrg.pageSubtitle')}</p>
           </div>
 
           <div className="space-y-4">
@@ -219,47 +221,47 @@ export function JoinOrg() {
             {/* Email */}
             <div>
               <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                Email professionnel *
+                {t('joinOrg.emailLabel')} *
               </label>
               <input
                 type="email"
                 value={form.email}
                 onChange={e => update('email', e.target.value)}
-                placeholder="vous@organisation.com"
+                placeholder={t('joinOrg.emailPlaceholder')}
                 autoFocus
                 disabled={!ready}
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
               />
             </div>
 
-            {/* Prénom + Nom */}
+            {/* First + Last name */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Prénom *</label>
+                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('joinOrg.firstName')} *</label>
                 <input
                   value={form.firstName}
                   onChange={e => update('firstName', e.target.value)}
-                  placeholder="Votre prénom"
+                  placeholder={t('joinOrg.firstNamePlaceholder')}
                   disabled={!ready}
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Nom *</label>
+                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('joinOrg.lastName')} *</label>
                 <input
                   value={form.lastName}
                   onChange={e => update('lastName', e.target.value)}
-                  placeholder="Votre nom"
+                  placeholder={t('joinOrg.lastNamePlaceholder')}
                   disabled={!ready}
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                 />
               </div>
             </div>
 
-            {/* Téléphone */}
+            {/* Phone */}
             <div>
               <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                Téléphone <span className="font-normal text-faint normal-case">(optionnel)</span>
+                {t('joinOrg.phone')} <span className="font-normal text-faint normal-case">({t('common.optional')})</span>
               </label>
               <input
                 type="tel"
@@ -271,11 +273,11 @@ export function JoinOrg() {
               />
             </div>
 
-            {/* Département */}
+            {/* Department */}
             {deptRequired && (
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                  Département *
+                  {t('joinOrg.department')} *
                 </label>
                 <div className="relative">
                   <select
@@ -284,7 +286,7 @@ export function JoinOrg() {
                     disabled={!ready}
                     className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                   >
-                    <option value="">Sélectionner un département</option>
+                    <option value="">{t('joinOrg.selectDepartment')}</option>
                     {departments.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
@@ -294,46 +296,47 @@ export function JoinOrg() {
               </div>
             )}
 
-            {/* Fonction */}
+            {/* Job title */}
             <div>
-              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Fonction *</label>
+              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('joinOrg.jobTitle')} *</label>
               <input
                 value={form.jobTitle}
                 onChange={e => update('jobTitle', e.target.value)}
-                placeholder="Chargé de mission, Analyste…"
+                placeholder={t('joinOrg.jobTitlePlaceholder')}
                 disabled={!ready}
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
               />
             </div>
 
-            {/* Code PIN */}
+            {/* PIN */}
             <div>
               <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                Code PIN * <span className="font-normal text-faint normal-case">(6 chiffres)</span>
+                {t('joinOrg.pin')} * <span className="font-normal text-faint normal-case">{t('joinOrg.pin6digits')}</span>
               </label>
               <PinInput
                 value={form.pin}
                 onChange={v => update('pin', v)}
                 disabled={!ready}
               />
-              <p className="mt-1 text-[10px] text-faint">
-                Ce code remplace le mot de passe pour accéder à votre espace collaborateur.
-              </p>
+              <p className="mt-1 text-[10px] text-faint">{t('joinOrg.pinHint')}</p>
             </div>
 
-            {/* Confirmer PIN */}
+            {/* Confirm PIN */}
             <div>
               <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                Confirmer le code PIN *
+                {t('joinOrg.confirmPin')} *
               </label>
               <PinInput
                 value={form.confirmPin}
                 onChange={v => update('confirmPin', v)}
-                placeholder={form.pin.length === 6 && form.confirmPin && form.pin !== form.confirmPin ? '——————' : '••••••'}
+                placeholder={form.pin.length === 6 && form.confirmPin && form.pin !== form.confirmPin ? '......' : '••••••'}
                 disabled={!ready}
               />
               {form.confirmPin && form.pin !== form.confirmPin && (
-                <p className="mt-1 text-xs text-danger">Les codes PIN ne correspondent pas.</p>
+                <p className="mt-1 text-xs text-danger">{t('joinOrg.pinMismatch')}</p>
+              )}
+              {form.pin.length === 6 && form.pin === form.confirmPin && isWeakPin(form.pin) && (
+                <p className="mt-1 text-xs text-danger">{t('joinOrg.weakPin')}</p>
               )}
             </div>
           </div>
@@ -345,12 +348,13 @@ export function JoinOrg() {
             disabled={!valid || loading || !ready}
             className="mt-6 w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
           >
-            {loading ? 'Création du compte…' : <><span>Créer mon compte</span><ArrowRight size={15} /></>}
+            {loading ? t('joinOrg.creating') : <><span>{t('joinOrg.createAccount')}</span><ArrowRight size={15} /></>}
           </button>
 
           <p className="mt-4 text-center text-xs text-faint leading-relaxed">
-            En créant votre compte, vous acceptez les{' '}
-            <Link to="/legal/cgu" className="text-indigo hover:underline">conditions d'utilisation</Link> de Kouma.
+            {t('joinOrg.termsPrefix')}{' '}
+            <Link to="/legal/cgu" className="text-indigo hover:underline">{t('joinOrg.termsLink')}</Link>{' '}
+            {t('joinOrg.termsSuffix')}
           </p>
         </div>
       </div>

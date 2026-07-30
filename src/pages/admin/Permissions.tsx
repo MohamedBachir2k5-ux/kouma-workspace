@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react'
 import { Info, Users, ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { TeamService } from '../../services/team.service'
 import { PermissionService } from '../../services/permission.service'
 import { UserService } from '../../services/user.service'
 import { useAuth } from '../../contexts/AuthContext'
 import type { Team, User } from '../../lib/types'
 
-const TEAM_PERMS: { key: string; label: string; desc: string }[] = [
-  { key: 'invite_members',   label: 'Inviter',    desc: "Inviter de nouveaux membres dans l'équipe" },
-  { key: 'manage_documents', label: 'Documents',  desc: "Gérer les documents de l'espace équipe" },
-  { key: 'manage_events',    label: 'Agenda',     desc: 'Créer et modifier les événements' },
-  { key: 'admin_space',      label: 'Administrer',desc: "Modifier les paramètres de l'équipe" },
-]
 
 export function AdminPermissions() {
+  const { t } = useTranslation()
   const { currentOrg } = useAuth()
+
+  const TEAM_PERMS: { key: string; label: string; desc: string }[] = [
+    { key: 'invite_members',   label: t('admin.permInviteLabel'), desc: t('admin.permInviteDesc') },
+    { key: 'manage_documents', label: t('admin.permDocsLabel'),   desc: t('admin.permDocsDesc') },
+    { key: 'manage_events',    label: t('admin.permAgendaLabel'), desc: t('admin.permAgendaDesc') },
+    { key: 'admin_space',      label: t('admin.permAdminLabel'),  desc: t('admin.permAdminDesc') },
+  ]
   const [teams, setTeams] = useState<Team[]>([])
   const [orgUsers, setOrgUsers] = useState<User[]>([])
   const [permsMap, setPermsMap] = useState<Record<string, Record<string, boolean>>>({})
@@ -46,14 +49,14 @@ export function AdminPermissions() {
   return (
     <div className="p-4 md:p-6 max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Permissions</h1>
-        <p className="text-sm text-muted mt-0.5">Vue d'ensemble des droits par équipe.</p>
+        <h1 className="text-xl font-bold text-ink">{t('admin.permissionsTitle')}</h1>
+        <p className="text-sm text-muted mt-0.5">{t('admin.permissionsSubtitle')}</p>
       </div>
 
       <div className="bg-indigo-pale border border-indigo/10 rounded-xl p-4 mb-5 flex items-start gap-3">
         <Info size={16} className="text-indigo mt-0.5 shrink-0" />
         <p className="text-xs text-indigo leading-relaxed">
-          Les permissions s'appliquent au niveau de chaque équipe. Pour modifier les droits d'une équipe, rendez-vous dans <strong>Équipes</strong> et sélectionnez l'équipe concernée.
+          {t('admin.permissionsInfoPre')} <strong>{t('admin.teamsTitle')}</strong> {t('admin.permissionsInfoPost')}
         </p>
       </div>
 
@@ -62,7 +65,7 @@ export function AdminPermissions() {
         <table className="w-full">
           <thead>
             <tr className="bg-bg border-b border-border">
-              <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Équipe</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('admin.permTeamCol')}</th>
               {TEAM_PERMS.map(p => (
                 <th key={p.key} className="px-3 py-3 text-center">
                   <span className="text-[11px] font-semibold text-ink">{p.label}</span>

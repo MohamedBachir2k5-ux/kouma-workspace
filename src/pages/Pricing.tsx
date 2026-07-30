@@ -67,6 +67,7 @@ export function Pricing() {
       desc: 'Pour les grandes organisations sans contrainte de capacité.',
       highlight: false,
       cta: 'Contacter les ventes',
+      priceOnRequest: true,
     },
   ]
 
@@ -86,7 +87,7 @@ export function Pricing() {
             </p>
             <div className="inline-flex flex-col sm:flex-row items-center gap-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success text-xs font-semibold rounded-full">
-                ✓ {TRIAL_DAYS} jours d'essai gratuit — sans engagement
+                ✓ {TRIAL_DAYS} jours d'essai gratuit, sans engagement
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-pale text-indigo text-xs font-semibold rounded-full">
                 Remise de lancement · première année
@@ -189,7 +190,7 @@ export function Pricing() {
                   </ul>
 
                   <Link
-                    to="/creer"
+                    to={plan.id === 'enterprise' ? '/resources/support' : '/creer'}
                     className={`w-full py-3.5 rounded-xl font-semibold text-sm text-center transition-colors ${
                       plan.highlight
                         ? 'bg-indigo text-white hover:opacity-90'

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { serviceError, friendlyError } from '../lib/errors'
 
 export interface Announcement {
   id: string
@@ -67,7 +68,7 @@ export const AnnouncementService = {
       .insert({ organization_id: orgId, author_id: authorId, title, body, pinned })
       .select()
       .single()
-    if (error || !data) return { announcement: null, error: error?.message ?? 'Erreur création.' }
+    if (error || !data) return { announcement: null, error: friendlyError(error?.message) ?? 'Erreur création.' }
 
     // Notify all org members
     const { data: members } = await supabase
@@ -96,12 +97,12 @@ export const AnnouncementService = {
       .from('announcements')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async delete(id: string): Promise<{ error: string | null }> {
     const { error } = await supabase.from('announcements').delete().eq('id', id)
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async markRead(announcementId: string, userId: string): Promise<void> {

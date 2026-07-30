@@ -31,6 +31,11 @@ export function CollaboratorRecovery() {
   const [orgId, setOrgId] = useState('')
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
+  const [otpAttempts, setOtpAttempts] = useState(0)
+  const [otpLockedUntil, setOtpLockedUntil] = useState<number | null>(null)
+
+  const OTP_MAX = 5
+  const OTP_LOCKOUT_MS = 2 * 60 * 1000
 
   async function sendOtp() {
     if (!email.trim()) return
@@ -39,15 +44,35 @@ export function CollaboratorRecovery() {
     const { error: err } = await RecoveryService.sendRecoveryOtp(email.trim())
     setLoading(false)
     if (err) { setError(err); return }
+    setOtpAttempts(0)
+    setOtpLockedUntil(null)
     setStep('otp')
   }
 
   async function verifyOtp() {
     if (otp.length !== 6) return
+
+    if (otpLockedUntil && Date.now() < otpLockedUntil) {
+      const remaining = Math.ceil((otpLockedUntil - Date.now()) / 60000)
+      setError(`Trop de tentatives. Réessayez dans ${remaining} minute${remaining > 1 ? 's' : ''}.`)
+      return
+    }
+
     setLoading(true)
     setError(null)
     const { userId: uid, error: err } = await RecoveryService.verifyOtp(email.trim(), otp.trim())
-    if (err || !uid) { setError(err ?? 'Code invalide.'); setLoading(false); return }
+    if (err || !uid) {
+      const next = otpAttempts + 1
+      setOtpAttempts(next)
+      if (next >= OTP_MAX) {
+        setOtpLockedUntil(Date.now() + OTP_LOCKOUT_MS)
+        setError('Trop de tentatives. Attendez 2 minutes avant de réessayer.')
+      } else {
+        setError(err ?? `Code invalide. (${next}/${OTP_MAX} tentatives)`)
+      }
+      setLoading(false)
+      return
+    }
 
     const oid = await RecoveryService.getOrgIdForUser(uid)
     if (!oid) { setError('Organisation introuvable pour ce compte.'); setLoading(false); return }
@@ -58,8 +83,20 @@ export function CollaboratorRecovery() {
     setStep('pin')
   }
 
+  function isWeakPin(p: string): boolean {
+    if (/^(\d)\1{5}$/.test(p)) return true
+    const d = p.split('').map(Number)
+    let asc = true, desc = true
+    for (let i = 1; i < d.length; i++) {
+      if (d[i] !== d[i-1] + 1) asc = false
+      if (d[i] !== d[i-1] - 1) desc = false
+    }
+    return asc || desc
+  }
+
   async function resetPin() {
     if (pin.length !== 6 || pin !== confirmPin) return
+    if (isWeakPin(pin)) { setError('Code PIN trop prévisible. Évitez 123456, 000000, etc.'); return }
     setLoading(true)
     setError(null)
     const { error: err } = await RecoveryService.collaboratorResetPin(userId, orgId, pin)
@@ -167,7 +204,7 @@ export function CollaboratorRecovery() {
                   <PinInput
                     value={confirmPin}
                     onChange={setConfirmPin}
-                    placeholder={pin.length === 6 && confirmPin && pin !== confirmPin ? '——————' : '••••••'}
+                    placeholder={pin.length === 6 && confirmPin && pin !== confirmPin ? '......' : '••••••'}
                   />
                   {confirmPin && pin !== confirmPin && (
                     <p className="mt-1 text-xs text-danger">Les codes PIN ne correspondent pas.</p>

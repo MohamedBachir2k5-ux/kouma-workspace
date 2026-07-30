@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bell, Smartphone, LogOut, Moon, X, Check, Camera, KeyRound, Monitor, Tablet, Loader2, Sun, Trash2 } from 'lucide-react'
+import { Bell, Smartphone, LogOut, Moon, X, Check, Camera, KeyRound, Monitor, Tablet, Loader2, Sun, Trash2, Download, MessageSquare, CalendarDays, Users, Megaphone, FileText } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { UserService } from '../../services/user.service'
 import { AuthService } from '../../services/auth.service'
 import { KeyService } from '../../services/key.service'
 import { SessionService } from '../../services/session.service'
 import type { SessionRecord } from '../../services/session.service'
+import { NotifPrefService } from '../../services/notification.service'
+import type { NotifPref, NotifPrefType } from '../../services/notification.service'
 import { Avatar } from '../../components/ui/Avatar'
 import i18n from '../../i18n/index'
 
@@ -18,10 +21,12 @@ const languages = [
 
 type Tab = 'moi' | 'securite' | 'preferences'
 
-const TABS: { value: Tab; label: string }[] = [
-  { value: 'moi',         label: 'Moi' },
-  { value: 'securite',    label: 'Sécurité' },
-  { value: 'preferences', label: 'Préférences' },
+const DEFAULT_NOTIF_PREFS: NotifPref[] = [
+  { type: 'new_message',    push: true,  inapp: true },
+  { type: 'meeting_invite', push: true,  inapp: true },
+  { type: 'team_update',    push: false, inapp: true },
+  { type: 'announcement',   push: true,  inapp: true },
+  { type: 'document_shared', push: false, inapp: true },
 ]
 
 function DeviceIcon({ platform }: { platform: string | null }) {
@@ -32,19 +37,26 @@ function DeviceIcon({ platform }: { platform: string | null }) {
   return <Monitor size={17} className="text-indigo" />
 }
 
-function formatRelative(iso: string) {
+function formatRelative(iso: string, t: (key: string, opts?: Record<string, unknown>) => string) {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "À l'instant"
-  if (mins < 60) return `Il y a ${mins} min`
+  if (mins < 1) return t('admin.justNow')
+  if (mins < 60) return t('admin.minutesAgo', { count: mins })
   const h = Math.floor(mins / 60)
-  if (h < 24) return `Il y a ${h}h`
-  return `Il y a ${Math.floor(h / 24)}j`
+  if (h < 24) return t('admin.hoursAgo', { count: h })
+  return t('admin.daysAgo', { count: Math.floor(h / 24) })
 }
 
 export function Profile() {
+  const { t } = useTranslation()
   const { currentUser, currentOrg, currentSessionId, signOut } = useAuth()
   const photoRef = useRef<HTMLInputElement>(null)
+
+  const TABS: { value: Tab; label: string }[] = [
+    { value: 'moi',         label: t('nav.profile') },
+    { value: 'securite',    label: t('profile.security') },
+    { value: 'preferences', label: t('profile.preferences') },
+  ]
   const [tab, setTab] = useState<Tab>('moi')
   const [photoPreview, setPhotoPreview] = useState<string | null>(currentUser.avatarUrl ?? null)
   const [editing, setEditing] = useState(false)
@@ -71,7 +83,20 @@ export function Profile() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
     (localStorage.getItem('kouma_theme') as 'light' | 'dark') ?? 'light'
   )
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [theme])
   const [notifEnabled, setNotifEnabled] = useState(() => Notification.permission === 'granted')
+
+  // Per-type notification preferences
+  const [notifPrefs, setNotifPrefs] = useState<NotifPref[]>(DEFAULT_NOTIF_PREFS)
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
+
+  // PWA install
+  const [pwaPrompt, setPwaPrompt] = useState<Event | null>(
+    (window as Window & { __pwa_prompt?: Event }).__pwa_prompt ?? null
+  )
+  const [pwaInstalled, setPwaInstalled] = useState(false)
 
   useEffect(() => {
     if (tab === 'securite' && sessions.length === 0) {
@@ -81,7 +106,15 @@ export function Profile() {
         setSessionsLoading(false)
       })
     }
-  }, [tab, currentUser.id, sessions.length])
+    if (tab === 'preferences' && !prefsLoaded) {
+      NotifPrefService.getAll(currentUser.id, currentOrg.id).then(rows => {
+        if (rows.length > 0) {
+          setNotifPrefs(DEFAULT_NOTIF_PREFS.map(d => rows.find(r => r.type === d.type) ?? d))
+        }
+        setPrefsLoaded(true)
+      })
+    }
+  }, [tab, currentUser.id, currentOrg.id, sessions.length, prefsLoaded])
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -151,6 +184,23 @@ export function Profile() {
     }
   }
 
+  async function toggleNotifPref(type: NotifPrefType, field: 'push' | 'inapp') {
+    const current = notifPrefs.find(p => p.type === type)!
+    const next = { ...current, [field]: !current[field] }
+    setNotifPrefs(prev => prev.map(p => p.type === type ? next : p))
+    await NotifPrefService.upsert(currentUser.id, currentOrg.id, type, next.push, next.inapp)
+  }
+
+  async function installPWA() {
+    const prompt = pwaPrompt as (Event & { prompt?: () => Promise<{ outcome: string }> })
+    if (!prompt?.prompt) return
+    const result = await prompt.prompt()
+    if (result.outcome === 'accepted') {
+      setPwaInstalled(true)
+      setPwaPrompt(null)
+    }
+  }
+
   const pwValid = /^\d{6}$/.test(pwForm.current) && /^\d{6}$/.test(pwForm.next) && pwForm.next === pwForm.confirm
 
   return (
@@ -163,7 +213,7 @@ export function Profile() {
             <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
             {photoPreview
               ? <img src={photoPreview} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-border" />
-              : <Avatar firstName={profile.firstName} lastName={profile.lastName} id={currentUser.id} size="xl" />
+              : <Avatar firstName={profile.firstName} lastName={profile.lastName} id={currentUser.id} size="xl" src={currentUser.avatarUrl} />
             }
             <button onClick={() => photoRef.current?.click()}
               className="absolute -bottom-1 -right-1 w-6 h-6 bg-indigo rounded-full flex items-center justify-center border-2 border-surface hover:bg-indigo/90 transition-colors">
@@ -172,7 +222,7 @@ export function Profile() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-bold text-navy">{profile.firstName} {profile.lastName}</h2>
-            <p className="text-xs text-muted">{currentUser.jobTitle ?? (currentUser.role === 'admin' ? 'Administrateur' : 'Collaborateur')}</p>
+            <p className="text-xs text-muted">{currentUser.jobTitle ?? (currentUser.role === 'admin' ? t('common.administrator') : t('common.collaborator'))}</p>
             <p className="text-xs text-faint mt-0.5">{currentUser.email}</p>
           </div>
         </div>
@@ -197,22 +247,22 @@ export function Profile() {
           <div className="space-y-4">
             <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
               <div className="px-4 py-3">
-                <div className="text-xs text-muted mb-0.5">Organisation</div>
+                <div className="text-xs text-muted mb-0.5">{t('profile.organisation')}</div>
                 <div className="text-sm font-semibold text-ink">{currentOrg.name}</div>
               </div>
               <div className="px-4 py-3">
-                <div className="text-xs text-muted mb-0.5">Département</div>
-                <div className="text-sm font-semibold text-ink">{currentUser.department ?? '—'}</div>
+                <div className="text-xs text-muted mb-0.5">{t('profile.department')}</div>
+                <div className="text-sm font-semibold text-ink">{currentUser.department ?? '-'}</div>
               </div>
               {currentUser.jobTitle && (
                 <div className="px-4 py-3">
-                  <div className="text-xs text-muted mb-0.5">Fonction</div>
+                  <div className="text-xs text-muted mb-0.5">{t('profile.jobTitle')}</div>
                   <div className="text-sm font-semibold text-ink">{currentUser.jobTitle}</div>
                 </div>
               )}
               <div className="px-4 py-3">
-                <div className="text-xs text-muted mb-0.5">Téléphone</div>
-                <div className="text-sm font-semibold text-ink">{profile.phone || '—'}</div>
+                <div className="text-xs text-muted mb-0.5">{t('profile.phone')}</div>
+                <div className="text-sm font-semibold text-ink">{profile.phone || '-'}</div>
               </div>
             </div>
 
@@ -221,13 +271,13 @@ export function Profile() {
                 saved ? 'border-success/30 bg-success/5 text-success' : 'border-border text-muted hover:bg-bg'
               }`}>
               {saved
-                ? <span className="flex items-center justify-center gap-2"><Check size={14} /> Profil mis à jour</span>
-                : 'Modifier le profil'}
+                ? <span className="flex items-center justify-center gap-2"><Check size={14} /> {t('profile.profileUpdated')}</span>
+                : t('profile.editProfile')}
             </button>
 
             <button onClick={signOut}
               className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-danger/5 border border-danger/20 rounded-xl text-danger text-sm font-medium hover:bg-danger/10 transition-colors">
-              <LogOut size={16} /> Se déconnecter
+              <LogOut size={16} /> {t('profile.logout')}
             </button>
           </div>
         )}
@@ -237,7 +287,7 @@ export function Profile() {
           <div className="space-y-4">
             {/* PIN change */}
             <div>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">Code PIN</h3>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{t('profile.pin')}</h3>
               <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <button onClick={() => setChangingPin(true)}
                   className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-bg transition-colors">
@@ -246,9 +296,9 @@ export function Profile() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className={`text-sm font-medium ${pwSaved ? 'text-success' : 'text-ink'}`}>
-                      {pwSaved ? 'Code PIN mis à jour ✓' : 'Modifier mon code PIN'}
+                      {pwSaved ? t('profile.pinUpdated') : t('profile.changePinTitle')}
                     </div>
-                    <div className="text-xs text-muted">Changer votre code PIN de connexion</div>
+                    <div className="text-xs text-muted">{t('profile.changePinDesc')}</div>
                   </div>
                 </button>
               </div>
@@ -257,10 +307,10 @@ export function Profile() {
             {/* Active sessions */}
             <div>
               <div className="flex items-center justify-between mb-2 px-1">
-                <h3 className="text-xs font-semibold text-muted uppercase tracking-wide">Appareils connectés</h3>
+                <h3 className="text-xs font-semibold text-muted uppercase tracking-wide">{t('profile.connectedDevices')}</h3>
                 {sessions.filter(s => !s.isCurrent).length > 0 && (
                   <button onClick={revokeAllOthers} className="text-xs text-danger hover:underline">
-                    Déconnecter les autres
+                    {t('profile.disconnectOthers')}
                   </button>
                 )}
               </div>
@@ -271,7 +321,7 @@ export function Profile() {
                 </div>
               ) : sessions.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted bg-surface rounded-xl border border-border">
-                  Aucune session active.
+                  {t('profile.noSessions')}
                 </div>
               ) : (
                 <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
@@ -282,14 +332,14 @@ export function Profile() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-ink truncate">{s.deviceName ?? 'Appareil inconnu'}</span>
+                          <span className="text-sm font-medium text-ink truncate">{s.deviceName ?? t('profile.unknownDevice')}</span>
                           {s.isCurrent && (
                             <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-success/10 text-success rounded-full shrink-0">
-                              Cet appareil
+                              {t('profile.thisDevice')}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-muted">{s.browser} · {formatRelative(s.lastSeenAt)}</div>
+                        <div className="text-xs text-muted">{s.browser} · {formatRelative(s.lastSeenAt, t)}</div>
                       </div>
                       {!s.isCurrent && (
                         <button
@@ -311,9 +361,10 @@ export function Profile() {
 
         {/* ── TAB PRÉFÉRENCES ── */}
         {tab === 'preferences' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Push notifications master toggle */}
             <div>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">Notifications</h3>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{t('profile.notifications')}</h3>
               <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <button onClick={toggleNotifications}
                   className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-bg transition-colors">
@@ -321,20 +372,61 @@ export function Profile() {
                     <Bell size={16} className="text-indigo" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-ink">Notifications push</div>
+                    <div className="text-sm font-medium text-ink">{t('profile.pushNotifs')}</div>
                     <div className="text-xs text-muted">
-                      {notifEnabled ? 'Activées — vous recevez des alertes' : 'Désactivées — cliquez pour autoriser'}
+                      {notifEnabled ? t('profile.pushEnabled') : t('profile.pushDisabled')}
                     </div>
                   </div>
-                  <div className={`w-10 h-5.5 rounded-full transition-colors flex items-center px-0.5 ${notifEnabled ? 'bg-indigo' : 'bg-border'}`}>
+                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${notifEnabled ? 'bg-indigo' : 'bg-border'}`}>
                     <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${notifEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
             </div>
 
+            {/* Per-type notification preferences */}
             <div>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">Apparence</h3>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{t('profile.notifByType')}</h3>
+              <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
+                {([
+                  { type: 'new_message'    as NotifPrefType, label: t('profile.notifNewMessage'),    icon: MessageSquare },
+                  { type: 'meeting_invite' as NotifPrefType, label: t('profile.notifMeetingInvite'), icon: CalendarDays },
+                  { type: 'team_update'   as NotifPrefType, label: t('profile.notifTeamUpdate'),    icon: Users },
+                  { type: 'announcement'  as NotifPrefType, label: t('profile.notifAnnouncement'),  icon: Megaphone },
+                  { type: 'document_shared' as NotifPrefType, label: t('profile.notifDocumentShared'), icon: FileText },
+                ]).map(({ type, label, icon: Icon }) => {
+                  const pref = notifPrefs.find(p => p.type === type) ?? { type, push: true, inapp: true }
+                  return (
+                    <div key={type} className="px-4 py-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-pale flex items-center justify-center shrink-0">
+                        <Icon size={14} className="text-indigo" />
+                      </div>
+                      <div className="flex-1 text-sm font-medium text-ink">{label}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[9px] text-faint uppercase">{t('profile.pushLabel')}</span>
+                          <button onClick={() => toggleNotifPref(type, 'push')}
+                            className={`w-8 h-4 rounded-full transition-colors flex items-center px-0.5 ${pref.push ? 'bg-indigo' : 'bg-border'}`}>
+                            <div className={`w-3 h-3 bg-white rounded-full shadow transition-transform ${pref.push ? 'translate-x-4' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[9px] text-faint uppercase">{t('profile.inappLabel')}</span>
+                          <button onClick={() => toggleNotifPref(type, 'inapp')}
+                            className={`w-8 h-4 rounded-full transition-colors flex items-center px-0.5 ${pref.inapp ? 'bg-indigo' : 'bg-border'}`}>
+                            <div className={`w-3 h-3 bg-white rounded-full shadow transition-transform ${pref.inapp ? 'translate-x-4' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Theme */}
+            <div>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{t('profile.appearance')}</h3>
               <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <button onClick={toggleTheme}
                   className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-bg transition-colors">
@@ -342,22 +434,28 @@ export function Profile() {
                     {theme === 'light' ? <Sun size={16} className="text-indigo" /> : <Moon size={16} className="text-indigo" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-ink">Thème {theme === 'light' ? 'clair' : 'sombre'}</div>
-                    <div className="text-xs text-muted">Cliquez pour basculer vers le thème {theme === 'light' ? 'sombre' : 'clair'}</div>
+                    <div className="text-sm font-medium text-ink">{t('profile.appearance')}</div>
+                    <div className="text-xs text-muted">{t('profile.appearanceDesc')}</div>
                   </div>
-                  <div className={`w-10 h-5.5 rounded-full transition-colors flex items-center px-0.5 ${theme === 'dark' ? 'bg-indigo' : 'bg-border'}`}>
+                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${theme === 'dark' ? 'bg-indigo' : 'bg-border'}`}>
                     <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${theme === 'dark' ? 'translate-x-5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
             </div>
 
+            {/* Language */}
             <div>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">Langue</h3>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{t('profile.language')}</h3>
               <div className="grid grid-cols-2 gap-2">
                 {languages.map(l => (
                   <button key={l.value} type="button"
-                    onClick={() => { i18n.changeLanguage(l.value); setProfile(p => ({ ...p, language: l.value })); UserService.updateProfile(currentUser.id, { language: l.value }) }}
+                    onClick={() => {
+                      i18n.changeLanguage(l.value)
+                      localStorage.setItem('kouma_lang', l.value)
+                      setProfile(p => ({ ...p, language: l.value }))
+                      UserService.updateProfile(currentUser.id, { language: l.value })
+                    }}
                     className={`py-2.5 rounded-xl text-sm font-medium border transition-colors ${
                       i18n.language === l.value ? 'border-navy bg-navy text-white' : 'border-border bg-surface text-muted hover:border-navy/30 hover:bg-bg'
                     }`}>
@@ -366,10 +464,76 @@ export function Profile() {
                 ))}
               </div>
             </div>
+
+            {/* PWA install */}
+            <div>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{t('profile.appSection')}</h3>
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                {pwaInstalled ? (
+                  <div className="flex items-center gap-4 px-4 py-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                      <Check size={16} className="text-success" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-success">{t('profile.appInstalled')}</div>
+                      <div className="text-xs text-muted">{t('profile.appInstalledDesc')}</div>
+                    </div>
+                  </div>
+                ) : pwaPrompt ? (
+                  <button onClick={installPWA}
+                    className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-bg transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-pale flex items-center justify-center shrink-0">
+                      <Download size={16} className="text-indigo" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-ink">{t('profile.installApp')}</div>
+                      <div className="text-xs text-muted">{t('profile.installAppDesc')}</div>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-4 px-4 py-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-pale flex items-center justify-center shrink-0">
+                      <Smartphone size={16} className="text-indigo" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-ink">{t('profile.offlineMode')}</div>
+                      <div className="text-xs text-muted">{t('profile.offlineModeDesc')}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
-        <p className="text-center text-xs text-faint mt-6">Kouma v1.0</p>
+        {/* ── Aide & Support ── */}
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3 px-1">Aide</p>
+          <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
+            <a href="/resources/guides" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-bg transition-colors">
+              <div className="w-7 h-7 rounded-lg bg-indigo/10 flex items-center justify-center shrink-0">
+                <FileText size={14} className="text-indigo" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-ink">Guide utilisateur</div>
+                <div className="text-xs text-muted">Comment utiliser chaque fonctionnalité</div>
+              </div>
+            </a>
+            <a href="/resources/support" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-bg transition-colors">
+              <div className="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                <MessageSquare size={14} className="text-success" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-ink">Contacter le support</div>
+                <div className="text-xs text-muted">Une question ? On vous répond.</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <p className="text-center text-xs text-faint mt-6">{t('profile.version')}</p>
       </div>
 
       {/* Edit profile modal */}
@@ -377,39 +541,39 @@ export function Profile() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setEditing(false)}>
           <div className="w-full max-w-sm bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="font-bold text-navy">Modifier le profil</h3>
+              <h3 className="font-bold text-navy">{t('profile.editTitle')}</h3>
               <button onClick={() => setEditing(false)} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Prénom</label>
+                  <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('profile.firstName')}</label>
                   <input value={draft.firstName} onChange={e => setDraft(p => ({ ...p, firstName: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Nom</label>
+                  <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('profile.lastName')}</label>
                   <input value={draft.lastName} onChange={e => setDraft(p => ({ ...p, lastName: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Email</label>
+                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('auth.email')}</label>
                 <input value={currentUser.email} disabled
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm text-faint cursor-not-allowed" />
-                <p className="mt-1 text-[10px] text-faint">La modification de l'email nécessite une vérification.</p>
+                <p className="mt-1 text-[10px] text-faint">{t('profile.emailReadonly')}</p>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Téléphone</label>
+                <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('profile.phone')}</label>
                 <input type="tel" value={draft.phone} onChange={e => setDraft(p => ({ ...p, phone: e.target.value }))}
                   placeholder="+XX XXXX XXXX"
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy" />
               </div>
             </div>
             <div className="flex gap-3 px-5 pb-5">
-              <button onClick={() => setEditing(false)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+              <button onClick={() => setEditing(false)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
               <button onClick={saveEdit} disabled={!draft.firstName.trim() || !draft.lastName.trim()}
-                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">Enregistrer</button>
+                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.save')}</button>
             </div>
           </div>
         </div>
@@ -420,14 +584,14 @@ export function Profile() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setChangingPin(false)}>
           <div className="w-full max-w-sm bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="font-bold text-navy">Modifier mon code PIN</h3>
+              <h3 className="font-bold text-navy">{t('profile.changePinTitle')}</h3>
               <button onClick={() => setChangingPin(false)} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
               {[
-                { field: 'current', label: 'PIN actuel',                placeholder: '••••••' },
-                { field: 'next',    label: 'Nouveau PIN',               placeholder: '6 chiffres' },
-                { field: 'confirm', label: 'Confirmer le nouveau PIN',  placeholder: '••••••' },
+                { field: 'current', label: t('profile.currentPin'), placeholder: '••••••' },
+                { field: 'next',    label: t('profile.newPin'),     placeholder: '6 chiffres' },
+                { field: 'confirm', label: t('profile.confirmPin'), placeholder: '••••••' },
               ].map(({ field, label, placeholder }) => (
                 <div key={field}>
                   <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{label}</label>
@@ -446,9 +610,9 @@ export function Profile() {
               {pwError && <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{pwError}</p>}
             </div>
             <div className="flex gap-3 px-5 pb-5">
-              <button onClick={() => setChangingPin(false)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+              <button onClick={() => setChangingPin(false)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
               <button onClick={savePassword} disabled={!pwValid}
-                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">Enregistrer</button>
+                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.save')}</button>
             </div>
           </div>
         </div>

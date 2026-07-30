@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Megaphone, Pin, Plus, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AnnouncementService, type Announcement } from '../../services/announcement.service'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/utils'
@@ -47,6 +48,7 @@ function CreateModal({ onClose, onCreated }: {
   onClose: () => void
   onCreated: (ann: Announcement) => void
 }) {
+  const { t } = useTranslation()
   const { currentOrg, currentUser } = useAuth()
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -66,7 +68,7 @@ function CreateModal({ onClose, onCreated }: {
       pinned,
     )
     setSaving(false)
-    if (err || !announcement) { setError(err ?? 'Erreur.'); return }
+    if (err || !announcement) { setError(err ?? t('announcements.creationError')); return }
     onCreated(announcement)
     onClose()
   }
@@ -75,33 +77,33 @@ function CreateModal({ onClose, onCreated }: {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-md bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-navy text-base">Nouvelle annonce</h3>
+          <h3 className="font-bold text-navy text-base">{t('announcements.newAnnouncement')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Titre *</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('announcements.announcementTitleLabel')} *</label>
             <input value={title} onChange={e => setTitle(e.target.value)} autoFocus
-              placeholder="Titre de l'annonce"
+              placeholder={t('announcements.announcementTitlePlaceholder')}
               className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Contenu *</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('announcements.announcementContentLabel')} *</label>
             <textarea value={body} onChange={e => setBody(e.target.value)} rows={5}
-              placeholder="Contenu de l'annonce…"
+              placeholder={t('announcements.announcementContentPlaceholder')}
               className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo" />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)} className="rounded" />
-            <span className="text-xs text-ink">Épingler cette annonce</span>
+            <span className="text-xs text-ink">{t('announcements.pinThis')}</span>
           </label>
         </div>
         {error && <p className="text-xs text-danger mt-3">{error}</p>}
         <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={handleSave} disabled={!title.trim() || !body.trim() || saving}
             className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
-            {saving ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Publier'}
+            {saving ? <Loader2 size={14} className="animate-spin mx-auto" /> : t('announcements.publish')}
           </button>
         </div>
       </div>
@@ -110,6 +112,7 @@ function CreateModal({ onClose, onCreated }: {
 }
 
 export function Announcements() {
+  const { t } = useTranslation()
   const { currentOrg, currentUser } = useAuth()
   const isAdmin = currentUser.role === 'admin'
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
@@ -136,7 +139,7 @@ export function Announcements() {
       <div className="sticky top-0 z-10 bg-bg px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-ink">Annonces</h2>
+            <h2 className="text-base font-bold text-ink">{t('nav.announcements')}</h2>
             {unreadCount > 0 && (
               <span className="px-2 py-0.5 bg-indigo text-white text-[10px] font-bold rounded-full">{unreadCount}</span>
             )}
@@ -144,7 +147,7 @@ export function Announcements() {
           {isAdmin && (
             <button onClick={() => setShowCreate(true)}
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo text-white text-xs font-semibold rounded-lg hover:opacity-90">
-              <Plus size={14} /> Nouvelle annonce
+              <Plus size={14} /> {t('announcements.newAnnouncement')}
             </button>
           )}
         </div>
@@ -160,10 +163,10 @@ export function Announcements() {
         {!loading && announcements.length === 0 && (
           <div className="py-16 text-center">
             <Megaphone size={32} className="text-faint mx-auto mb-3" />
-            <p className="text-sm text-muted">Aucune annonce pour le moment.</p>
+            <p className="text-sm text-muted">{t('announcements.noAnnouncements')}</p>
             {isAdmin && (
               <button onClick={() => setShowCreate(true)} className="mt-4 text-sm text-indigo hover:underline">
-                Publier la première annonce
+                {t('announcements.publishFirst')}
               </button>
             )}
           </div>
@@ -171,7 +174,7 @@ export function Announcements() {
 
         {pinned.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Épinglées</h3>
+            <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">{t('announcements.pinned')}</h3>
             <div className="space-y-2">
               {pinned.map(a => <AnnouncementCard key={a.id} ann={a} onRead={handleRead} />)}
             </div>
@@ -180,7 +183,7 @@ export function Announcements() {
 
         {others.length > 0 && (
           <div>
-            {pinned.length > 0 && <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Récentes</h3>}
+            {pinned.length > 0 && <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">{t('announcements.recent')}</h3>}
             <div className="space-y-2">
               {others.map(a => <AnnouncementCard key={a.id} ann={a} onRead={handleRead} />)}
             </div>

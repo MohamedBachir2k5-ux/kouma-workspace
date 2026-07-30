@@ -17,6 +17,7 @@ export interface Organization {
   sector: string | null
   size: string | null          // null — computed from member count, never stored
   plan: 'free' | 'business' | 'enterprise'
+  primaryColor: string | null
   createdAt: string
 }
 
@@ -104,6 +105,8 @@ export interface Folder {
   teamId: string | null
   name: string
   createdAt: string
+  createdBy: string | null
+  visibility: 'personal' | 'org'
 }
 
 export type DocumentVisibility = 'personal' | 'team' | 'group' | 'org'
@@ -142,6 +145,35 @@ export interface Event {
   modifiedAt?: string
   cancelReason?: string
   rsvp?: Record<string, 'accepted' | 'declined' | 'pending'>
+}
+
+// ── Meeting minutes ───────────────────────────────────────────────────────────
+
+export interface MeetingAction {
+  id: string
+  minutesId: string
+  description: string
+  assigneeId: string | null
+  dueDate: string | null
+  done: boolean
+  createdAt: string
+}
+
+export interface MeetingMinutes {
+  id: string
+  eventId: string
+  organizationId: string
+  conversationId: string | null
+  createdBy: string
+  title: string
+  objective: string | null
+  summary: string | null
+  decisions: string | null
+  notes: string | null
+  participants: string[]
+  createdAt: string
+  updatedAt: string
+  actions?: MeetingAction[]
 }
 
 // ── Subscriptions ─────────────────────────────────────────────────────────────

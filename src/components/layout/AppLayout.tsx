@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom'
-import { MessageSquare, FileText, Calendar, Users, User, Megaphone } from 'lucide-react'
+import { MessageSquare, FileText, Calendar, Users, User, Megaphone, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import { Avatar } from '../ui/Avatar'
-import { NotificationBell } from '../ui/NotificationBell'
 import { PWAInstallBanner } from '../ui/PWAInstallBanner'
 import { PinUnlockModal } from '../ui/PinUnlockModal'
 import { cryptoSession } from '../../lib/crypto-session'
+import { PushService } from '../../services/push.service'
+import { supabase } from '../../lib/supabase'
+import type { Notification } from '../../lib/types'
 
 function orgInitials(name: string) {
   return name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
@@ -28,7 +30,7 @@ function SecurityWatermark({ label }: { label: string }) {
       >
         <defs>
           <pattern id="wm" x="0" y="0" width="260" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)">
-            <text x="0" y="60" fontSize="11" fill="rgba(0,0,0,0.055)" fontFamily="sans-serif" fontWeight="500">
+            <text x="0" y="60" fontSize="11" fill="rgba(0,0,0,0.022)" fontFamily="sans-serif" fontWeight="500">
               {label}
             </text>
           </pattern>
@@ -44,7 +46,8 @@ const NAV_ITEMS = [
   { to: '/app/annonces',  icon: Megaphone,     key: 'nav.announcements' },
   { to: '/app/documents', icon: FileText,      key: 'nav.documents' },
   { to: '/app/agenda',    icon: Calendar,      key: 'nav.agenda' },
-  { to: '/app/equipes',   icon: Users,         key: 'nav.teams' },
+  { to: '/app/equipes',    icon: Users,         key: 'nav.teams' },
+  { to: '/app/assistant', icon: Sparkles,      key: 'nav.assistant' },
   { to: '/app/profil',    icon: User,          key: 'nav.profile' },
 ]
 
@@ -62,13 +65,42 @@ export function AppLayout() {
   const { checking } = useRequireAuth('/connexion/utilisateur')
   const navigate = useNavigate()
 
-  // Show PIN unlock modal when the Supabase session is valid but CryptoSession was lost
-  // (happens after a page refresh — private key is in-memory only)
   const [cryptoLoaded, setCryptoLoaded] = useState(() => cryptoSession.isLoaded)
 
   useEffect(() => {
     if (cryptoSession.isLoaded) setCryptoLoaded(true)
   }, [isOrgReady])
+
+  // Push subscription + browser notifications (tab hidden only)
+  const showBrowserNotif = useCallback((n: Notification) => {
+    if (!document.hidden) return
+    if (globalThis.Notification?.permission !== 'granted') return
+    new globalThis.Notification(
+      n.type === 'new_message' ? t('notifications.newMessage') :
+      n.type === 'meeting_invite' ? t('notifications.meetingInvite') : 'Kouma',
+      { body: String(n.payload?.text ?? ''), icon: '/favicon.svg', tag: n.id }
+    )
+  }, [])
+
+  useEffect(() => {
+    if (!currentUser.id || currentUser.id === 'u1') return
+    if (PushService.isSupported() && globalThis.Notification?.permission === 'granted') {
+      PushService.isSubscribed().then(already => {
+        if (!already) PushService.subscribe(currentUser.id)
+      })
+    }
+    const key = `push-${currentUser.id}-${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(key)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${currentUser.id}`,
+      }, payload => {
+        const r = payload.new as { id: string; user_id: string; type: string; payload: Record<string, unknown> | null; read: boolean; created_at: string }
+        showBrowserNotif({ id: r.id, userId: r.user_id, type: r.type, payload: r.payload, read: r.read, createdAt: r.created_at })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [currentUser.id, showBrowserNotif])
 
   if (checking || loading) return <FullPageSpinner />
   if (!isOrgReady) return <Navigate to="/creer" replace />
@@ -100,7 +132,6 @@ export function AppLayout() {
           <span className="font-semibold text-ink text-sm">{currentOrg.name}</span>
         </div>
         <div className="flex items-center gap-1">
-          <NotificationBell variant="light" />
           <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} id={currentUser.id} size="sm" src={currentUser.avatarUrl} />
         </div>
       </header>
@@ -141,9 +172,6 @@ export function AppLayout() {
           </nav>
 
           <div className="px-3 py-4 border-t border-navy-muted">
-            <div className="flex items-center gap-2 px-1 mb-1">
-              <NotificationBell variant="dark" />
-            </div>
             <div onClick={() => navigate('/app/profil')} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-navy-light cursor-pointer transition-colors">
               <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} id={currentUser.id} size="sm" src={currentUser.avatarUrl} />
               <div className="min-w-0">

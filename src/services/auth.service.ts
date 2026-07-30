@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
+import { friendlyError } from '../lib/errors'
 
 export interface SignUpParams {
   email: string
@@ -37,7 +38,7 @@ export const AuthService = {
     if (error) {
       const msg = /already registered|already been registered/i.test(error.message)
         ? 'Cette adresse email est déjà utilisée.'
-        : error.message
+        : friendlyError(error.message) ?? error.message
       return { userId: null, error: msg }
     }
     if (!data.user) return { userId: null, error: 'Création du compte échouée.' }
@@ -54,7 +55,7 @@ export const AuthService = {
       status: 'active',
     }, { onConflict: 'id' })
 
-    if (profileError) return { userId: null, error: profileError.message }
+    if (profileError) return { userId: null, error: friendlyError(profileError.message) }
 
     return { userId: data.user.id, error: null }
   },
@@ -65,7 +66,14 @@ export const AuthService = {
       password: params.password,
     })
 
-    if (error) return { userId: null, error: error.message }
+    if (error) {
+      const msg = error.message
+      const normalized = /invalid.*credentials/i.test(msg) ? 'Email ou mot de passe incorrect.'
+        : /email.*confirmed/i.test(msg) ? 'Votre email n\'est pas encore confirmé.'
+        : /too many requests/i.test(msg) ? 'Trop de tentatives. Veuillez réessayer dans quelques minutes.'
+        : friendlyError(msg) ?? msg
+      return { userId: null, error: normalized }
+    }
     return { userId: data.user?.id ?? null, error: null }
   },
 
@@ -95,12 +103,12 @@ export const AuthService = {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${import.meta.env.VITE_APP_URL}/reset-password`,
     })
-    return { error: error?.message ?? null }
+    return { error: friendlyError(error?.message) }
   },
 
   async updatePassword(newPassword: string): Promise<{ error: string | null }> {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    return { error: error?.message ?? null }
+    return { error: friendlyError(error?.message) }
   },
 
   onAuthChange(callback: (userId: string | null, event: string) => void) {

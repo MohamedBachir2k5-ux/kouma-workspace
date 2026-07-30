@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Hash, Users, ChevronRight, ArrowLeft, FileText, MessageSquare, Crown, File, Table, ShieldCheck, Search, UserPlus, X, Settings } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { TeamService } from '../../services/team.service'
 import { UserService } from '../../services/user.service'
@@ -18,10 +19,10 @@ function FileIcon({ type, size = 16 }: { type: string; size?: number }) {
 }
 
 const TEAM_PERMS = [
-  { key: 'invite_members',   label: 'Inviter des membres',  desc: "Inviter de nouveaux membres dans l'équipe" },
-  { key: 'manage_documents', label: 'Gérer les documents',  desc: 'Créer, modifier et supprimer les documents' },
-  { key: 'manage_events',    label: "Gérer l'agenda",       desc: "Créer et modifier les événements de l'équipe" },
-  { key: 'admin_space',      label: 'Administrer',          desc: "Modifier les paramètres de l'équipe" },
+  { key: 'invite_members',   labelKey: 'teams.inviteMembers',   descKey: 'teams.inviteMembersDesc'   },
+  { key: 'manage_documents', labelKey: 'teams.manageDocuments', descKey: 'teams.manageDocumentsDesc' },
+  { key: 'manage_events',    labelKey: 'teams.manageEvents',    descKey: 'teams.manageEventsDesc'    },
+  { key: 'admin_space',      labelKey: 'teams.adminSpace',      descKey: 'teams.adminSpaceDesc'      },
 ]
 
 function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void; disabled?: boolean }) {
@@ -44,6 +45,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   onBack: () => void
   onTeamUpdated: (updated: Team) => void
 }) {
+  const { t } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState<'membres' | 'documents' | 'canal' | 'permissions' | 'parametres'>('membres')
@@ -55,8 +57,10 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   const [memberIds, setMemberIds] = useState<string[]>(team.members)
   const [memberQuery, setMemberQuery] = useState('')
   const [memberSaved, setMemberSaved] = useState(false)
+  const [memberError, setMemberError] = useState<string | null>(null)
   const [settings, setSettings] = useState({ name: team.name, description: team.description ?? '', color: team.color })
   const [settingsSaved, setSettingsSaved] = useState(false)
+  const [settingsError, setSettingsError] = useState<string | null>(null)
   const [docs, setDocs] = useState<Document[]>([])
 
   useEffect(() => {
@@ -99,6 +103,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   }
 
   async function saveMembers() {
+    setMemberError(null)
     const original = team.members
     const added = memberIds.filter(id => !original.includes(id))
     const removed = original.filter(id => !memberIds.includes(id))
@@ -108,7 +113,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
     ])
     const firstError = results.find(r => r.error)
     if (firstError?.error) {
-      console.error('[TEAM][SAVE_MEMBERS] error:', firstError.error)
+      setMemberError(firstError.error)
       return
     }
     onTeamUpdated({ ...team, members: memberIds })
@@ -136,12 +141,14 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   }
 
   async function saveSettings() {
-    await TeamService.update(
+    setSettingsError(null)
+    const { error } = await TeamService.update(
       team.id,
       { name: settings.name, description: settings.description || null, color: settings.color },
       currentOrg.id,
       currentUser.id,
     )
+    if (error) { setSettingsError(error); return }
     onTeamUpdated({ ...team, name: settings.name, description: settings.description || undefined, color: settings.color })
     setSettingsSaved(true)
     setTimeout(() => setSettingsSaved(false), 2000)
@@ -151,7 +158,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
     <div className="flex-1 overflow-y-auto">
       <div className="px-4 py-4 max-w-2xl">
         <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted hover:text-ink mb-5 transition-colors">
-          <ArrowLeft size={16} /> Retour aux équipes
+          <ArrowLeft size={16} /> {t('teams.backToTeams')}
         </button>
 
         <div className="flex items-start gap-4 mb-6">
@@ -166,11 +173,11 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
 
         <div className="flex gap-1 p-1 bg-bg rounded-xl border border-border mb-5 w-fit overflow-x-auto">
           {([
-            { id: 'membres',     label: 'Membres',     icon: Users        },
-            { id: 'documents',   label: 'Documents',   icon: FileText     },
-            { id: 'canal',       label: 'Canal',       icon: MessageSquare },
-            { id: 'permissions', label: 'Permissions', icon: ShieldCheck  },
-            { id: 'parametres',  label: 'Paramètres',  icon: Settings     },
+            { id: 'membres',     label: t('teams.members'),     icon: Users        },
+            { id: 'documents',   label: t('teams.documents'),   icon: FileText     },
+            { id: 'canal',       label: t('teams.channel'),     icon: MessageSquare },
+            { id: 'permissions', label: t('teams.permissions'), icon: ShieldCheck  },
+            { id: 'parametres',  label: t('common.edit'),       icon: Settings     },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
@@ -186,17 +193,17 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
             <div className="space-y-2 mb-4">
               {members.map(m => (
                 <div key={m.id} className="flex items-center gap-3 p-3.5 bg-surface rounded-xl border border-border">
-                  <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="md" />
+                  <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="md" src={m.avatarUrl} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-ink">{m.firstName} {m.lastName}</span>
                       {m.id === team.responsableId && (
                         <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber/10 text-amber text-[10px] font-semibold rounded-full">
-                          <Crown size={9} /> Responsable
+                          <Crown size={9} /> {t('teams.responsible')}
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-muted">{m.jobTitle ?? (m.role === 'admin' ? 'Administrateur' : 'Collaborateur')}</div>
+                    <div className="text-xs text-muted">{m.jobTitle ?? (m.role === 'admin' ? t('common.administrator') : t('common.collaborator'))}</div>
                   </div>
                   {isResponsable && m.id !== team.responsableId ? (
                     <button onClick={() => removeMember(m.id)}
@@ -217,7 +224,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   <input
                     value={memberQuery}
                     onChange={e => setMemberQuery(e.target.value)}
-                    placeholder="Ajouter un membre…"
+                    placeholder={t('teams.addMember')}
                     className="w-full pl-9 pr-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo"
                   />
                 </div>
@@ -227,10 +234,10 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                     {memberSearchResults.map(u => (
                       <button key={u.id} type="button" onClick={() => addMember(u.id)}
                         className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg transition-colors text-left">
-                        <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                        <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
-                          <div className="text-xs text-muted">{u.jobTitle ?? 'Collaborateur'}</div>
+                          <div className="text-xs text-muted">{u.jobTitle ?? t('common.collaborator')}</div>
                         </div>
                         <UserPlus size={14} className="text-indigo shrink-0" />
                       </button>
@@ -238,11 +245,14 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   </div>
                 )}
 
+                {memberError && (
+                  <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{memberError}</p>
+                )}
                 <button onClick={saveMembers}
                   className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
                     memberSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                   }`}>
-                  {memberSaved ? 'Enregistré' : 'Enregistrer les membres'}
+                  {memberSaved ? t('common.saved') : t('teams.inviteMembers')}
                 </button>
               </div>
             )}
@@ -254,7 +264,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
             {docs.length === 0 ? (
               <div className="py-16 text-center">
                 <FileText size={28} className="text-faint mx-auto mb-3" />
-                <p className="text-sm text-muted">Aucun document partagé dans cette équipe.</p>
+                <p className="text-sm text-muted">{t('teams.noDocuments')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -284,17 +294,17 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                 <div className="w-12 h-12 rounded-xl bg-indigo/10 flex items-center justify-center mx-auto mb-3">
                   <MessageSquare size={22} className="text-indigo" />
                 </div>
-                <p className="text-sm font-semibold text-ink mb-1">Canal #{team.name}</p>
-                <p className="text-xs text-muted mb-4">Les échanges de cette équipe sont dans la messagerie.</p>
+                <p className="text-sm font-semibold text-ink mb-1">{t('teams.channelName', { name: team.name })}</p>
+                <p className="text-xs text-muted mb-4">{t('teams.channelDesc')}</p>
                 <button onClick={() => navigate('/app/messages')}
                   className="px-4 py-2.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity">
-                  Ouvrir dans Messagerie
+                  {t('teams.openInMessages')}
                 </button>
               </div>
             ) : (
               <div className="py-16 text-center">
                 <MessageSquare size={28} className="text-faint mx-auto mb-3" />
-                <p className="text-sm text-muted">Aucun canal associé à cette équipe.</p>
+                <p className="text-sm text-muted">{t('teams.noChannel')}</p>
               </div>
             )}
           </div>
@@ -304,18 +314,18 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
           <div>
             {/* Team-level defaults (responsable only) */}
             <div className="mb-5">
-              <div className="text-xs font-semibold text-ink uppercase tracking-wide mb-2">Permissions par défaut de l'équipe</div>
+              <div className="text-xs font-semibold text-ink uppercase tracking-wide mb-2">{t('teams.defaultPermissions')}</div>
               {!isResponsable && (
                 <div className="mb-3 p-3 bg-indigo-pale rounded-xl border border-indigo/10">
-                  <p className="text-xs text-indigo">Seul le responsable peut modifier les permissions.</p>
+                  <p className="text-xs text-indigo">{t('teams.permissionsReadonly')}</p>
                 </div>
               )}
               <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden mb-3">
                 {TEAM_PERMS.map(perm => (
                   <div key={perm.key} className="flex items-center justify-between px-4 py-3.5">
                     <div className="flex-1 min-w-0 pr-4">
-                      <div className="text-sm font-medium text-ink">{perm.label}</div>
-                      <div className="text-xs text-muted mt-0.5">{perm.desc}</div>
+                      <div className="text-sm font-medium text-ink">{t(perm.labelKey)}</div>
+                      <div className="text-xs text-muted mt-0.5">{t(perm.descKey)}</div>
                     </div>
                     <Toggle on={perms[perm.key] ?? false} onChange={() => togglePerm(perm.key)} disabled={!isResponsable} />
                   </div>
@@ -326,7 +336,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
                     permSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                   }`}>
-                  {permSaved ? 'Enregistré' : 'Permissions enregistrées'}
+                  {permSaved ? t('common.saved') : t('teams.permissions')}
                 </button>
               )}
             </div>
@@ -334,8 +344,8 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
             {/* Per-member permissions (responsable only) */}
             {isResponsable && (
               <div>
-                <div className="text-xs font-semibold text-ink uppercase tracking-wide mb-2">Permissions par membre</div>
-                <p className="text-xs text-muted mb-3">Sélectionnez un membre pour personnaliser ses permissions individuelles.</p>
+                <div className="text-xs font-semibold text-ink uppercase tracking-wide mb-2">{t('teams.memberPermissions')}</div>
+                <p className="text-xs text-muted mb-3">{t('teams.memberPermissionsDesc')}</p>
 
                 {/* Member selector */}
                 <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden mb-4">
@@ -345,16 +355,16 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                         selectedMemberForPerms === m.id ? 'bg-indigo/5' : 'hover:bg-bg'
                       }`}>
-                      <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
+                      <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" src={m.avatarUrl} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-ink">{m.firstName} {m.lastName}</div>
-                        <div className="text-xs text-muted">{m.jobTitle ?? m.role}</div>
+                        <div className="text-xs text-muted">{m.jobTitle || t(m.role === 'admin' ? 'common.administrator' : 'common.collaborator')}</div>
                       </div>
                       <ChevronRight size={14} className={`text-faint transition-transform ${selectedMemberForPerms === m.id ? 'rotate-90' : ''}`} />
                     </button>
                   ))}
                   {members.filter(m => m.id !== team.responsableId).length === 0 && (
-                    <div className="px-4 py-6 text-center text-xs text-muted">Aucun autre membre dans cette équipe.</div>
+                    <div className="px-4 py-6 text-center text-xs text-muted">{t('teams.noOtherMembers')}</div>
                   )}
                 </div>
 
@@ -365,15 +375,15 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   return (
                     <div className="bg-surface rounded-xl border border-indigo/20 overflow-hidden mb-3">
                       <div className="px-4 py-3 bg-indigo/5 border-b border-indigo/10 flex items-center gap-2">
-                        <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
+                        <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" src={m.avatarUrl} />
                         <span className="text-sm font-semibold text-ink">{m.firstName} {m.lastName}</span>
                       </div>
                       <div className="divide-y divide-border">
                         {TEAM_PERMS.map(perm => (
                           <div key={perm.key} className="flex items-center justify-between px-4 py-3.5">
                             <div className="flex-1 min-w-0 pr-4">
-                              <div className="text-sm font-medium text-ink">{perm.label}</div>
-                              <div className="text-xs text-muted mt-0.5">{perm.desc}</div>
+                              <div className="text-sm font-medium text-ink">{t(perm.labelKey)}</div>
+                              <div className="text-xs text-muted mt-0.5">{t(perm.descKey)}</div>
                             </div>
                             <Toggle
                               on={memberPerms[perm.key] ?? false}
@@ -390,7 +400,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                           className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
                             memberPermSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                           }`}>
-                          {memberPermSaved ? 'Enregistré' : `Enregistrer pour ${m.firstName}`}
+                          {memberPermSaved ? t('common.saved') : `${t('common.save')} (${m.firstName})`}
                         </button>
                       </div>
                     </div>
@@ -405,12 +415,12 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
           <div className="space-y-5">
             {!isResponsable && (
               <div className="p-3 bg-indigo-pale rounded-xl border border-indigo/10">
-                <p className="text-xs text-indigo">Seul le responsable peut modifier les paramètres de l'équipe.</p>
+                <p className="text-xs text-indigo">{t('teams.permissionsReadonly')}</p>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Nom de l'équipe</label>
+              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('teams.teamName')}</label>
               <input
                 value={settings.name}
                 onChange={e => { setSettings(p => ({ ...p, name: e.target.value })); setSettingsSaved(false) }}
@@ -420,19 +430,19 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Description</label>
+              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('teams.teamDescription')}</label>
               <textarea
                 value={settings.description}
                 onChange={e => { setSettings(p => ({ ...p, description: e.target.value })); setSettingsSaved(false) }}
                 disabled={!isResponsable}
                 rows={3}
-                placeholder="Rôle et périmètre de cette équipe…"
+                placeholder={t('teams.descriptionPlaceholder')}
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Couleur</label>
+              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('teams.color')}</label>
               <div className="flex gap-2.5">
                 {TEAM_COLORS.map(c => (
                   <button key={c} type="button"
@@ -446,22 +456,25 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
             </div>
 
             <div className="pt-1 border-t border-border">
-              <div className="text-xs font-semibold text-ink mb-1 uppercase tracking-wide">Responsable</div>
+              <div className="text-xs font-semibold text-ink mb-1 uppercase tracking-wide">{t('teams.responsible')}</div>
               {(() => {
                 const resp = orgUsers.find(u => u.id === team.responsableId)
                 return resp ? (
                   <div className="flex items-center gap-3 py-2">
-                    <Avatar firstName={resp.firstName} lastName={resp.lastName} id={resp.id} size="sm" />
+                    <Avatar firstName={resp.firstName} lastName={resp.lastName} id={resp.id} size="sm" src={resp.avatarUrl} />
                     <div>
                       <div className="text-sm font-medium text-ink">{resp.firstName} {resp.lastName}</div>
-                      <div className="text-xs text-muted">{resp.role}</div>
+                      <div className="text-xs text-muted">{resp.jobTitle || t(resp.role === 'admin' ? 'common.administrator' : 'common.collaborator')}</div>
                     </div>
                   </div>
                 ) : null
               })()}
-              <p className="text-xs text-faint mt-1">Le responsable est désigné par l'administrateur de l'organisation.</p>
+              <p className="text-xs text-faint mt-1">{t('teams.responsibleHint')}</p>
             </div>
 
+            {settingsError && (
+              <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{settingsError}</p>
+            )}
             {isResponsable && (
               <button
                 disabled={!settings.name.trim()}
@@ -469,7 +482,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                 className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors disabled:opacity-40 ${
                   settingsSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                 }`}>
-                {settingsSaved ? 'Enregistré' : 'Enregistrer les paramètres'}
+                {settingsSaved ? t('common.saved') : t('common.save')}
               </button>
             )}
           </div>
@@ -480,6 +493,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
 }
 
 export function Teams() {
+  const { t } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const [myTeams, setMyTeams] = useState<Team[]>([])
   const [orgUsers, setOrgUsers] = useState<User[]>([])
@@ -512,8 +526,8 @@ export function Teams() {
     <div className="flex-1 overflow-y-auto">
       <div className="px-4 py-4 max-w-2xl">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-ink">Mes équipes</h2>
-          <div className="text-xs text-muted">{myTeams.length} équipe{myTeams.length > 1 ? 's' : ''}</div>
+          <h2 className="text-base font-bold text-ink">{t('teams.title')}</h2>
+          <div className="text-xs text-muted">{myTeams.length} {myTeams.length > 1 ? t('teams.teams') : t('teams.team')}</div>
         </div>
 
         <div className="space-y-3">
@@ -538,7 +552,7 @@ export function Teams() {
                     <div className="flex items-center justify-between">
                       <div className="flex -space-x-2">
                         {members.slice(0, 4).map(m => (
-                          <Avatar key={m.id} firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
+                          <Avatar key={m.id} firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" src={m.avatarUrl} />
                         ))}
                       </div>
                       {responsable && (
@@ -557,7 +571,7 @@ export function Teams() {
           {myTeams.length === 0 && (
             <div className="py-16 text-center">
               <Users size={28} className="text-faint mx-auto mb-3" />
-              <p className="text-sm text-muted">Vous n'appartenez à aucune équipe.</p>
+              <p className="text-sm text-muted">{t('teams.noTeams')}</p>
             </div>
           )}
         </div>

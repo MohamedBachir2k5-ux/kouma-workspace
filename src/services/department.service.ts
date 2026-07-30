@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { Department } from '../lib/types'
 import type { Tables } from '../lib/database.types'
+import { friendlyError } from '../lib/errors'
 
 type DepartmentRow = Tables<'departments'>
 
@@ -43,7 +44,7 @@ export const DepartmentService = {
       .insert({ organization_id: orgId, name: data.name, code: data.code })
       .select()
       .single()
-    if (error) return { dept: null, error: error.message }
+    if (error) return { dept: null, error: friendlyError(error.message) }
     return { dept: rowToDepartment(row), error: null }
   },
 
@@ -52,7 +53,7 @@ export const DepartmentService = {
       .from('departments')
       .update({ name: data.name, code: data.code })
       .eq('id', id)
-    return { error: error?.message ?? null }
+    return { error: friendlyError(error?.message) }
   },
 
   async delete(id: string): Promise<{ error: string | null }> {
@@ -60,6 +61,6 @@ export const DepartmentService = {
       .from('departments')
       .delete()
       .eq('id', id)
-    return { error: error?.message ?? null }
+    return { error: friendlyError(error?.message) }
   },
 }

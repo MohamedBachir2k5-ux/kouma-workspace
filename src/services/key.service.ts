@@ -3,6 +3,7 @@
 // All Supabase I/O is contained here — components never touch key tables directly.
 
 import { supabase } from '../lib/supabase'
+import { serviceError, friendlyError } from '../lib/errors'
 import { CryptoService } from './crypto.service'
 import { cryptoSession } from '../lib/crypto-session'
 
@@ -38,7 +39,7 @@ export const KeyService = {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' })
 
-      if (error) return { error: error.message }
+      if (error) return { error: friendlyError(error.message) }
 
       // Cache in session immediately
       cryptoSession.load(pair.privateKey, pair.publicKey, '')
@@ -88,7 +89,7 @@ export const KeyService = {
         .update({ encrypted_private_key: ciphertext, kdf_salt: salt, kdf_iv: iv, updated_at: new Date().toISOString() })
         .eq('user_id', userId)
 
-      return { error: error?.message ?? null }
+      return { error: serviceError(error) }
     } catch (e) {
       return { error: (e as Error).message }
     }
@@ -100,7 +101,7 @@ export const KeyService = {
       .from('user_key_pairs')
       .select('public_key')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
     if (!data) return null
     try { return CryptoService.importPublicKey(data.public_key) } catch { return null }
   },
@@ -145,7 +146,7 @@ export const KeyService = {
         bg_iv: bgWrap.iv,
       })
 
-      if (error) return { breakglassPhrase: '', error: error.message }
+      if (error) return { breakglassPhrase: '', error: friendlyError(error.message) }
       return { breakglassPhrase: phrase, error: null }
     } catch (e) {
       return { breakglassPhrase: '', error: (e as Error).message }
@@ -206,7 +207,7 @@ export const KeyService = {
         ...(bgRow ? { bg_encrypted_key: bgRow.bg_encrypted_key, bg_kdf_salt: bgRow.bg_kdf_salt, bg_iv: bgRow.bg_iv } : {}),
       }, { onConflict: 'organization_id,admin_user_id' })
 
-      return { error: error?.message ?? null }
+      return { error: serviceError(error) }
     } catch (e) {
       return { error: (e as Error).message }
     }
@@ -230,7 +231,7 @@ export const KeyService = {
         .select('recovery_public_key')
         .eq('organization_id', orgId)
         .limit(1)
-        .single()
+        .maybeSingle()
 
       // Encrypt for each participant
       const keyRows: Array<{ conversation_id: string; user_id: string; encrypted_key: string; eph_public_key: string; ecies_iv: string }> = []
@@ -245,11 +246,22 @@ export const KeyService = {
       }
 
       if (keyRows.length > 0) {
-        await supabase.from('conversation_keys').upsert(keyRows, { onConflict: 'conversation_id,user_id' })
+        const { error: rpcErr } = await supabase.rpc('init_conversation_keys', {
+          p_conversation_id: conversationId,
+          p_key_rows: keyRows,
+        })
+        if (rpcErr) return { error: rpcErr.message }
       }
 
-      // Encrypt for org recovery (if recovery key exists)
-      if (recoveryRow?.recovery_public_key) {
+      // Encrypt for org recovery only for team (organizational) conversations.
+      // Direct and group conversations are private — excluded from org recovery by design.
+      const { data: convRow } = await supabase
+        .from('conversations')
+        .select('type')
+        .eq('id', conversationId)
+        .maybeSingle()
+
+      if (convRow?.type === 'team' && recoveryRow?.recovery_public_key) {
         const recoveryPub = await CryptoService.importPublicKey(recoveryRow.recovery_public_key)
         const recoveryWrap = await CryptoService.eciesWrapKey(convKey, recoveryPub, orgId)
         await supabase.from('conversation_recovery_keys').upsert({
@@ -261,7 +273,7 @@ export const KeyService = {
         }, { onConflict: 'conversation_id,organization_id' })
       }
 
-      // Cache locally
+      // Only cache locally after successful DB persist
       cryptoSession.setConvKey(conversationId, convKey)
       return { error: null }
     } catch (e) {
@@ -285,7 +297,7 @@ export const KeyService = {
       .select('encrypted_key, eph_public_key, ecies_iv')
       .eq('conversation_id', conversationId)
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     if (!data) return null
 
@@ -333,7 +345,7 @@ export const KeyService = {
         .select('recovery_public_key')
         .eq('organization_id', orgId)
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (recoveryRow?.recovery_public_key) {
         const recoveryPub = await CryptoService.importPublicKey(recoveryRow.recovery_public_key)
@@ -366,7 +378,7 @@ export const KeyService = {
       .select('encrypted_key, eph_public_key, ecies_iv')
       .eq('storage_path', storagePath)
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     if (!data) return null
 

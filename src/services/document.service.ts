@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import type { Document, DocumentVisibility, Folder } from '../lib/types'
 import { cryptoSession } from '../lib/crypto-session'
 import { KeyService } from './key.service'
+import { serviceError, friendlyError } from '../lib/errors'
 
 type DocumentWithFile = {
   id: string
@@ -75,7 +76,7 @@ export const DocumentService = {
   async listFolders(orgId: string): Promise<Folder[]> {
     const { data } = await supabase
       .from('folders')
-      .select('id, organization_id, parent_id, team_id, name, created_at')
+      .select('id, organization_id, parent_id, team_id, name, created_at, created_by, visibility')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: true })
     return (data ?? []).map(r => ({
@@ -85,16 +86,23 @@ export const DocumentService = {
       teamId: r.team_id ?? null,
       name: r.name,
       createdAt: r.created_at,
+      createdBy: r.created_by ?? null,
+      visibility: (r.visibility ?? 'personal') as 'personal' | 'org',
     }))
   },
 
-  async createFolder(orgId: string, name: string): Promise<{ folder: Folder | null; error: string | null }> {
+  async createFolder(
+    orgId: string,
+    name: string,
+    visibility: 'personal' | 'org' = 'personal',
+  ): Promise<{ folder: Folder | null; error: string | null }> {
+    const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase
       .from('folders')
-      .insert({ organization_id: orgId, name, parent_id: null, team_id: null })
-      .select('id, organization_id, parent_id, team_id, name, created_at')
+      .insert({ organization_id: orgId, name, parent_id: null, team_id: null, visibility, created_by: user?.id ?? null })
+      .select('id, organization_id, parent_id, team_id, name, created_at, created_by, visibility')
       .single()
-    if (error || !data) return { folder: null, error: error?.message ?? 'Erreur création dossier.' }
+    if (error || !data) return { folder: null, error: friendlyError(error?.message) ?? 'Erreur création dossier.' }
     return {
       folder: {
         id: data.id,
@@ -103,9 +111,18 @@ export const DocumentService = {
         teamId: data.team_id ?? null,
         name: data.name,
         createdAt: data.created_at,
+        createdBy: data.created_by ?? null,
+        visibility: data.visibility as 'personal' | 'org',
       },
       error: null,
     }
+  },
+
+  async deleteFolder(folderId: string): Promise<{ error: string | null }> {
+    // Move all documents out before deleting (avoids orphaned docs)
+    await supabase.from('documents').update({ folder_id: null }).eq('folder_id', folderId)
+    const { error } = await supabase.from('folders').delete().eq('id', folderId)
+    return { error: serviceError(error) }
   },
 
   async totalUsed(orgId: string): Promise<number> {
@@ -178,7 +195,7 @@ export const DocumentService = {
       .from('attachments')
       .upload(storagePath, uploadBlob, { contentType: uploadBlob.type })
 
-    if (uploadErr) return { document: null, error: uploadErr.message }
+    if (uploadErr) return { document: null, error: friendlyError(uploadErr.message) ?? 'Erreur upload.' }
 
     const { data: fileRecord, error: fileErr } = await supabase
       .from('files')
@@ -194,7 +211,7 @@ export const DocumentService = {
       .select()
       .single()
 
-    if (fileErr || !fileRecord) return { document: null, error: fileErr?.message ?? 'Erreur fichier.' }
+    if (fileErr || !fileRecord) return { document: null, error: friendlyError(fileErr?.message) ?? 'Erreur fichier.' }
 
     const { data: docRecord, error: docErr } = await supabase
       .from('documents')
@@ -211,7 +228,7 @@ export const DocumentService = {
       .select('*, files(name, type, size, storage_path)')
       .single()
 
-    if (docErr || !docRecord) return { document: null, error: docErr?.message ?? 'Erreur document.' }
+    if (docErr || !docRecord) return { document: null, error: friendlyError(docErr?.message) ?? 'Erreur document.' }
 
     return { document: rowToDocument(docRecord as unknown as DocumentWithFile), error: null }
   },
@@ -240,7 +257,7 @@ export const DocumentService = {
       .select()
       .single()
 
-    if (fileErr || !fileRecord) return { document: null, error: fileErr?.message ?? 'Erreur fichier.' }
+    if (fileErr || !fileRecord) return { document: null, error: friendlyError(fileErr?.message) ?? 'Erreur fichier.' }
 
     const { data: docRecord, error: docErr } = await supabase
       .from('documents')
@@ -255,7 +272,7 @@ export const DocumentService = {
       .select('*, files(name, type, size, storage_path)')
       .single()
 
-    if (docErr || !docRecord) return { document: null, error: docErr?.message ?? 'Erreur document.' }
+    if (docErr || !docRecord) return { document: null, error: friendlyError(docErr?.message) ?? 'Erreur document.' }
 
     await supabase.from('audit_logs').insert({
       organization_id: orgId,
@@ -267,12 +284,20 @@ export const DocumentService = {
     return { document: rowToDocument(docRecord as unknown as DocumentWithFile), error: null }
   },
 
+  async moveToFolder(documentId: string, folderId: string | null): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('documents')
+      .update({ folder_id: folderId })
+      .eq('id', documentId)
+    return { error: serviceError(error) }
+  },
+
   async deleteDocument(documentId: string): Promise<{ error: string | null }> {
     const { error } = await supabase
       .from('documents')
       .delete()
       .eq('id', documentId)
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   // Download a document and decrypt it if the file key is available.
@@ -327,5 +352,51 @@ export const DocumentService = {
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
 
     return { error: null }
+  },
+
+  // Decrypt and return a blob URL for in-app preview. Caller must revoke the URL when done.
+  async getDocumentPreviewUrl(documentId: string, orgId: string): Promise<{ url: string | null; mimeType: string; name: string; error: string | null }> {
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('title, files(storage_path, name)')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) return { url: null, mimeType: '', name: '', error: 'Document introuvable.' }
+    const fileInfo = doc.files as { storage_path: string; name: string } | null
+    if (!fileInfo?.storage_path) return { url: null, mimeType: '', name: doc.title ?? '', error: 'Fichier introuvable.' }
+
+    const { data: signed, error: signErr } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(fileInfo.storage_path, 300)
+    if (signErr || !signed) return { url: null, mimeType: '', name: fileInfo.name, error: 'Lien indisponible.' }
+
+    const response = await fetch(signed.signedUrl)
+    if (!response.ok) return { url: null, mimeType: '', name: fileInfo.name, error: 'Chargement échoué.' }
+
+    const rawBuf = await response.arrayBuffer()
+    let plainBuf: ArrayBuffer = rawBuf
+
+    if (fileInfo.storage_path.endsWith('.enc') && cryptoSession.isLoaded) {
+      const fileKey = await KeyService.getOrLoadFileKey(fileInfo.storage_path, orgId)
+      if (fileKey && rawBuf.byteLength > 12) {
+        try {
+          const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
+          const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
+          plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey, cipher)
+        } catch { /* serve raw */ }
+      }
+    }
+
+    const ext = (fileInfo.name.split('.').pop() ?? '').toLowerCase()
+    const mimeMap: Record<string, string> = {
+      pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+    }
+    const mimeType = mimeMap[ext] ?? 'application/octet-stream'
+    const blob = new Blob([plainBuf], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+
+    return { url, mimeType, name: fileInfo.name, error: null }
   },
 }

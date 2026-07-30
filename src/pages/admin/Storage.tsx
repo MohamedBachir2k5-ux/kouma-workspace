@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { DocumentService } from '../../services/document.service'
 import { UserService } from '../../services/user.service'
@@ -31,6 +32,7 @@ function ProgressBar({ value, total, color = 'bg-indigo' }: { value: number; tot
 }
 
 export function AdminStorage() {
+  const { t } = useTranslation()
   const { currentOrg, storageQuotaBytes } = useAuth()
   const [docs, setDocs] = useState<Document[]>([])
   const [totalUsed, setTotalUsed] = useState(0)
@@ -63,21 +65,21 @@ export function AdminStorage() {
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Stockage</h1>
-        <p className="text-sm text-muted mt-0.5">Utilisation de l'espace de stockage du workspace.</p>
+        <h1 className="text-xl font-bold text-ink">{t('admin.storageTitle')}</h1>
+        <p className="text-sm text-muted mt-0.5">{t('admin.storageSubtitle')}</p>
       </div>
 
       {/* Global */}
       <div className="bg-surface rounded-xl border border-border p-6 mb-5">
         <div className="flex items-end justify-between mb-3">
           <div>
-            <p className="text-xs text-muted uppercase tracking-wide font-semibold mb-1">Stockage total</p>
+            <p className="text-xs text-muted uppercase tracking-wide font-semibold mb-1">{t('admin.totalStorage')}</p>
             <p className="text-3xl font-bold text-navy">{formatFileSize(totalUsed)}</p>
-            <p className="text-sm text-muted mt-0.5">sur {formatFileSize(storageQuotaBytes)} disponibles</p>
+            <p className="text-sm text-muted mt-0.5">{t('admin.storageAvailable', { value: formatFileSize(storageQuotaBytes) })}</p>
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-ink">{pct}%</p>
-            <p className="text-xs text-muted">utilisé</p>
+            <p className="text-xs text-muted">{t('admin.storageUsedPct')}</p>
           </div>
         </div>
         <ProgressBar
@@ -86,14 +88,14 @@ export function AdminStorage() {
           color={Number(pct) > 80 ? 'bg-danger' : Number(pct) > 60 ? 'bg-amber' : 'bg-success'}
         />
         <p className="text-xs text-muted mt-2">
-          {formatFileSize(storageQuotaBytes - totalUsed)} restants · {docs.length} fichier{docs.length > 1 ? 's' : ''}
+          {t(docs.length !== 1 ? 'admin.storageRemainingPlural' : 'admin.storageRemaining', { size: formatFileSize(storageQuotaBytes - totalUsed), count: docs.length })}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
         {/* By dept */}
         <div className="bg-surface rounded-xl border border-border p-5">
-          <h2 className="text-sm font-bold text-ink mb-4">Par département</h2>
+          <h2 className="text-sm font-bold text-ink mb-4">{t('admin.byDept')}</h2>
           <div className="space-y-3">
             {Object.entries(byDept).sort((a, b) => b[1] - a[1]).map(([dept, size]) => (
               <div key={dept}>
@@ -112,7 +114,7 @@ export function AdminStorage() {
 
         {/* By type */}
         <div className="bg-surface rounded-xl border border-border p-5">
-          <h2 className="text-sm font-bold text-ink mb-4">Par type de fichier</h2>
+          <h2 className="text-sm font-bold text-ink mb-4">{t('admin.byFileType')}</h2>
           <div className="space-y-3">
             {Object.entries(byType).sort((a, b) => b[1].size - a[1].size).map(([type, data]) => (
               <div key={type} className="flex items-center gap-3 p-3 bg-bg rounded-lg">
@@ -124,7 +126,7 @@ export function AdminStorage() {
                     <span className="text-xs font-semibold text-ink uppercase">{type}</span>
                     <span className="text-xs text-muted">{formatFileSize(data.size)}</span>
                   </div>
-                  <span className="text-[10px] text-muted">{data.count} fichier{data.count > 1 ? 's' : ''}</span>
+                  <span className="text-[10px] text-muted">{t(data.count !== 1 ? 'admin.fileCountPlural' : 'admin.fileCount', { count: data.count })}</span>
                 </div>
               </div>
             ))}
@@ -135,7 +137,7 @@ export function AdminStorage() {
       {/* Largest files */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border bg-bg">
-          <h2 className="text-sm font-bold text-ink">Fichiers les plus volumineux</h2>
+          <h2 className="text-sm font-bold text-ink">{t('admin.largestFiles')}</h2>
         </div>
         {sortedDocs.map((doc, idx) => {
           const uploader = orgUsers.find(u => u.id === doc.ownerId)
@@ -153,7 +155,7 @@ export function AdminStorage() {
           )
         })}
         {sortedDocs.length === 0 && (
-          <div className="py-10 text-center text-sm text-muted">Aucun fichier.</div>
+          <div className="py-10 text-center text-sm text-muted">{t('admin.noFiles')}</div>
         )}
       </div>
     </div>

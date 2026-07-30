@@ -1,7 +1,9 @@
-// Kouma Service Worker — handles Web Push and offline caching
+// Kouma Service Worker — offline caching + Web Push
 
-const CACHE_NAME = 'kouma-shell-v1'
-const SHELL_ASSETS = ['/', '/app/messages', '/manifest.json', '/favicon.svg']
+const CACHE_NAME = 'kouma-shell-v2'
+
+// Shell assets to pre-cache on install
+const SHELL_ASSETS = ['/', '/manifest.json', '/favicon.svg', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', event => {
   self.skipWaiting()
@@ -12,32 +14,58 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   )
 })
 
-// Network-first for API calls; cache-first for static shell assets
 self.addEventListener('fetch', event => {
   const { request } = event
   if (request.method !== 'GET') return
   const url = new URL(request.url)
 
-  // Skip Supabase API requests — always network
-  if (url.hostname.includes('supabase') || url.pathname.startsWith('/rest/') || url.pathname.startsWith('/auth/')) return
+  // Never intercept Supabase API / auth / realtime — must always hit the network
+  if (
+    url.hostname.includes('supabase') ||
+    url.pathname.startsWith('/rest/') ||
+    url.pathname.startsWith('/auth/') ||
+    url.pathname.startsWith('/realtime/')
+  ) return
 
-  event.respondWith(
-    fetch(request)
-      .then(response => {
-        if (response.ok && SHELL_ASSETS.includes(url.pathname)) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then(c => c.put(request, clone))
-        }
-        return response
-      })
-      .catch(() => caches.match(request).then(cached => cached ?? caches.match('/')))
-  )
+  // Same-origin JS + CSS bundles: Vite adds content hashes → immutable, cache-first
+  if (url.origin === self.location.origin && /\.(js|css)(\?.*)?$/.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then(cached =>
+        cached ?? fetch(request).then(response => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then(c => c.put(request, clone))
+          }
+          return response
+        })
+      )
+    )
+    return
+  }
+
+  // Everything else from same origin (HTML, manifest, icons):
+  // network-first, fall back to cache so the SPA shell loads offline
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then(c => c.put(request, clone))
+          }
+          return response
+        })
+        .catch(() =>
+          caches.match(request).then(cached => cached ?? caches.match('/'))
+        )
+    )
+  }
 })
 
 // Push notification received from server
@@ -55,7 +83,7 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(title, options))
 })
 
-// User clicks the notification
+// User taps the notification
 self.addEventListener('notificationclick', event => {
   event.notification.close()
   const url = event.notification.data?.url ?? '/app/messages'

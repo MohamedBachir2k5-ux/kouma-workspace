@@ -28,7 +28,7 @@ export function SolutionDocuments() {
           <div className="bg-indigo-pale border border-indigo/10 rounded-2xl p-6 mb-6">
             <h3 className="font-bold text-navy mb-2">Documents organisationnels vs pièces jointes</h3>
             <p className="text-sm text-muted leading-relaxed">
-              Kouma distingue les <strong className="text-ink">documents du workspace</strong> — qui appartiennent à l'organisation et sont gérés dans la bibliothèque — des <strong className="text-ink">pièces jointes de conversations</strong>, qui restent liées à la discussion dans laquelle elles ont été envoyées. Vous pouvez toujours promouvoir une pièce jointe en document officiel si nécessaire.
+              Kouma distingue les <strong className="text-ink">documents du workspace</strong>, qui appartiennent à l'organisation et sont gérés dans la bibliothèque, des <strong className="text-ink">pièces jointes de conversations</strong>, qui restent liées à la discussion dans laquelle elles ont été envoyées. Vous pouvez toujours promouvoir une pièce jointe en document officiel si nécessaire.
             </p>
           </div>
 

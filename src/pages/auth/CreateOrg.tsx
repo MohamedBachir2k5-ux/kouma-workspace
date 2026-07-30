@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronDown, HelpCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { COUNTRIES } from '../../config/countries'
 import { CURRENCY_LABELS } from '../../config/pricing'
 import { AuthService } from '../../services/auth.service'
@@ -11,22 +12,6 @@ import type { SupportedCurrency } from '../../config/pricing'
 
 const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 
-const steps = ['Votre organisation', 'Accès administrateur', 'Confirmation', 'Clé de récupération']
-
-const orgTypes = [
-  { value: 'prive', label: 'Secteur privé' },
-  { value: 'public', label: 'Secteur public' },
-  { value: 'npo', label: 'Organisation à but non lucratif' },
-  { value: 'autre', label: 'Autre' },
-]
-
-const languages = [
-  { value: 'fr', label: 'Français' },
-  { value: 'en', label: 'English' },
-  { value: 'pt', label: 'Português' },
-  { value: 'es', label: 'Español' },
-]
-
 function currencyNameForCountry(countryName: string): string {
   const found = COUNTRIES.find(c => c.name === countryName)
   if (!found) return ''
@@ -34,6 +19,7 @@ function currencyNameForCountry(countryName: string): string {
 }
 
 export function CreateOrg() {
+  const { t } = useTranslation()
   const { refreshCurrentOrg } = useAuth()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -52,6 +38,27 @@ export function CreateOrg() {
     password: '', confirmPassword: '',
   })
   const navigate = useNavigate()
+
+  const steps = [
+    t('createOrg.stepOrg'),
+    t('createOrg.stepAdmin'),
+    t('createOrg.stepConfirm'),
+    t('createOrg.stepBreakglass'),
+  ]
+
+  const orgTypes = [
+    { value: 'prive', label: t('createOrg.orgTypePrivate') },
+    { value: 'public', label: t('createOrg.orgTypePublic') },
+    { value: 'npo', label: t('createOrg.orgTypeNpo') },
+    { value: 'autre', label: t('createOrg.orgTypeOther') },
+  ]
+
+  const languages = [
+    { value: 'fr', label: 'Français' },
+    { value: 'en', label: 'English' },
+    { value: 'pt', label: 'Português' },
+    { value: 'es', label: 'Español' },
+  ]
 
   function update(field: string, value: string) {
     setForm(prev => {
@@ -92,22 +99,23 @@ export function CreateOrg() {
     })
 
     if (signUpError || !userId) {
-      setError(signUpError ?? 'Erreur lors de la création du compte.')
+      setError(signUpError ?? t('createOrg.errorAccount'))
       setLoading(false)
       return
     }
 
-    // Generate admin key pair (loads into CryptoSession)
     const { error: keyError } = await KeyService.generateAndStoreUserKeys(userId, form.password)
     if (keyError) {
-      setError(`Clés E2E : ${keyError}`)
+      setError(t('createOrg.errorKeys', { detail: keyError }))
       setLoading(false)
       return
     }
 
     const sectorLabel: Record<string, string> = {
-      prive: 'Secteur privé', public: 'Secteur public',
-      npo: 'Organisation à but non lucratif', autre: form.orgTypeOther || 'Autre',
+      prive: t('createOrg.orgTypePrivate'),
+      public: t('createOrg.orgTypePublic'),
+      npo: t('createOrg.orgTypeNpo'),
+      autre: form.orgTypeOther || t('createOrg.orgTypeOther'),
     }
 
     const { organizationId, error: orgError } = await OrganizationService.create({
@@ -116,6 +124,7 @@ export function CreateOrg() {
       phone: form.phone || undefined,
       website: form.website || undefined,
       country: form.country,
+      city: form.city || undefined,
       currency: (form.currency || 'XOF') as SupportedCurrency,
       language: form.language,
       sector: sectorLabel[form.orgType] ?? form.orgType,
@@ -123,15 +132,14 @@ export function CreateOrg() {
     })
 
     if (orgError || !organizationId) {
-      setError(orgError ?? 'Erreur lors de la création de l\'organisation.')
+      setError(orgError ?? t('createOrg.errorOrg'))
       setLoading(false)
       return
     }
 
-    // Generate org recovery key pair + breakglass
     const { breakglassPhrase: phrase, error: recoveryError } = await KeyService.generateOrgRecoveryKeys(organizationId, userId)
     if (recoveryError) {
-      setError('Erreur lors de la génération des clés de récupération.')
+      setError(t('createOrg.errorRecovery'))
       setLoading(false)
       return
     }
@@ -182,41 +190,47 @@ export function CreateOrg() {
           {/* ── STEP 1 ── */}
           {step === 0 && (
             <div>
-              <h1 className="text-xl font-bold text-navy mb-1">Votre organisation</h1>
-              <p className="text-muted text-sm mb-6">Décrivez votre structure pour personnaliser votre espace.</p>
+              <div className="flex items-start justify-between mb-1">
+                <h1 className="text-xl font-bold text-navy">{t('createOrg.title')}</h1>
+                <a href="/resources/guides#creer-organisation" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo hover:underline shrink-0 mt-0.5">
+                  <HelpCircle size={13} />
+                  En savoir plus
+                </a>
+              </div>
+              <p className="text-muted text-sm mb-6">{t('createOrg.subtitle')}</p>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                    Nom de l'organisation *
+                    {t('createOrg.orgName')} *
                   </label>
                   <input
                     value={form.orgName}
                     onChange={e => update('orgName', e.target.value)}
-                    placeholder="Nom de votre organisation"
+                    placeholder={t('createOrg.orgNamePlaceholder')}
                     autoFocus
                     className={`w-full px-4 py-3 bg-bg border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent ${showValidation && !form.orgName ? 'border-danger' : 'border-border'}`}
                   />
-                  {showValidation && !form.orgName && <p className="mt-1 text-xs text-danger">Champ requis</p>}
+                  {showValidation && !form.orgName && <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>}
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                    Type d'organisation *
+                    {t('createOrg.orgType')} *
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {orgTypes.map(t => (
+                    {orgTypes.map(ot => (
                       <button
-                        key={t.value}
+                        key={ot.value}
                         type="button"
-                        onClick={() => update('orgType', t.value)}
+                        onClick={() => update('orgType', ot.value)}
                         className={`py-2.5 px-3 rounded-xl text-xs font-medium border transition-colors text-left ${
-                          form.orgType === t.value
+                          form.orgType === ot.value
                             ? 'border-navy bg-navy text-white'
                             : 'border-border bg-bg text-muted hover:border-navy/30'
                         }`}
                       >
-                        {t.label}
+                        {ot.label}
                       </button>
                     ))}
                   </div>
@@ -224,7 +238,7 @@ export function CreateOrg() {
                     <input
                       value={form.orgTypeOther}
                       onChange={e => update('orgTypeOther', e.target.value)}
-                      placeholder="Précisez…"
+                      placeholder={t('createOrg.orgTypeOtherPlaceholder')}
                       className="mt-2 w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
                     />
                   )}
@@ -232,22 +246,22 @@ export function CreateOrg() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Pays *</label>
-                    {showValidation && !form.country && <p className="mb-1 text-xs text-danger">Sélectionnez un pays dans la liste</p>}
+                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('createOrg.country')} *</label>
+                    {showValidation && !form.country && <p className="mb-1 text-xs text-danger">{t('createOrg.countryRequired')}</p>}
                     <div ref={countryRef} className="relative">
                       <input
                         value={countryOpen ? countryQuery : form.country}
                         onChange={e => setCountryQuery(e.target.value)}
                         onFocus={() => { setCountryOpen(true); setCountryQuery('') }}
                         onBlur={() => setTimeout(() => setCountryOpen(false), 150)}
-                        placeholder="Rechercher un pays…"
+                        placeholder={t('createOrg.searchCountry')}
                         className="w-full pl-3 pr-8 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
                       />
                       <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                       {countryOpen && (
                         <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-52 overflow-y-auto">
                           {filteredCountries.length === 0 ? (
-                            <p className="text-xs text-faint text-center py-4">Aucun pays trouvé.</p>
+                            <p className="text-xs text-faint text-center py-4">{t('createOrg.noCountry')}</p>
                           ) : filteredCountries.map(c => (
                             <button
                               key={c.code}
@@ -270,20 +284,20 @@ export function CreateOrg() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Ville *</label>
+                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('createOrg.city')} *</label>
                     <input
                       value={form.city}
                       onChange={e => update('city', e.target.value)}
-                      placeholder="Votre ville"
+                      placeholder={t('createOrg.city')}
                       className={`w-full px-3 py-3 bg-bg border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy ${showValidation && !form.city ? 'border-danger' : 'border-border'}`}
                     />
-                    {showValidation && !form.city && <p className="mt-1 text-xs text-danger">Champ requis</p>}
+                    {showValidation && !form.city && <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Langue de l'interface</label>
+                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('createOrg.language')}</label>
                     <div className="grid grid-cols-2 gap-1.5">
                       {languages.map(l => (
                         <button
@@ -302,29 +316,29 @@ export function CreateOrg() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Devise</label>
+                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('createOrg.currency')}</label>
                     <div className={`w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm ${form.currency ? 'text-ink' : 'text-faint'}`}>
                       {form.currency
                         ? currencyNameForCountry(form.country)
-                        : 'Auto selon le pays'}
+                        : t('createOrg.currencyAuto')}
                     </div>
-                    <p className="mt-1 text-[10px] text-faint">Définie automatiquement selon le pays.</p>
+                    <p className="mt-1 text-[10px] text-faint">{t('createOrg.currencyHint')}</p>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Adresse</label>
+                  <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('createOrg.address')}</label>
                   <input
                     value={form.address}
                     onChange={e => update('address', e.target.value)}
-                    placeholder="Quartier, rue, numéro…"
+                    placeholder={t('createOrg.addressPlaceholder')}
                     className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                    Site web <span className="text-faint normal-case font-normal">(optionnel)</span>
+                    {t('createOrg.website')} <span className="text-faint normal-case font-normal">({t('common.optional')})</span>
                   </label>
                   <input
                     value={form.website}
@@ -341,15 +355,19 @@ export function CreateOrg() {
           {/* ── STEP 2 ── */}
           {step === 1 && (
             <div>
-              <h1 className="text-xl font-bold text-navy mb-1">Accès administrateur</h1>
-              <p className="text-muted text-sm mb-6 leading-relaxed">
-                Ces identifiants permettront d'accéder à la console de gestion de votre organisation.
-              </p>
+              <div className="flex items-start justify-between mb-1">
+                <h1 className="text-xl font-bold text-navy">{t('createOrg.adminTitle')}</h1>
+                <a href="/resources/guides#compte-administrateur" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo hover:underline shrink-0 mt-0.5">
+                  <HelpCircle size={13} />
+                  En savoir plus
+                </a>
+              </div>
+              <p className="text-muted text-sm mb-6 leading-relaxed">{t('createOrg.adminSubtitle')}</p>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                    Email principal *
+                    {t('createOrg.primaryEmail')} *
                   </label>
                   <input
                     type="email"
@@ -359,12 +377,12 @@ export function CreateOrg() {
                     autoFocus
                     className={`w-full px-4 py-3 bg-bg border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy ${showValidation && !form.email ? 'border-danger' : 'border-border'}`}
                   />
-                  {showValidation && !form.email && <p className="mt-1 text-xs text-danger">Champ requis</p>}
+                  {showValidation && !form.email && <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>}
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                    Email secondaire <span className="text-faint normal-case font-normal">(optionnel)</span>
+                    {t('createOrg.secondaryEmail')} <span className="text-faint normal-case font-normal">({t('common.optional')})</span>
                   </label>
                   <input
                     type="email"
@@ -377,7 +395,7 @@ export function CreateOrg() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Téléphone *</label>
+                    <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('createOrg.phone')} *</label>
                     <input
                       type="tel"
                       value={form.phone}
@@ -388,7 +406,7 @@ export function CreateOrg() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                      Tél. secondaire <span className="text-faint normal-case font-normal">(opt.)</span>
+                      {t('createOrg.secondaryPhone')} <span className="text-faint normal-case font-normal">({t('common.optional')})</span>
                     </label>
                     <input
                       type="tel"
@@ -402,7 +420,7 @@ export function CreateOrg() {
 
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                    Mot de passe <span className="text-faint normal-case font-normal">(min. 6 caractères)</span>
+                    {t('createOrg.passwordMin')}
                   </label>
                   <input
                     type="password"
@@ -414,7 +432,7 @@ export function CreateOrg() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Confirmer le mot de passe</label>
+                  <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('createOrg.confirmPassword')}</label>
                   <input
                     type="password"
                     value={form.confirmPassword}
@@ -425,7 +443,7 @@ export function CreateOrg() {
                     }`}
                   />
                   {form.confirmPassword && form.password !== form.confirmPassword && (
-                    <p className="mt-1.5 text-xs text-danger">Les mots de passe ne correspondent pas.</p>
+                    <p className="mt-1.5 text-xs text-danger">{t('createOrg.passwordMismatch')}</p>
                   )}
                 </div>
               </div>
@@ -435,19 +453,19 @@ export function CreateOrg() {
           {/* ── STEP 3 ── */}
           {step === 2 && (
             <div>
-              <h1 className="text-xl font-bold text-navy mb-1">Confirmation</h1>
-              <p className="text-muted text-sm mb-6">Vérifiez les informations avant de créer votre espace.</p>
+              <h1 className="text-xl font-bold text-navy mb-1">{t('createOrg.confirmTitle')}</h1>
+              <p className="text-muted text-sm mb-6">{t('createOrg.confirmSubtitle')}</p>
 
               <div className="space-y-0 border border-border rounded-xl overflow-hidden mb-5">
                 {[
-                  { label: 'Organisation', value: form.orgName },
-                  { label: 'Type', value: selectedType?.label || form.orgType },
-                  { label: 'Pays', value: form.country },
-                  { label: 'Ville', value: form.city },
-                  { label: 'Langue', value: languages.find(l => l.value === form.language)?.label ?? form.language },
-                  { label: 'Devise', value: currencyNameForCountry(form.country) || '—' },
-                  { label: 'Email administrateur', value: form.email },
-                  { label: 'Téléphone', value: form.phone },
+                  { label: t('createOrg.labelOrganisation'), value: form.orgName },
+                  { label: t('createOrg.labelType'), value: selectedType?.label || form.orgType },
+                  { label: t('createOrg.country'), value: form.country },
+                  { label: t('createOrg.city'), value: form.city },
+                  { label: t('createOrg.language'), value: languages.find(l => l.value === form.language)?.label ?? form.language },
+                  { label: t('createOrg.currency'), value: currencyNameForCountry(form.country) || '-' },
+                  { label: t('createOrg.labelAdminEmail'), value: form.email },
+                  { label: t('createOrg.phone'), value: form.phone },
                 ].map(({ label, value }, idx, arr) => (
                   <div key={label} className={`flex items-center justify-between px-4 py-3 ${idx < arr.length - 1 ? 'border-b border-border' : ''}`}>
                     <span className="text-xs font-semibold text-muted uppercase tracking-wide">{label}</span>
@@ -457,9 +475,7 @@ export function CreateOrg() {
               </div>
 
               <div className="p-4 bg-indigo-pale rounded-xl">
-                <p className="text-xs text-indigo leading-relaxed">
-                  En créant votre espace, vous acceptez que Kouma stocke les données nécessaires au fonctionnement de votre workspace. Vos contenus vous appartiennent.
-                </p>
+                <p className="text-xs text-indigo leading-relaxed">{t('createOrg.consentText')}</p>
               </div>
             </div>
           )}
@@ -467,13 +483,17 @@ export function CreateOrg() {
           {/* ── STEP 4 — Breakglass phrase ── */}
           {step === 3 && breakglassPhrase && (
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg mb-5">
-                <span className="text-amber-700 text-xs font-semibold uppercase tracking-wide">Clé de récupération d'urgence</span>
+              <div className="flex items-center justify-between mb-5">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                  <span className="text-amber-700 text-xs font-semibold uppercase tracking-wide">{t('createOrg.breakglassTag')}</span>
+                </div>
+                <a href="/resources/guides#phrase-recuperation" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo hover:underline">
+                  <HelpCircle size={13} />
+                  Pourquoi c'est important ?
+                </a>
               </div>
-              <h1 className="text-xl font-bold text-navy mb-2">Notez votre phrase de récupération</h1>
-              <p className="text-sm text-muted leading-relaxed mb-6">
-                Cette phrase est affichée <strong>une seule fois</strong>. Elle vous permet de récupérer l'accès à votre organisation en cas d'urgence. Conservez-la dans un endroit sûr, hors ligne.
-              </p>
+              <h1 className="text-xl font-bold text-navy mb-2">{t('createOrg.breakglassTitle')}</h1>
+              <p className="text-sm text-muted leading-relaxed mb-6">{t('createOrg.breakglassText')}</p>
 
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 mb-6 text-center">
                 <p className="font-mono text-sm tracking-widest text-amber-900 break-all select-all">{breakglassPhrase}</p>
@@ -486,9 +506,7 @@ export function CreateOrg() {
                   onChange={e => setConfirmed(e.target.checked)}
                   className="mt-0.5 accent-navy"
                 />
-                <span className="text-sm text-ink leading-relaxed">
-                  J'ai noté cette phrase en lieu sûr et je comprends qu'elle ne sera plus affichée.
-                </span>
+                <span className="text-sm text-ink leading-relaxed">{t('createOrg.breakglassConfirm')}</span>
               </label>
             </div>
           )}
@@ -502,7 +520,7 @@ export function CreateOrg() {
               className={`inline-flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors ${step === 0 || step === 3 ? 'invisible' : ''}`}
             >
               <ArrowLeft size={15} />
-              Précédent
+              {t('common.previous')}
             </button>
 
             {step === 3 ? (
@@ -512,7 +530,7 @@ export function CreateOrg() {
                 disabled={!confirmed}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-success text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Accéder à mon espace <ArrowRight size={15} />
+                {t('createOrg.accessSpace')} <ArrowRight size={15} />
               </button>
             ) : step < 2 ? (
               <button
@@ -524,7 +542,7 @@ export function CreateOrg() {
                 }}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy-light transition-colors"
               >
-                Suivant <ArrowRight size={15} />
+                {t('common.next')} <ArrowRight size={15} />
               </button>
             ) : (
               <button
@@ -533,7 +551,7 @@ export function CreateOrg() {
                 disabled={loading}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-success text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {loading ? 'Création…' : 'Créer mon espace'}
+                {loading ? t('createOrg.creating') : t('createOrg.createSpace')}
                 {!loading && <Check size={15} />}
               </button>
             )}
@@ -541,8 +559,8 @@ export function CreateOrg() {
         </div>
 
         <p className="mt-6 text-center text-xs text-faint">
-          Déjà un espace ?{' '}
-          <Link to="/connexion" className="text-indigo font-medium hover:underline">Se connecter</Link>
+          {t('auth.alreadyHaveAccount')}{' '}
+          <Link to="/connexion" className="text-indigo font-medium hover:underline">{t('auth.login')}</Link>
         </p>
       </div>
     </div>

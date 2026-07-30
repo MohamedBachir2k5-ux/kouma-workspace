@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { serviceError, friendlyError } from '../lib/errors'
 import type { OrganizationRow, OrganizationMemberRow } from '../lib/database.types'
 import { TRIAL_DAYS, PRICING } from '../config/pricing'
 import type { SupportedCurrency } from '../config/pricing'
@@ -41,7 +42,7 @@ export const OrganizationService = {
       p_plan:     'free',
     })
 
-    if (error) return { organizationId: null, error: error.message }
+    if (error) return { organizationId: null, error: friendlyError(error.message) }
     return { organizationId: data as string, error: null }
   },
 
@@ -89,7 +90,7 @@ export const OrganizationService = {
       .from('organizations')
       .update(updates)
       .eq('id', id)
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async getMembers(organizationId: string): Promise<OrganizationMemberRow[]> {
@@ -111,8 +112,7 @@ export const OrganizationService = {
 
   async uploadLogo(orgId: string, file: File): Promise<{ logoUrl: string | null; error: string | null }> {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
-    // Path must be org-scoped so storage RLS policy allows it
-    const path = `${orgId}/logos/${orgId}.${ext}`
+    const path = `${orgId}/${orgId}.${ext}`
     const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
     if (!ALLOWED_TYPES.includes(file.type)) {
       return { logoUrl: null, error: 'Format d\'image non autorisé (PNG, JPG, GIF, WebP, SVG).' }
@@ -121,15 +121,12 @@ export const OrganizationService = {
       return { logoUrl: null, error: 'Image trop volumineuse (max 5 Mo).' }
     }
     const { error: uploadErr } = await supabase.storage
-      .from('attachments')
+      .from('logos')
       .upload(path, file, { upsert: true, contentType: file.type })
     if (uploadErr) return { logoUrl: null, error: uploadErr.message }
-    // Bucket is private — signed URL with long expiry stored as logo_url
-    const { data: signed, error: signErr } = await supabase.storage
-      .from('attachments')
-      .createSignedUrl(path, 60 * 60 * 24 * 365)
-    if (signErr || !signed) return { logoUrl: null, error: signErr?.message ?? 'URL logo introuvable.' }
-    const logoUrl = signed.signedUrl
+    // Public bucket — permanent URL, no expiry
+    const { data: pub } = supabase.storage.from('logos').getPublicUrl(path)
+    const logoUrl = pub.publicUrl
     await supabase.from('organizations').update({ logo_url: logoUrl }).eq('id', orgId)
     return { logoUrl, error: null }
   },
@@ -163,6 +160,6 @@ export const OrganizationService = {
         session_duration_days: settings.sessionDurationDays,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'organization_id' })
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 }

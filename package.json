@@ -16,6 +16,7 @@
     "test:e2e": "node test/e2e/runner.mjs"
   },
   "dependencies": {
+    "@sentry/react": "^10.68.0",
     "@supabase/supabase-js": "^2.110.8",
     "i18next": "^26.3.6",
     "lucide-react": "^1.25.0",

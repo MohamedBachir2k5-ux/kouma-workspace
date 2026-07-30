@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Building2, Users, Pencil, Trash2, MoreHorizontal, X, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Avatar } from '../../components/ui/Avatar'
 import { DepartmentService } from '../../services/department.service'
 import { UserService } from '../../services/user.service'
@@ -11,6 +12,7 @@ function DeptModal({ dept, onClose, onSave }: {
   onClose: () => void
   onSave: (d: { name: string; code: string }) => Promise<string | null>
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(dept?.name ?? '')
   const [code, setCode] = useState(dept?.code ?? '')
   const [loading, setLoading] = useState(false)
@@ -29,12 +31,12 @@ function DeptModal({ dept, onClose, onSave }: {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={loading ? undefined : onClose}>
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-navy text-lg">{dept ? 'Modifier' : 'Nouveau département'}</h3>
+          <h3 className="font-bold text-navy text-lg">{dept ? t('admin.deptEditTitle') : t('admin.newDept')}</h3>
           <button onClick={onClose} disabled={loading} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg disabled:opacity-40"><X size={16} /></button>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Nom *</label>
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('admin.deptNameLabel')} *</label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -45,7 +47,7 @@ function DeptModal({ dept, onClose, onSave }: {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Code court *</label>
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('admin.deptCodeLabel')} *</label>
             <input
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase().slice(0, 5))}
@@ -59,14 +61,14 @@ function DeptModal({ dept, onClose, onSave }: {
           )}
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} disabled={loading} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">Annuler</button>
+          <button onClick={onClose} disabled={loading} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
           <button
             disabled={!name.trim() || !code.trim() || loading}
             onClick={handleSave}
             className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
-            {dept ? 'Enregistrer' : 'Créer'}
+            {dept ? t('common.save') : t('common.create')}
           </button>
         </div>
       </div>
@@ -75,6 +77,7 @@ function DeptModal({ dept, onClose, onSave }: {
 }
 
 export function AdminDepartments() {
+  const { t } = useTranslation()
   const { currentOrg } = useAuth()
   const [depts, setDepts] = useState<Department[]>([])
   const [orgUsers, setOrgUsers] = useState<User[]>([])
@@ -97,7 +100,7 @@ export function AdminDepartments() {
 
   async function create(data: { name: string; code: string }): Promise<string | null> {
     const { dept, error } = await DepartmentService.create(currentOrg.id, data)
-    if (error || !dept) return error ?? 'Erreur lors de la création du département.'
+    if (error || !dept) return error ?? t('admin.deptCreateError')
     setDepts(prev => [...prev, dept])
     return null
   }
@@ -111,7 +114,7 @@ export function AdminDepartments() {
 
   async function remove(id: string) {
     const dept = depts.find(d => d.id === id)
-    const confirmed = window.confirm(`Supprimer le département "${dept?.name ?? id}" ? Cette action est irréversible.`)
+    const confirmed = window.confirm(t('admin.deptDeleteConfirm', { name: dept?.name ?? id }))
     if (!confirmed) return
     await DepartmentService.delete(id)
     setDepts(prev => prev.filter(d => d.id !== id))
@@ -122,15 +125,15 @@ export function AdminDepartments() {
     <div className="p-4 md:p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-ink">Départements</h1>
-          <p className="text-sm text-muted mt-0.5">{depts.length} département{depts.length > 1 ? 's' : ''}</p>
+          <h1 className="text-xl font-bold text-ink">{t('admin.deptTitle')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t(depts.length !== 1 ? 'admin.deptCountPlural' : 'admin.deptCount', { count: depts.length })}</p>
         </div>
         <button
           onClick={() => { setEditDept(null); setShowModal(true) }}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
         >
           <Plus size={16} />
-          <span className="hidden sm:inline">Nouveau</span>
+          <span className="hidden sm:inline">{t('admin.newDept')}</span>
         </button>
       </div>
 
@@ -159,11 +162,11 @@ export function AdminDepartments() {
                     <div className="absolute right-0 top-8 z-20 w-36 bg-surface border border-border rounded-xl shadow-lg overflow-hidden">
                       <button onClick={() => { setEditDept(dept); setShowModal(true); setMenuOpen(null) }}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-bg text-ink">
-                        <Pencil size={14} /> Modifier
+                        <Pencil size={14} /> {t('common.edit')}
                       </button>
                       <button onClick={() => remove(dept.id)}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-bg border-t border-border">
-                        <Trash2 size={14} /> Supprimer
+                        <Trash2 size={14} /> {t('common.delete')}
                       </button>
                     </div>
                   )}
@@ -172,13 +175,13 @@ export function AdminDepartments() {
 
               <div className="flex items-center gap-2 text-xs text-muted mb-3">
                 <Users size={13} />
-                <span>{count} membre{count !== 1 ? 's' : ''}</span>
+                <span>{t(count !== 1 ? 'admin.memberCountPlural' : 'admin.memberCount', { count })}</span>
               </div>
 
               {members.length > 0 && (
                 <div className="flex -space-x-2">
                   {members.slice(0, 5).map(m => (
-                    <Avatar key={m.id} firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
+                    <Avatar key={m.id} firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" src={m.avatarUrl} />
                   ))}
                   {members.length > 5 && (
                     <div className="w-8 h-8 rounded-full bg-border flex items-center justify-center text-[10px] font-bold text-muted border-2 border-surface">
@@ -196,7 +199,7 @@ export function AdminDepartments() {
           className="flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed border-border hover:border-indigo/40 transition-colors text-center h-[140px]"
         >
           <Plus size={22} className="text-faint" />
-          <span className="text-sm text-muted">Nouveau département</span>
+          <span className="text-sm text-muted">{t('admin.newDept')}</span>
         </button>
       </div>
 

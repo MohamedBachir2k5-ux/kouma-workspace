@@ -3,30 +3,32 @@ import { NavLink, Outlet, Link, Navigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, UsersRound,
   HardDrive, Lock, ScrollText, Settings, Menu, X, LogOut, Megaphone,
+  BookOpen, MessageSquare,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
-import { NotificationBell } from '../ui/NotificationBell'
 
 function orgInitials(name: string) {
   return name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
-const navItems = [
-  { to: '/admin/tableau-de-bord', icon: LayoutDashboard, label: 'Tableau de bord' },
-  { to: '/admin/utilisateurs',    icon: Users,           label: 'Utilisateurs' },
-  { to: '/admin/departements',    icon: Building2,       label: 'Départements' },
-  { to: '/admin/equipes',         icon: UsersRound,      label: 'Équipes' },
-  { to: '/admin/annonces',        icon: Megaphone,       label: 'Annonces' },
-  { to: '/admin/stockage',        icon: HardDrive,       label: 'Stockage' },
-  { to: '/admin/securite',        icon: Lock,            label: 'Sécurité' },
-  { to: '/admin/journal',         icon: ScrollText,      label: "Journal d'activité" },
-  { to: '/admin/parametres',      icon: Settings,        label: 'Paramètres' },
-]
-
 export function AdminLayout() {
+  const { t } = useTranslation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { currentOrg, currentUser, signOut, loading, isOrgReady } = useAuth()
+
+  const navItems = [
+    { to: '/admin/tableau-de-bord', icon: LayoutDashboard, label: t('admin.dashboard') },
+    { to: '/admin/utilisateurs',    icon: Users,           label: t('admin.users') },
+    { to: '/admin/departements',    icon: Building2,       label: t('admin.departments') },
+    { to: '/admin/equipes',         icon: UsersRound,      label: t('admin.teams') },
+    { to: '/admin/annonces',        icon: Megaphone,       label: t('admin.announcements') },
+    { to: '/admin/stockage',        icon: HardDrive,       label: t('admin.storage') },
+    { to: '/admin/securite',        icon: Lock,            label: t('admin.security') },
+    { to: '/admin/journal',         icon: ScrollText,      label: t('admin.auditLog') },
+    { to: '/admin/parametres',      icon: Settings,        label: t('admin.settings') },
+  ]
   const { checking } = useRequireAuth('/connexion/admin')
 
   if (checking || loading) return (
@@ -83,13 +85,23 @@ export function AdminLayout() {
           ))}
         </nav>
 
-        <div className="px-3 py-4 border-t border-navy-muted">
+        <div className="px-3 py-3 border-t border-navy-muted space-y-0.5">
+          <a href="/resources/guides" target="_blank" rel="noopener noreferrer"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-indigo-light hover:bg-navy-light hover:text-white transition-colors">
+            <BookOpen size={17} />
+            Guide utilisateur
+          </a>
+          <a href="/resources/support" target="_blank" rel="noopener noreferrer"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-indigo-light hover:bg-navy-light hover:text-white transition-colors">
+            <MessageSquare size={17} />
+            Support
+          </a>
           <button
             onClick={signOut}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-light hover:bg-navy-light hover:text-white transition-colors"
           >
             <LogOut size={17} />
-            Déconnexion
+            {t('admin.logout')}
           </button>
         </div>
       </aside>
@@ -109,13 +121,15 @@ export function AdminLayout() {
             <Menu size={20} />
           </button>
           <div className="hidden md:block">
-            <h1 className="text-sm font-semibold text-ink">Console d'administration</h1>
+            <h1 className="text-sm font-semibold text-ink">{t('admin.console')}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <NotificationBell variant="light" />
-            <div className="w-8 h-8 rounded-full bg-indigo flex items-center justify-center text-white text-xs font-bold">
-              {orgInitials(currentUser.firstName + ' ' + currentUser.lastName)}
-            </div>
+          <div className="flex items-center gap-2.5">
+            {currentOrg.logoUrl
+              ? <img src={currentOrg.logoUrl} alt={currentOrg.name} className="w-8 h-8 rounded-lg object-cover border border-border" />
+              : <div className="w-8 h-8 rounded-lg bg-indigo/10 border border-border flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-indigo">{orgInitials(currentOrg.name)}</span>
+                </div>
+            }
           </div>
         </header>
 

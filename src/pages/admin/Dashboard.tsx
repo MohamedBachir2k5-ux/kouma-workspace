@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, HardDrive, MessageSquare, FileText, UserCheck, UserX, Activity, TrendingUp } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Users, HardDrive, MessageSquare, FileText, UserCheck, UserX, Activity, TrendingUp, Shield } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { AlertTriangle } from 'lucide-react'
 import { AuditService } from '../../services/audit.service'
@@ -25,6 +26,24 @@ const ACTION_ICON: Record<string, typeof UserCheck> = {
   subscription_changed: TrendingUp,
 }
 
+const ACTION_LOG_KEY: Record<string, string> = {
+  user_joined:          'admin.logUserJoined',
+  user_suspended:       'admin.logUserSuspended',
+  user_revoked:         'admin.logUserRevoked',
+  user_activated:       'admin.logUserActivated',
+  document_added:       'admin.logDocAdded',
+  document_deleted:     'admin.logDocDeleted',
+  team_created:         'admin.logTeamCreated',
+  team_updated:         'admin.logTeamUpdated',
+  team_deleted:         'admin.logTeamDeleted',
+  permission_changed:   'admin.logPermChanged',
+  invite_generated:     'admin.logInviteGen',
+  subscription_changed: 'admin.logSubChanged',
+  admin_promoted:       'admin.logAdminPromoted',
+  admin_demoted:        'admin.logAdminDemoted',
+  organization_created: 'admin.logOrgCreated',
+}
+
 const ACTION_COLOR: Record<string, string> = {
   user_joined:      'text-success',
   user_suspended:   'text-amber',
@@ -38,6 +57,7 @@ const ACTION_COLOR: Record<string, string> = {
 }
 
 export function AdminDashboard() {
+  const { t } = useTranslation()
   const { currentOrg, storageQuotaBytes, orgLoadError } = useAuth()
 
   const [orgUsers, setOrgUsers] = useState<User[]>([])
@@ -59,33 +79,52 @@ export function AdminDashboard() {
 
   const stats = [
     {
-      label: 'Utilisateurs actifs',
+      label: t('admin.statActiveUsers'),
       value: String(activeUsers.length),
-      sub: `${suspended.length} suspendu${suspended.length > 1 ? 's' : ''}`,
+      sub: suspended.length > 1 ? t('admin.statSuspendedPlural', { count: suspended.length }) : t('admin.statSuspended', { count: suspended.length }),
       icon: Users,
       color: 'bg-indigo/10 text-indigo',
     },
     {
-      label: 'Stockage utilisé',
+      label: t('admin.statStorage'),
       value: formatFileSize(storageUsed),
-      sub: `sur ${formatFileSize(storageQuotaBytes)}`,
+      sub: t('admin.statStorageOf', { value: formatFileSize(storageQuotaBytes) }),
       icon: HardDrive,
       color: 'bg-amber/10 text-amber',
     },
     {
-      label: 'Conversations',
+      label: t('admin.statConversations'),
       value: String(convCount),
-      sub: 'Tous canaux confondus',
+      sub: t('admin.statAllChannels'),
       icon: MessageSquare,
       color: 'bg-success/10 text-success',
     },
     {
-      label: 'Documents',
+      label: t('admin.statDocuments'),
       value: String(docs.length),
-      sub: `${formatFileSize(storageUsed)} utilisés`,
+      sub: t('admin.statUsed', { value: formatFileSize(storageUsed) }),
       icon: FileText,
       color: 'bg-navy/10 text-navy',
     },
+  ]
+
+  const statusLabel = (status: User['status']) => {
+    if (status === 'active') return t('admin.statusActive')
+    if (status === 'suspended') return t('admin.statusSuspended')
+    return t('admin.statusRevoked')
+  }
+
+  const quickActions = [
+    { label: t('admin.quickInvite'),   to: '/admin/utilisateurs', icon: UserCheck },
+    { label: t('admin.quickAddDept'),  to: '/admin/departements', icon: TrendingUp },
+    { label: t('admin.quickStorage'),  to: '/admin/stockage',     icon: HardDrive },
+    { label: t('admin.quickJournal'),  to: '/admin/journal',      icon: Activity },
+  ]
+
+  const workspaceStats = [
+    { label: t('admin.statActiveUsers'),   value: activeUsers.length, total: orgUsers.length, color: 'bg-success', bytes: false },
+    { label: t('admin.suspendedAccounts'), value: suspended.length,   total: orgUsers.length, color: 'bg-amber',   bytes: false },
+    { label: t('admin.storage'),           value: storageUsed,        total: storageQuotaBytes, color: 'bg-indigo', bytes: true },
   ]
 
   return (
@@ -94,15 +133,15 @@ export function AdminDashboard() {
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-6">
           <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-800">Organisation non chargée</p>
+            <p className="text-sm font-semibold text-amber-800">{t('admin.orgNotLoaded')}</p>
             <p className="text-xs text-amber-700 mt-0.5">{orgLoadError}</p>
-            <p className="text-xs text-amber-700 mt-1">Les données affichées sont des données de démonstration. Complétez l'inscription ou reconnectez-vous avec un compte lié à une organisation.</p>
+            <p className="text-xs text-amber-700 mt-1">{t('admin.orgNotLoadedHint')}</p>
           </div>
         </div>
       )}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Bonjour, bonne journée.</h1>
-        <p className="text-sm text-muted mt-1">Console d'administration — {currentOrg.name}</p>
+        <h1 className="text-xl font-bold text-ink">{t('admin.greeting')}</h1>
+        <p className="text-sm text-muted mt-1">{t('admin.consoleOf')} · {currentOrg.name}</p>
       </div>
 
       {/* Stats */}
@@ -123,34 +162,43 @@ export function AdminDashboard() {
         {/* Recent users */}
         <div className="bg-surface rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-ink">Utilisateurs récents</h2>
-            <Link to="/admin/utilisateurs" className="text-xs text-indigo hover:underline font-medium">Voir tout</Link>
+            <h2 className="text-sm font-bold text-ink">{t('admin.recentUsers')}</h2>
+            <Link to="/admin/utilisateurs" className="text-xs text-indigo hover:underline font-medium">{t('admin.seeAll')}</Link>
           </div>
           <div className="space-y-3">
-            {orgUsers.slice(0, 5).map(user => (
+            {orgUsers.slice(0, 5).map(user => {
+              const isAdmin = user.role === 'admin'
+              return (
               <div key={user.id} className="flex items-center gap-3">
-                <Avatar firstName={user.firstName} lastName={user.lastName} id={user.id} size="sm" />
+                {isAdmin ? (
+                  currentOrg.logoUrl
+                    ? <img src={currentOrg.logoUrl} alt={currentOrg.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                    : <div className="w-8 h-8 rounded-lg bg-indigo/10 flex items-center justify-center shrink-0"><Shield size={15} className="text-indigo" /></div>
+                ) : (
+                  <Avatar firstName={user.firstName} lastName={user.lastName} id={user.id} size="sm" src={user.avatarUrl} />
+                )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-ink truncate">{user.firstName} {user.lastName}</div>
-                  <div className="text-xs text-muted truncate">{user.role}</div>
+                  <div className="text-sm font-medium text-ink truncate">{isAdmin ? currentOrg.name : `${user.firstName} ${user.lastName}`}</div>
+                  <div className="text-xs text-muted truncate">{isAdmin ? t('common.administrator') : t('common.collaborator')}</div>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                   user.status === 'active' ? 'bg-success/10 text-success' :
                   user.status === 'suspended' ? 'bg-amber/10 text-amber' :
                   'bg-danger/10 text-danger'
                 }`}>
-                  {user.status === 'active' ? 'Actif' : user.status === 'suspended' ? 'Suspendu' : 'Révoqué'}
+                  {statusLabel(user.status)}
                 </span>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
         {/* Recent activity */}
         <div className="bg-surface rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-ink">Activité récente</h2>
-            <Link to="/admin/journal" className="text-xs text-indigo hover:underline font-medium">Journal complet</Link>
+            <h2 className="text-sm font-bold text-ink">{t('admin.recentActivity')}</h2>
+            <Link to="/admin/journal" className="text-xs text-indigo hover:underline font-medium">{t('admin.fullJournal')}</Link>
           </div>
           <div className="space-y-4">
             {recentLogs.map(log => {
@@ -164,8 +212,8 @@ export function AdminDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-ink">
-                      {actor && <span className="font-semibold">{actor.firstName} {actor.lastName} </span>}
-                      <span className="text-muted">{AuditService.describe(log)}</span>
+                      {actor && <span className="font-semibold">{actor.firstName} {actor.lastName} · </span>}
+                      <span className="text-muted">{t(ACTION_LOG_KEY[log.action] ?? 'admin.logAction')}</span>
                     </p>
                     <p className="text-xs text-faint mt-0.5">{relativeDay(log.createdAt)}</p>
                   </div>
@@ -177,15 +225,10 @@ export function AdminDashboard() {
 
         {/* Quick actions */}
         <div className="bg-surface rounded-xl border border-border p-5">
-          <h2 className="text-sm font-bold text-ink mb-4">Actions rapides</h2>
+          <h2 className="text-sm font-bold text-ink mb-4">{t('admin.quickActions')}</h2>
           <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Générer un lien invitation', to: '/admin/utilisateurs', icon: UserCheck },
-              { label: 'Ajouter un département',     to: '/admin/departements', icon: TrendingUp },
-              { label: 'Voir le stockage',            to: '/admin/stockage',    icon: HardDrive },
-              { label: "Journal d'activité",          to: '/admin/journal',     icon: Activity },
-            ].map(({ label, to, icon: Icon }) => (
-              <Link key={label} to={to}
+            {quickActions.map(({ label, to, icon: Icon }) => (
+              <Link key={to} to={to}
                 className="flex flex-col gap-2 p-3 rounded-xl border border-border hover:border-indigo/30 hover:bg-bg transition-all">
                 <Icon size={16} className="text-indigo" />
                 <span className="text-xs font-medium text-ink leading-snug">{label}</span>
@@ -196,13 +239,9 @@ export function AdminDashboard() {
 
         {/* Workspace status */}
         <div className="bg-surface rounded-xl border border-border p-5">
-          <h2 className="text-sm font-bold text-ink mb-4">État du workspace</h2>
+          <h2 className="text-sm font-bold text-ink mb-4">{t('admin.workspaceStatus')}</h2>
           <div className="space-y-3">
-            {[
-              { label: 'Utilisateurs actifs',  value: activeUsers.length, total: orgUsers.length, color: 'bg-success' },
-              { label: 'Comptes suspendus',    value: suspended.length,   total: orgUsers.length, color: 'bg-amber'   },
-              { label: 'Stockage',             value: storageUsed,        total: storageQuotaBytes,   color: 'bg-indigo', bytes: true },
-            ].map(({ label, value, total, color, bytes }) => (
+            {workspaceStats.map(({ label, value, total, color, bytes }) => (
               <div key={label}>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs text-muted">{label}</span>

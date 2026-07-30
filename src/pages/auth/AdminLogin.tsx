@@ -11,17 +11,36 @@ export function AdminLogin() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [failCount, setFailCount] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const navigate = useNavigate()
+
+  const MAX_ATTEMPTS = 5
+  const LOCKOUT_MS = 15 * 60 * 1000
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email || password.length < 4) return
+
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 60000)
+      setError(`Trop de tentatives. Réessayez dans ${remaining} minute${remaining > 1 ? 's' : ''}.`)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     const { userId, error: authError } = await AuthService.signIn({ email, password })
     if (authError || !userId) {
-      setError(authError ?? 'Identifiants incorrects.')
+      const next = failCount + 1
+      setFailCount(next)
+      if (next >= MAX_ATTEMPTS) {
+        setLockedUntil(Date.now() + LOCKOUT_MS)
+        setError('Trop de tentatives incorrectes. Compte bloqué pendant 15 minutes.')
+      } else {
+        setError(`Identifiants incorrects. (${next}/${MAX_ATTEMPTS} tentatives)`)
+      }
       setLoading(false)
       return
     }

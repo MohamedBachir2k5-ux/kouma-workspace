@@ -15,6 +15,10 @@ export const LOCALE_LABELS: Record<SupportedLocale, string> = {
   pt: 'Português',
 }
 
+const SUPPORTED: SupportedLocale[] = ['fr', 'en', 'es', 'pt']
+const saved = localStorage.getItem('kouma_lang') ?? 'fr'
+const initialLang: SupportedLocale = (SUPPORTED as string[]).includes(saved) ? (saved as SupportedLocale) : 'fr'
+
 i18n
   .use(initReactI18next)
   .init({
@@ -24,9 +28,14 @@ i18n
       es: { translation: es },
       pt: { translation: pt },
     },
-    lng: 'fr',
+    lng: initialLang,
     fallbackLng: 'fr',
     interpolation: { escapeValue: false },
   })
+
+document.documentElement.lang = initialLang
+i18n.on('languageChanged', (lng) => {
+  document.documentElement.lang = lng
+})
 
 export default i18n
