@@ -28,9 +28,15 @@ export const AuthService = {
       email: params.email,
       password: params.password,
       options: {
+        // Pass all profile fields here so the handle_new_user trigger (SECURITY DEFINER)
+        // can write them directly — no post-signUp client upsert needed, which would fail
+        // if the Supabase project has email confirmation enabled (session = null after signup).
         data: {
           firstname: params.firstName ?? '',
           lastname: params.lastName ?? '',
+          phone: params.phone ?? '',
+          country: params.country ?? '',
+          language: params.language ?? 'fr',
         },
       },
     })
@@ -42,20 +48,13 @@ export const AuthService = {
       return { userId: null, error: msg }
     }
     if (!data.user) return { userId: null, error: 'Création du compte échouée.' }
-    // The on_auth_user_created trigger may already have created a basic profile row.
-    // Use upsert so additional fields (phone, language…) are always written.
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      firstname: params.firstName ?? null,
-      lastname: params.lastName ?? null,
-      email: params.email,
-      phone: params.phone ?? null,
-      country: params.country ?? null,
-      language: params.language ?? 'fr',
-      status: 'active',
-    }, { onConflict: 'id' })
 
-    if (profileError) return { userId: null, error: friendlyError(profileError.message) }
+    // If email confirmation is required in Supabase, session is null here.
+    // All subsequent DB operations (key generation, org creation) require a session —
+    // they will fail. Supabase Cloud must have "Confirm email" disabled for this flow to work.
+    if (!data.session) {
+      return { userId: null, error: 'La confirmation par email est activée sur ce projet Supabase. Désactivez-la dans Authentication → Configuration → Email → Confirm email.' }
+    }
 
     return { userId: data.user.id, error: null }
   },
