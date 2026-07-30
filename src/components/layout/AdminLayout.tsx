@@ -3,7 +3,6 @@ import { NavLink, Outlet, Link, Navigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, UsersRound,
   HardDrive, Lock, ScrollText, Settings, Menu, X, LogOut, Megaphone,
-  BookOpen, MessageSquare,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
@@ -86,16 +85,6 @@ export function AdminLayout() {
         </nav>
 
         <div className="px-3 py-3 border-t border-navy-muted space-y-0.5">
-          <a href="/resources/guides" target="_blank" rel="noopener noreferrer"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-indigo-light hover:bg-navy-light hover:text-white transition-colors">
-            <BookOpen size={17} />
-            Guide utilisateur
-          </a>
-          <a href="/resources/support" target="_blank" rel="noopener noreferrer"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-indigo-light hover:bg-navy-light hover:text-white transition-colors">
-            <MessageSquare size={17} />
-            Support
-          </a>
           <button
             onClick={signOut}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-light hover:bg-navy-light hover:text-white transition-colors"
