@@ -201,7 +201,7 @@ create table public.invitations (
   id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   email            text not null,
-  token            text not null unique default encode(gen_random_bytes(32), 'hex'),
+  token            text not null unique default encode(sha256(gen_random_uuid()::text::bytea), 'hex'),
   status           text not null default 'sent'
                      check (status in ('sent','accepted','expired','cancelled')),
   expires_at       timestamptz not null default (now() + interval '7 days'),
