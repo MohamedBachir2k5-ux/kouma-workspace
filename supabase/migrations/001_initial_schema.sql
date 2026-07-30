@@ -25,7 +25,7 @@ create table public.profiles (
 
 -- Organizations
 create table public.organizations (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   name        text not null,
   logo_url    text,
   email       text not null,
@@ -43,7 +43,7 @@ create table public.organizations (
 
 -- Organization membership
 create table public.organization_members (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   user_id          uuid not null references public.profiles on delete cascade,
   role             text not null default 'member',
@@ -54,7 +54,7 @@ create table public.organization_members (
 
 -- Departments
 create table public.departments (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   name             text not null,
   code             text not null
@@ -62,7 +62,7 @@ create table public.departments (
 
 -- Teams
 create table public.teams (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   name             text not null,
   description      text,
@@ -90,7 +90,7 @@ create table public.team_permissions (
 
 -- Private groups (user-created, not admin-managed)
 create table public.groups (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   creator_id  uuid not null references public.profiles,
   name        text not null,
   avatar_url  text,
@@ -108,7 +108,7 @@ create table public.group_members (
 
 -- Conversations (direct / group / team / org)
 create table public.conversations (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   type             text not null
                      check (type in ('direct','group','team','org')),
   organization_id  uuid not null references public.organizations on delete cascade,
@@ -125,7 +125,7 @@ create table public.conversation_members (
 
 -- Messages
 create table public.messages (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   conversation_id  uuid not null references public.conversations on delete cascade,
   sender_id        uuid not null references public.profiles,
   content          text not null,
@@ -138,7 +138,7 @@ create table public.messages (
 
 -- Files (two categories: documents vs attachments)
 create table public.files (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   owner_id         uuid not null references public.profiles,
   organization_id  uuid not null references public.organizations on delete cascade,
   storage_path     text not null,
@@ -151,7 +151,7 @@ create table public.files (
 
 -- Folders (nested, can belong to a team)
 create table public.folders (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   parent_id        uuid references public.folders,
   team_id          uuid references public.teams,
@@ -161,7 +161,7 @@ create table public.folders (
 
 -- Documents (metadata — file stored in Storage bucket)
 create table public.documents (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   folder_id        uuid references public.folders,
   owner_id         uuid not null references public.profiles,
@@ -172,7 +172,7 @@ create table public.documents (
 
 -- Meetings
 create table public.meetings (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   creator_id       uuid not null references public.profiles,
   organization_id  uuid not null references public.organizations on delete cascade,
   title            text not null,
@@ -198,7 +198,7 @@ create table public.meeting_participants (
 
 -- Invitations
 create table public.invitations (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   email            text not null,
   token            text not null unique default encode(gen_random_bytes(32), 'hex'),
@@ -210,7 +210,7 @@ create table public.invitations (
 
 -- Subscriptions (one per organization)
 create table public.subscriptions (
-  id                uuid primary key default uuid_generate_v4(),
+  id                uuid primary key default gen_random_uuid(),
   organization_id   uuid not null references public.organizations on delete cascade unique,
   plan              text not null check (plan in ('starter','business')),
   status            text not null check (status in ('trial','active','expired','payment_failed','cancelled')),
@@ -226,7 +226,7 @@ create table public.subscriptions (
 
 -- Payments
 create table public.payments (
-  id                   uuid primary key default uuid_generate_v4(),
+  id                   uuid primary key default gen_random_uuid(),
   organization_id      uuid not null references public.organizations on delete cascade,
   provider             text not null default 'lengopay',
   amount               numeric not null,
@@ -238,7 +238,7 @@ create table public.payments (
 
 -- Notifications
 create table public.notifications (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references public.profiles on delete cascade,
   type        text not null,
   payload     jsonb,
@@ -248,7 +248,7 @@ create table public.notifications (
 
 -- Audit logs — never stores message content
 create table public.audit_logs (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations on delete cascade,
   user_id          uuid references public.profiles,
   action           text not null,

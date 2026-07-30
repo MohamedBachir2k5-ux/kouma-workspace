@@ -1,6 +1,6 @@
 -- Store Web Push subscriptions so the backend can send background push notifications.
 CREATE TABLE IF NOT EXISTS push_subscriptions (
-  id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   endpoint    text NOT NULL,
   p256dh      text NOT NULL,

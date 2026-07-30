@@ -1,6 +1,6 @@
 -- 1. Client error log table (receives uncaught JS errors from browsers)
 CREATE TABLE IF NOT EXISTS client_errors (
-  id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid REFERENCES profiles(id) ON DELETE SET NULL,
   message     text NOT NULL,
   stack       text,

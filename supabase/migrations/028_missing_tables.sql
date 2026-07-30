@@ -7,7 +7,7 @@
 
 -- ── 1. event_reminders ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.event_reminders (
-  id           uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id     uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
   user_id      uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   remind_at    timestamptz NOT NULL,
@@ -30,7 +30,7 @@ CREATE POLICY "Own event reminders" ON public.event_reminders
 
 -- ── 2. announcements ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.announcements (
-  id              uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   author_id       uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   title           text NOT NULL,
@@ -84,7 +84,7 @@ CREATE POLICY "Admins view reads" ON public.announcement_reads
 
 -- ── 4. document_access_logs ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.document_access_logs (
-  id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   document_id uuid NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
   user_id     uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
