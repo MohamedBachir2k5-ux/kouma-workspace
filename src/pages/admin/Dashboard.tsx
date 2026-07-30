@@ -70,7 +70,12 @@ export function AdminDashboard() {
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
     DocumentService.list(currentOrg.id).then(setDocs)
     DocumentService.totalUsed(currentOrg.id).then(setStorageUsed)
-    AuditService.getRecent(currentOrg.id, 4).then(setRecentLogs)
+    AuditService.getRecent(currentOrg.id, 4, [
+      'organization_created', 'user_joined', 'user_suspended', 'user_revoked', 'user_activated',
+      'invite_generated', 'team_created', 'team_updated', 'team_deleted', 'permission_changed',
+      'admin_promoted', 'admin_demoted', 'subscription_changed',
+      'recovery_initiated', 'recovery_completed', 'breakglass_used',
+    ]).then(setRecentLogs)
     MessageService.countConversations(currentOrg.id).then(setConvCount)
   }, [currentOrg.id])
 

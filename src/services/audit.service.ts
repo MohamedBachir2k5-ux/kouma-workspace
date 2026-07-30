@@ -28,13 +28,15 @@ export const AuditService = {
     return (data ?? []).map(rowToLog)
   },
 
-  async getRecent(orgId: string, limit = 5): Promise<AuditLog[]> {
-    const { data } = await supabase
+  async getRecent(orgId: string, limit = 5, actions?: string[]): Promise<AuditLog[]> {
+    let q = supabase
       .from('audit_logs')
       .select('*')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false })
       .limit(limit)
+    if (actions?.length) q = q.in('action', actions)
+    const { data } = await q
     return (data ?? []).map(rowToLog)
   },
 
