@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Building2, CreditCard, Bell, Camera, Loader2, Palette } from 'lucide-react'
+import { Building2, CreditCard, Bell, Camera, Loader2, Palette, BookOpen, HelpCircle, Mail, ExternalLink } from 'lucide-react'
+
+// TODO: replace with real URLs before go-live
+const SUPPORT_GUIDE_URL   = '#'
+const SUPPORT_EMAIL       = 'support@kouma.app'
+const SUPPORT_CONTACT_URL = '#'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { DocumentService } from '../../services/document.service'
@@ -434,6 +439,47 @@ export function AdminSettings() {
           </button>
         </div>
       )}
+      {/* Guide & Support */}
+      <div className="mt-6 bg-surface rounded-xl border border-border p-5">
+        <h2 className="text-sm font-bold text-ink mb-4">Guide &amp; Support</h2>
+        <div className="space-y-3">
+          <a href={SUPPORT_GUIDE_URL} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-bg transition-colors group">
+            <div className="w-8 h-8 rounded-lg bg-indigo/10 flex items-center justify-center shrink-0">
+              <BookOpen size={15} className="text-indigo" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-ink">Guide d'utilisation</div>
+              <div className="text-xs text-muted">Documentation complète de la plateforme</div>
+            </div>
+            <ExternalLink size={13} className="text-faint group-hover:text-muted transition-colors shrink-0" />
+          </a>
+
+          <a href={`mailto:${SUPPORT_EMAIL}`}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-bg transition-colors group">
+            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+              <Mail size={15} className="text-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-ink">Email de support</div>
+              <div className="text-xs text-muted">{SUPPORT_EMAIL}</div>
+            </div>
+            <ExternalLink size={13} className="text-faint group-hover:text-muted transition-colors shrink-0" />
+          </a>
+
+          <a href={SUPPORT_CONTACT_URL} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-bg transition-colors group">
+            <div className="w-8 h-8 rounded-lg bg-amber/10 flex items-center justify-center shrink-0">
+              <HelpCircle size={15} className="text-amber" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-ink">Formulaire de contact</div>
+              <div className="text-xs text-muted">Envoyer une demande à l'équipe</div>
+            </div>
+            <ExternalLink size={13} className="text-faint group-hover:text-muted transition-colors shrink-0" />
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
