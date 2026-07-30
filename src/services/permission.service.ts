@@ -1,4 +1,5 @@
 import type { TeamPermission } from '../lib/types'
+import { serviceError } from '../lib/errors'
 import { TeamService } from './team.service'
 import { supabase } from '../lib/supabase'
 
@@ -47,6 +48,6 @@ export const PermissionService = {
     const { error } = await supabase
       .from('team_member_permissions')
       .upsert(rows, { onConflict: 'team_id,member_id,permission_key' })
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Hash, User, Users, Lock, Paperclip, FolderInput, Check, Info, ArrowLeft, X, Bell, BellOff, Star, Link2, Image, Crown, FileText, LogOut, Loader2, Calendar, BarChart2, Download } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Search, Plus, Hash, User, Users, Lock, Paperclip, FolderInput, Check, Info, ArrowLeft, X, Bell, BellOff, Link2, Image, Crown, FileText, LogOut, Loader2, Calendar, BarChart2, Download, Trash2, AlertCircle, Reply, Copy, Forward } from 'lucide-react'
 import { PollService } from '../../services/poll.service'
 import type { Poll } from '../../services/poll.service'
 import { useAuth } from '../../contexts/AuthContext'
@@ -30,18 +31,13 @@ function fileIcon(type: string) {
   return <Paperclip size={13} className="text-indigo" />
 }
 
-const sectionLabel: Record<ConvType, string> = {
-  direct: 'Directs',
-  group: 'Groupes',
-  team: 'Équipes',
-}
-
 /* ── New group modal ── */
 function NewGroupModal({ onClose, orgUsers, onCreated }: {
   onClose: () => void
   orgUsers: AppUser[]
   onCreated: () => void
 }) {
+  const { t } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const [name, setName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
@@ -61,28 +57,28 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-navy text-base">Nouveau groupe</h3>
+          <h3 className="font-bold text-navy text-base">{t('messages.newGroup')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
-          Discussion privée entre collègues. Les fichiers envoyés restent des pièces jointes privées à ce groupe.
+          {t('messages.privateGroup')}
         </p>
         <div className="space-y-3 mb-4">
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Nom du groupe</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('messages.groupName')}</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex. Coordination projet" autoFocus
               className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Participants ({selected.length})</label>
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('messages.participants')} ({selected.length})</label>
             <div className="max-h-44 overflow-y-auto border border-border rounded-xl divide-y divide-border">
               {orgUsers.filter(u => u.id !== currentUser.id && u.status === 'active' && u.role === 'member').map(u => (
                 <button key={u.id} type="button" onClick={() => toggle(u.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${selected.includes(u.id) ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
-                  <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                  <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium text-ink truncate">{u.firstName} {u.lastName}</div>
-                    <div className="text-[10px] text-muted">{u.jobTitle ?? 'Collaborateur'}</div>
+                    <div className="text-[10px] text-muted">{u.jobTitle ?? t('common.collaborator')}</div>
                   </div>
                   {selected.includes(u.id) && <Check size={13} className="text-indigo shrink-0" />}
                 </button>
@@ -91,10 +87,10 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={handleCreate} disabled={!name.trim() || selected.length === 0 || creating}
             className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
-            {creating ? 'Création…' : 'Créer'}
+            {creating ? t('messages.creating') : t('common.create')}
           </button>
         </div>
       </div>
@@ -108,6 +104,7 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
   contacts: AppUser[]
   onCreated: (channelId: string) => void
 }) {
+  const { t } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
@@ -119,9 +116,7 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
   async function select(userId: string) {
     if (creating) return
     setCreating(true)
-    console.log('[Direct] orgId:', currentOrg.id, 'me:', currentUser.id, 'target:', userId)
     const result = await MessageService.createDirectConversation(currentOrg.id, currentUser.id, userId)
-    console.log('[Direct] createDirectConversation result:', result)
     if (result.id) onCreated(result.id)
     onClose()
   }
@@ -130,18 +125,18 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-navy text-base">Nouveau message direct</h3>
+          <h3 className="font-bold text-navy text-base">{t('messages.newDirect')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un collaborateur…" autoFocus
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('messages.searchCollaborator')} autoFocus
           className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo mb-3" />
         <div className="max-h-60 overflow-y-auto border border-border rounded-xl divide-y divide-border">
           {filtered.length === 0 ? (
-            <p className="text-xs text-muted text-center py-6">Aucun collaborateur trouvé.</p>
+            <p className="text-xs text-muted text-center py-6">{t('messages.noCollaborator')}</p>
           ) : filtered.map(u => (
             <button key={u.id} type="button" onClick={() => select(u.id)} disabled={creating}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-bg transition-colors disabled:opacity-50">
-              <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+              <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-medium text-ink truncate">{u.firstName} {u.lastName}</div>
                 <div className="text-[10px] text-muted">{u.jobTitle ?? u.role}</div>
@@ -156,6 +151,7 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
 
 /* ── Promote modal ── */
 function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void }) {
+  const { t } = useTranslation()
   const { currentOrg, currentUser } = useAuth()
   const [folders, setFolders] = useState<(Folder | { id: null; name: string })[]>([])
   const [folderId, setFolderId] = useState<string | null>(null)
@@ -165,7 +161,7 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
 
   useEffect(() => {
     DocumentService.listFolders(currentOrg.id).then(fs => {
-      setFolders([{ id: null, name: 'Bibliothèque générale' } as { id: null; name: string }, ...fs])
+      setFolders([{ id: null, name: t('messages.generalLibrary') } as { id: null; name: string }, ...fs])
     })
   }, [currentOrg.id])
 
@@ -188,11 +184,11 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-bold text-navy text-base">Ajouter aux documents</h3>
+          <h3 className="font-bold text-navy text-base">{t('messages.promoteTitle')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
-          Ce fichier deviendra un document officiel du workspace, classé selon la destination choisie.
+          {t('messages.promoteSubtitle')}
         </p>
         <div className="p-3 bg-bg rounded-xl border border-border mb-4 flex items-center gap-3">
           <Paperclip size={15} className="text-indigo shrink-0" />
@@ -201,7 +197,7 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
             <div className="text-xs text-muted">{formatFileSize(file.size)}</div>
           </div>
         </div>
-        <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Destination</label>
+        <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('messages.destination')}</label>
         <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
           {folders.map(opt => (
             <button key={opt.id ?? 'root'} type="button" onClick={() => setFolderId(opt.id)}
@@ -217,15 +213,165 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
             </button>
           ))}
           {folders.length === 0 && (
-            <p className="text-xs text-muted text-center py-3">Chargement des dossiers…</p>
+            <p className="text-xs text-muted text-center py-3">{t('messages.loadingFolders')}</p>
           )}
         </div>
         {error && <p className="text-xs text-danger mb-3">{error}</p>}
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={confirm} disabled={saving || !file.storagePath}
             className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
-            {saving ? 'Enregistrement…' : done ? 'Ajouté !' : 'Confirmer'}
+            {saving ? t('messages.saving') : done ? t('messages.added') : t('common.confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Small thumbnail for reply banner ── */
+function ReplyPhotoThumb({ storagePath, conversationId, orgId }: {
+  storagePath: string; conversationId: string; orgId: string
+}) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let blobUrl: string | null = null
+    MessageService.getDecryptedImageUrl(storagePath, conversationId, orgId).then(u => {
+      blobUrl = u; setUrl(u)
+    })
+    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl) }
+  }, [storagePath, conversationId, orgId])
+  if (!url) return <div className="w-8 h-8 rounded bg-border shrink-0" />
+  return <img src={url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+}
+
+/* ── Forward modal ── */
+function ForwardModal({ msg, channels, currentChannel, currentUser, currentOrg, onClose }: {
+  msg: Message; channels: Channel[]; currentChannel: Channel
+  currentUser: AppUser; currentOrg: { id: string }
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const [search, setSearch] = useState('')
+  const [targetId, setTargetId] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const targets = channels.filter(c =>
+    c.id !== currentChannel.id &&
+    (c.name?.toLowerCase().includes(search.toLowerCase()) || !search)
+  )
+
+  async function handleForward() {
+    if (!targetId || sending) return
+    setSending(true)
+    try {
+      if (msg.files?.length) {
+        const fileName = msg.content.replace('📎 ', '') || msg.files[0].split('/').pop()!
+        const blob = await MessageService.getDecryptedBlob(msg.files[0], currentChannel.id, currentOrg.id)
+        if (blob) {
+          const file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' })
+          const { path, error } = await MessageService.uploadAttachment(currentOrg.id, targetId, file)
+          if (!error && path) {
+            await MessageService.send(targetId, currentUser.id, `📎 ${fileName}`, currentOrg.id, [path])
+          }
+        }
+      } else {
+        await MessageService.send(targetId, currentUser.id, msg.content, currentOrg.id)
+      }
+      setDone(true)
+      setTimeout(onClose, 1000)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-navy text-base">{t('messages.forward')}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+        </div>
+        <div className="px-3 py-2 rounded-xl bg-bg border border-border text-xs text-muted mb-4 truncate">
+          {msg.files?.length ? `📎 ${msg.content.replace('📎 ', '')}` : msg.content.slice(0, 80)}
+        </div>
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder={t('messages.forwardSearch')}
+          className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-bg text-ink placeholder:text-faint outline-none focus:border-indigo mb-3"
+        />
+        <div className="space-y-1 max-h-52 overflow-y-auto mb-4">
+          {targets.map(c => (
+            <button key={c.id} type="button" onClick={() => setTargetId(c.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${targetId === c.id ? 'bg-indigo-pale border border-indigo' : 'hover:bg-bg border border-transparent'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${targetId === c.id ? 'bg-indigo/20' : 'bg-border'}`}>
+                {c.type === 'direct' ? <User size={14} className="text-muted" /> : <Users size={14} className="text-muted" />}
+              </div>
+              <span className="text-sm font-medium text-ink truncate">{c.name}</span>
+              {targetId === c.id && <Check size={14} className="text-indigo ml-auto shrink-0" />}
+            </button>
+          ))}
+          {targets.length === 0 && <p className="text-xs text-faint text-center py-4">{t('messages.forwardNoResults')}</p>}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={handleForward} disabled={!targetId || sending || done}
+            className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
+            {sending ? <Loader2 size={14} className="animate-spin mx-auto" /> : done ? t('messages.forwarded') : t('messages.forward')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── File preview modal ── */
+function FilePreviewModal({ storagePath, fileName, fileSize, conversationId, orgId, onClose, onSaveToMyDocs }: {
+  storagePath: string; fileName: string; fileSize: number
+  conversationId: string; orgId: string
+  onClose: () => void; onSaveToMyDocs: () => void
+}) {
+  const { t } = useTranslation()
+  const [downloading, setDownloading] = useState(false)
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
+
+  async function handleDownload() {
+    setDownloading(true)
+    await MessageService.downloadAndDecrypt(storagePath, conversationId, orgId, fileName)
+    setDownloading(false)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-navy text-base">{t('messages.fileLabel')}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+        </div>
+        <div className="flex items-center gap-4 p-4 bg-bg rounded-xl border border-border mb-5">
+          <div className="w-12 h-12 rounded-xl bg-indigo/10 flex items-center justify-center shrink-0">
+            <FileText size={22} className="text-indigo" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-ink truncate">{fileName}</div>
+            <div className="flex items-center gap-2 mt-1 text-xs text-muted">
+              <span className="uppercase font-medium">{ext || '—'}</span>
+              {fileSize > 0 && <><span>·</span><span>{formatFileSize(fileSize)}</span></>}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <button onClick={handleDownload} disabled={downloading}
+            className="flex items-center justify-center gap-2 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50">
+            {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+            {downloading ? t('messages.downloading') : t('common.download')}
+          </button>
+          <button onClick={() => { onSaveToMyDocs(); onClose() }}
+            className="flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm font-semibold text-ink hover:bg-bg">
+            <FolderInput size={15} className="text-indigo" />
+            {t('messages.saveToMyDocs')}
           </button>
         </div>
       </div>
@@ -237,12 +383,17 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
 function InlineImage({ storagePath, fileName, conversationId, orgId, isMe }: {
   storagePath: string; fileName: string; conversationId: string; orgId: string; isMe: boolean
 }) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null)
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [lightbox, setLightbox] = useState(false)
   useEffect(() => {
-    MessageService.getSignedUrl(storagePath).then(setSignedUrl)
-  }, [storagePath])
-  if (!signedUrl) return (
+    let url: string | null = null
+    MessageService.getDecryptedImageUrl(storagePath, conversationId, orgId).then(u => {
+      url = u
+      setBlobUrl(u)
+    })
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [storagePath, conversationId, orgId])
+  if (!blobUrl) return (
     <div className="w-40 h-24 rounded-xl bg-bg border border-border flex items-center justify-center">
       <Loader2 size={16} className="text-faint animate-spin" />
     </div>
@@ -251,11 +402,11 @@ function InlineImage({ storagePath, fileName, conversationId, orgId, isMe }: {
     <>
       <button type="button" onClick={() => setLightbox(true)}
         className={`rounded-xl overflow-hidden border ${isMe ? 'border-indigo/20' : 'border-border'} hover:opacity-90 transition-opacity`}>
-        <img src={signedUrl} alt={fileName} className="max-w-[200px] max-h-[160px] object-cover block" />
+        <img src={blobUrl} alt={fileName} className="max-w-[200px] max-h-[160px] object-cover block" />
       </button>
       {lightbox && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(false)}>
-          <img src={signedUrl} alt={fileName} className="max-w-full max-h-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />
+          <img src={blobUrl} alt={fileName} className="max-w-full max-h-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </>
@@ -263,10 +414,11 @@ function InlineImage({ storagePath, fileName, conversationId, orgId, isMe }: {
 }
 
 /* ── Poll widget ── */
-function PollWidget({ pollId, currentUserId, orgUsers, cachedPoll, onPollLoaded, onVote }: {
+function PollWidget({ pollId, currentUserId, orgUsers: _orgUsers, cachedPoll, onPollLoaded, onVote }: {
   pollId: string; currentUserId: string; orgUsers: AppUser[]
   cachedPoll?: Poll; onPollLoaded: (p: Poll) => void; onVote: (pollId: string, optionId: string) => void
 }) {
+  const { t } = useTranslation()
   const [poll, setPoll] = useState<Poll | null>(cachedPoll ?? null)
   useEffect(() => {
     if (!cachedPoll) {
@@ -275,14 +427,14 @@ function PollWidget({ pollId, currentUserId, orgUsers, cachedPoll, onPollLoaded,
       setPoll(cachedPoll)
     }
   }, [pollId, cachedPoll])
-  if (!poll) return <div className="px-4 py-2.5 bg-surface border border-border rounded-2xl text-xs text-muted">Chargement du sondage…</div>
+  if (!poll) return <div className="px-4 py-2.5 bg-surface border border-border rounded-2xl text-xs text-muted">{t('messages.loadingPoll')}</div>
   const totalVotes = poll.options.reduce((s, o) => s + o.voteCount, 0)
   const myVote = poll.options.find(o => o.voters.includes(currentUserId))
   return (
     <div className="bg-surface border border-border rounded-2xl p-4 w-64">
       <div className="flex items-center gap-2 mb-3">
         <BarChart2 size={14} className="text-indigo shrink-0" />
-        <span className="text-xs font-semibold text-indigo uppercase tracking-wide">Sondage</span>
+        <span className="text-xs font-semibold text-indigo uppercase tracking-wide">{t('messages.pollLabel')}</span>
       </div>
       <p className="text-sm font-semibold text-ink mb-3 leading-snug">{poll.question}</p>
       <div className="space-y-2">
@@ -303,7 +455,7 @@ function PollWidget({ pollId, currentUserId, orgUsers, cachedPoll, onPollLoaded,
           )
         })}
       </div>
-      <p className="text-[10px] text-faint mt-2">{totalVotes} vote{totalVotes > 1 ? 's' : ''}{myVote ? ' · Déjà voté' : ''}</p>
+      <p className="text-[10px] text-faint mt-2">{totalVotes} vote{totalVotes > 1 ? 's' : ''}{myVote ? ` · ${t('messages.alreadyVoted')}` : ''}</p>
     </div>
   )
 }
@@ -313,6 +465,7 @@ function PollForm({ onClose, onSubmit }: {
   onClose: () => void
   onSubmit: (question: string, options: string[], multipleChoice: boolean) => void
 }) {
+  const { t } = useTranslation()
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState(['', ''])
   const [multiple, setMultiple] = useState(false)
@@ -323,18 +476,18 @@ function PollForm({ onClose, onSubmit }: {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-navy text-base">Créer un sondage</h3>
+          <h3 className="font-bold text-navy text-base">{t('messages.pollCreate')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Question</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('messages.pollQuestion')}</label>
             <input value={question} onChange={e => setQuestion(e.target.value)} autoFocus
-              placeholder="Votre question…"
+              placeholder={`${t('messages.pollQuestion')}…`}
               className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Options</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('messages.pollOptions')}</label>
             <div className="space-y-2">
               {options.map((opt, i) => (
                 <input key={i} value={opt} onChange={e => setOption(i, e.target.value)}
@@ -342,19 +495,19 @@ function PollForm({ onClose, onSubmit }: {
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
               ))}
               {options.length < 6 && (
-                <button onClick={addOption} className="text-xs text-indigo font-medium hover:underline">+ Ajouter une option</button>
+                <button onClick={addOption} className="text-xs text-indigo font-medium hover:underline">{t('messages.addOption')}</button>
               )}
             </div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={multiple} onChange={e => setMultiple(e.target.checked)} className="rounded" />
-            <span className="text-xs text-ink">Choix multiple</span>
+            <span className="text-xs text-ink">{t('messages.multipleChoice')}</span>
           </label>
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button disabled={!canSubmit} onClick={() => onSubmit(question.trim(), options.filter(o => o.trim()), multiple)}
-            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">Créer</button>
+            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.create')}</button>
         </div>
       </div>
     </div>
@@ -362,12 +515,13 @@ function PollForm({ onClose, onSubmit }: {
 }
 
 /* ── Quick meeting form ── */
-function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreated, prefillParticipants }: {
+function QuickMeetingForm({ orgUsers, currentUser, currentOrg: _currentOrg, onClose, onCreated, prefillParticipants }: {
   orgUsers: AppUser[]; currentUser: AppUser; currentOrg: { id: string }
   onClose: () => void
   onCreated: (title: string, startAt: string, endAt: string, participants: string[]) => void
   prefillParticipants?: string[]
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const today = new Date().toISOString().split('T')[0]
   const [title, setTitle] = useState('')
@@ -383,11 +537,11 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreate
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-navy text-base">Programmer une réunion</h3>
+          <h3 className="font-bold text-navy text-base">{t('messages.scheduleMeeting')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
-          <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder="Titre de la réunion"
+          <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder={t('agenda.title')}
             className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
           <div className="grid grid-cols-3 gap-2">
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
@@ -399,14 +553,14 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreate
           </div>
           {hasPrefill ? (
             <div>
-              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Participants ({selected.length})</label>
+              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('messages.participants')} ({selected.length})</label>
               <div className="flex flex-wrap gap-1.5">
                 {selected.map(id => {
                   const u = members.find(m => m.id === id)
                   if (!u) return null
                   return (
                     <span key={id} className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 bg-indigo-pale rounded-full text-xs font-medium text-indigo">
-                      <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                      <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                       {u.firstName}
                     </span>
                   )
@@ -415,12 +569,12 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreate
             </div>
           ) : members.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Participants</label>
+              <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('messages.participants')}</label>
               <div className="max-h-32 overflow-y-auto border border-border rounded-xl divide-y divide-border">
                 {members.map(u => (
                   <button key={u.id} type="button" onClick={() => toggle(u.id)}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${selected.includes(u.id) ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
-                    <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                    <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                     <span className="flex-1 font-medium text-ink truncate">{u.firstName} {u.lastName}</span>
                     {selected.includes(u.id) && <Check size={12} className="text-indigo shrink-0" />}
                   </button>
@@ -430,13 +584,13 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreate
           )}
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button disabled={!canSubmit} onClick={() => {
             const startAt = new Date(`${date}T${timeStart}:00`).toISOString()
             const endAt = new Date(`${date}T${timeEnd}:00`).toISOString()
             onCreated(title.trim(), startAt, endAt, selected)
             onClose()
-          }} className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">Créer</button>
+          }} className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.create')}</button>
         </div>
         <button
           onClick={() => {
@@ -449,7 +603,7 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreate
           }}
           className="w-full mt-2 text-xs text-indigo hover:underline text-center"
         >
-          Ouvrir dans l'Agenda complet →
+          {t('messages.openAgenda')}
         </button>
       </div>
     </div>
@@ -457,7 +611,7 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg, onClose, onCreate
 }
 
 /* ── Conversation info panel ── */
-type LibrarySection = 'files' | 'links' | 'starred'
+type LibrarySection = 'files' | 'links'
 
 function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateToDocs, onLeave }: {
   channel: Channel
@@ -468,6 +622,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
   onNavigateToDocs: () => void
   onLeave: () => void
 }) {
+  const { t } = useTranslation()
   const { currentUser } = useAuth()
   const type = channel.type as ConvType
   const MUTED_KEY = `muted_conv_${channel.id}`
@@ -489,9 +644,8 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
   }
 
   const libraryTitles: Record<LibrarySection, string> = {
-    files: 'Fichiers partagés',
-    links: 'Liens partagés',
-    starred: 'Éléments importants',
+    files: t('messages.sharedFiles'),
+    links: t('messages.sharedLinks'),
   }
 
   if (libraryOpen) {
@@ -508,7 +662,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
             attachments.length === 0 ? (
               <div className="py-16 text-center">
                 <Paperclip size={28} className="text-faint mx-auto mb-3" />
-                <p className="text-sm text-muted">Aucun fichier partagé dans cette conversation.</p>
+                <p className="text-sm text-muted">{t('messages.noFiles')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -527,13 +681,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
           {libraryOpen === 'links' && (
             <div className="py-16 text-center">
               <Link2 size={28} className="text-faint mx-auto mb-3" />
-              <p className="text-sm text-muted">Aucun lien partagé dans cette conversation.</p>
-            </div>
-          )}
-          {libraryOpen === 'starred' && (
-            <div className="py-16 text-center">
-              <Star size={28} className="text-faint mx-auto mb-3" />
-              <p className="text-sm text-muted">Aucun élément important dans cette conversation.</p>
+              <p className="text-sm text-muted">{t('messages.noLinks')}</p>
             </div>
           )}
         </div>
@@ -548,7 +696,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
           <ArrowLeft size={18} />
         </button>
         <span className="text-sm font-semibold text-ink">
-          {type === 'direct' ? 'Profil' : type === 'group' ? 'Infos du groupe' : "Infos de l'équipe"}
+          {type === 'direct' ? t('messages.profile') : type === 'group' ? t('messages.groupInfo') : t('messages.teamInfo')}
         </span>
       </div>
 
@@ -557,13 +705,13 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
         <div className="flex flex-col items-center py-8 px-4 border-b border-border bg-surface">
           {type === 'direct' && otherUser ? (
             <>
-              <Avatar firstName={otherUser.firstName} lastName={otherUser.lastName} id={otherUser.id} size="xl" />
+              <Avatar firstName={otherUser.firstName} lastName={otherUser.lastName} id={otherUser.id} size="xl" src={otherUser.avatarUrl} />
               <h2 className="font-bold text-ink text-base mt-3">{otherUser.firstName} {otherUser.lastName}</h2>
-              <p className="text-sm text-muted">{otherUser.role}</p>
+              <p className="text-sm text-muted">{otherUser.role === 'admin' ? t('common.administrator') : t('common.collaborator')}</p>
               <span className={`mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                 otherUser.status === 'active' ? 'bg-success/10 text-success' : 'bg-amber/10 text-amber'
               }`}>
-                {otherUser.status === 'active' ? 'Actif' : 'Suspendu'}
+                {otherUser.status === 'active' ? t('messages.statusActive') : t('messages.statusSuspended')}
               </span>
             </>
           ) : type === 'group' ? (
@@ -572,7 +720,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
                 <Lock size={24} className="text-indigo" />
               </div>
               <h2 className="font-bold text-ink text-base">{channel.name}</h2>
-              <p className="text-sm text-muted">{allMembers.length} membres · Groupe privé</p>
+              <p className="text-sm text-muted">{t('messages.groupOf', { count: allMembers.length })}</p>
             </>
           ) : (
             <>
@@ -580,7 +728,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
                 <Hash size={24} className="text-navy" />
               </div>
               <h2 className="font-bold text-ink text-base">{channel.name}</h2>
-              <p className="text-sm text-muted">{teamMembers.length} membres · Espace d'équipe</p>
+              <p className="text-sm text-muted">{t('messages.teamSpace', { count: teamMembers.length })}</p>
             </>
           )}
         </div>
@@ -588,9 +736,9 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
         {/* Responsable — team only */}
         {type === 'team' && teamResponsable && (
           <div className="px-4 py-4 border-b border-border">
-            <SectionHeader label="Responsable" />
+            <SectionHeader label={t('messages.responsible')} />
             <div className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border mt-3">
-              <Avatar firstName={teamResponsable.firstName} lastName={teamResponsable.lastName} id={teamResponsable.id} size="sm" />
+              <Avatar firstName={teamResponsable.firstName} lastName={teamResponsable.lastName} id={teamResponsable.id} size="sm" src={teamResponsable.avatarUrl} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-ink">{teamResponsable.firstName} {teamResponsable.lastName}</div>
                 <div className="text-xs text-muted">{teamResponsable.role}</div>
@@ -603,16 +751,16 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
         {/* Members */}
         {(type === 'group' || type === 'team') && (
           <div className="px-4 py-4 border-b border-border">
-            <SectionHeader label={`Membres · ${(type === 'team' ? teamMembers : allMembers).length}`} />
+            <SectionHeader label={`${t('messages.members')} · ${(type === 'team' ? teamMembers : allMembers).length}`} />
             <div className="space-y-2 mt-3">
               {(type === 'team' ? teamMembers : allMembers).map(m => m && (
                 <div key={m.id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
-                  <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" />
+                  <Avatar firstName={m.firstName} lastName={m.lastName} id={m.id} size="sm" src={m.avatarUrl} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-ink">{m.firstName} {m.lastName}</div>
                     <div className="text-xs text-muted">{m.role}</div>
                   </div>
-                  {m.id === currentUser.id && <span className="text-[10px] font-semibold text-indigo bg-indigo-pale px-1.5 py-0.5 rounded-full">Vous</span>}
+                  {m.id === currentUser.id && <span className="text-[10px] font-semibold text-indigo bg-indigo-pale px-1.5 py-0.5 rounded-full">{t('common.you')}</span>}
                   {type === 'team' && team?.responsableId === m.id && m.id !== currentUser.id && <Crown size={12} className="text-amber shrink-0" />}
                 </div>
               ))}
@@ -623,10 +771,10 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
         {/* Shared files */}
         <div className="px-4 py-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
-            <SectionHeader label="Fichiers partagés" />
+            <SectionHeader label={t('messages.sharedFiles')} />
             {attachments.length > 0 && (
               <button onClick={() => setLibraryOpen('files')} className="text-xs text-indigo font-medium hover:underline">
-                Voir tout ({attachments.length})
+                {t('messages.seeAll')} ({attachments.length})
               </button>
             )}
           </div>
@@ -634,7 +782,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
             <button onClick={() => setLibraryOpen('files')}
               className="w-full flex items-center gap-3 p-3 bg-surface rounded-xl border border-border hover:border-indigo/30 transition-colors text-left">
               <Paperclip size={14} className="text-faint shrink-0" />
-              <span className="text-xs text-muted">Voir les fichiers partagés →</span>
+              <span className="text-xs text-muted">{t('messages.seeAllFiles')}</span>
             </button>
           ) : (
             <div className="space-y-2">
@@ -649,7 +797,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
               ))}
               <button onClick={() => setLibraryOpen('files')}
                 className="w-full py-2.5 text-xs text-indigo font-medium border border-indigo/20 rounded-xl hover:bg-indigo-pale transition-colors">
-                Voir tous les fichiers →
+                {t('messages.seeAllFiles')}
               </button>
             </div>
           )}
@@ -658,54 +806,33 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
         {/* Team documents */}
         {type === 'team' && (
           <div className="px-4 py-4 border-b border-border">
-            <div className="mb-3"><SectionHeader label="Documents de l'équipe" /></div>
+            <div className="mb-3"><SectionHeader label={t('messages.teamDocuments')} /></div>
             <button onClick={onNavigateToDocs} className="w-full flex items-center gap-3 p-3 bg-surface rounded-xl border border-border hover:border-indigo/40 transition-colors text-left">
               <FileText size={14} className="text-indigo shrink-0" />
-              <span className="text-sm text-indigo font-medium">Voir dans la bibliothèque →</span>
+              <span className="text-sm text-indigo font-medium">{t('messages.seeSharedLinks')}</span>
             </button>
           </div>
         )}
 
-        {/* Shared links */}
-        <div className="px-4 py-4 border-b border-border">
-          <div className="mb-3"><SectionHeader label="Liens partagés" /></div>
-          <button onClick={() => setLibraryOpen('links')}
-            className="w-full flex items-center gap-3 p-3 bg-surface rounded-xl border border-border hover:border-indigo/30 transition-colors text-left">
-            <Link2 size={14} className="text-faint shrink-0" />
-            <span className="text-xs text-muted">Voir les liens partagés →</span>
-          </button>
-        </div>
 
         {/* Media — group & team */}
         {(type === 'group' || type === 'team') && (
           <div className="px-4 py-4 border-b border-border">
-            <div className="mb-3"><SectionHeader label="Médias" /></div>
+            <div className="mb-3"><SectionHeader label={t('messages.media')} /></div>
             <div className="flex items-center gap-2 p-3 bg-surface rounded-xl border border-border text-faint">
               <Image size={14} className="shrink-0" />
-              <span className="text-xs">Les images et vidéos envoyées apparaîtront ici.</span>
+              <span className="text-xs">{t('messages.mediaHint')}</span>
             </div>
-          </div>
-        )}
-
-        {/* Starred / important */}
-        {type === 'direct' && (
-          <div className="px-4 py-4 border-b border-border">
-            <div className="mb-3"><SectionHeader label="Éléments importants" /></div>
-            <button onClick={() => setLibraryOpen('starred')}
-              className="w-full flex items-center gap-3 p-3 bg-surface rounded-xl border border-border hover:border-indigo/30 transition-colors text-left">
-              <Star size={14} className="text-faint shrink-0" />
-              <span className="text-xs text-muted">Voir les éléments importants →</span>
-            </button>
           </div>
         )}
 
         {/* Options */}
         <div className="px-4 py-4 space-y-2">
-          <div className="mb-3"><SectionHeader label="Options" /></div>
+          <div className="mb-3"><SectionHeader label={t('messages.options')} /></div>
           <div className="flex items-center justify-between p-3.5 bg-surface rounded-xl border border-border">
             <div className="flex items-center gap-3">
               {muted ? <BellOff size={16} className="text-muted" /> : <Bell size={16} className="text-muted" />}
-              <span className="text-sm text-ink">Notifications</span>
+              <span className="text-sm text-ink">{t('messages.notifications')}</span>
             </div>
             <button type="button" onClick={() => {
               const next = !muted
@@ -718,10 +845,10 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
             </button>
           </div>
           {type === 'group' && (
-            <button onClick={() => { if (window.confirm('Quitter ce groupe ? Vous ne pourrez plus accéder aux messages.')) onLeave() }}
+            <button onClick={() => { if (window.confirm(t('messages.leaveGroupConfirm'))) onLeave() }}
               className="w-full flex items-center gap-3 p-3.5 bg-surface rounded-xl border border-border text-left hover:border-danger/40 transition-colors">
               <LogOut size={16} className="text-danger shrink-0" />
-              <span className="text-sm text-danger">Quitter le groupe</span>
+              <span className="text-sm text-danger">{t('messages.leaveGroup')}</span>
             </button>
           )}
         </div>
@@ -731,13 +858,16 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
 }
 
 /* ── Conversation list ── */
-function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
+function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup, orgUsers, currentUserId }: {
   channels: Channel[]
   onSelect: (id: string) => void
   selected: string | null
   onNewDirect: () => void
   onNewGroup: () => void
+  orgUsers: AppUser[]
+  currentUserId: string
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [showNewMenu, setShowNewMenu] = useState(false)
 
@@ -748,6 +878,11 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
     if (filtered && bucket) bucket.push(c)
   })
 
+  const sectionLabel: Record<ConvType, string> = {
+    direct: t('messages.directs'),
+    group: t('messages.groups'),
+    team: t('messages.teams'),
+  }
   const sections: { type: ConvType; items: Channel[] }[] = [
     { type: 'direct' as ConvType, items: byType.direct },
     { type: 'group' as ConvType, items: byType.group },
@@ -763,7 +898,7 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-3 shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-ink">Messagerie</h2>
+          <h2 className="text-base font-bold text-ink">{t('messages.title')}</h2>
           <div className="relative">
             <button onClick={() => setShowNewMenu(m => !m)} title="Nouvelle conversation"
               className="w-8 h-8 rounded-full bg-indigo-pale flex items-center justify-center text-indigo hover:bg-indigo hover:text-white transition-colors">
@@ -776,12 +911,12 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
                   <button onClick={() => { setShowNewMenu(false); onNewDirect() }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-ink hover:bg-bg">
                     <User size={14} className="text-indigo shrink-0" />
-                    Message direct
+                    {t('messages.newDirectMsg')}
                   </button>
                   <button onClick={() => { setShowNewMenu(false); onNewGroup() }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-ink hover:bg-bg border-t border-border">
                     <Users size={14} className="text-indigo shrink-0" />
-                    Nouveau groupe
+                    {t('messages.newGroup')}
                   </button>
                 </div>
               </>
@@ -790,7 +925,7 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
         </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…"
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('messages.searchConv')}
             className="w-full pl-9 pr-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent" />
         </div>
       </div>
@@ -811,7 +946,7 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
                   ) : isGroup ? (
                     <div className="w-9 h-9 rounded-xl bg-indigo-pale flex items-center justify-center shrink-0"><Lock size={14} className="text-indigo" /></div>
                   ) : (
-                    <Avatar firstName={firstName} lastName={lastName} id={ch.id} />
+                    <Avatar firstName={firstName} lastName={lastName} id={ch.members.find(id => id !== currentUserId) ?? ch.id} src={orgUsers.find(u => u.id === ch.members.find(id => id !== currentUserId))?.avatarUrl} />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
@@ -830,20 +965,22 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup }: {
             })}
           </div>
         ))}
-        {sections.length === 0 && <p className="text-xs text-faint text-center py-8">Aucun résultat.</p>}
+        {sections.length === 0 && <p className="text-xs text-faint text-center py-8">{t('messages.noResults')}</p>}
       </div>
     </div>
   )
 }
 
 /* ── Conversation view ── */
-function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
+function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }: {
   channel: Channel
+  channels: Channel[]
   orgUsers: AppUser[]
   teams: Team[]
   onBack: () => void
   onLeaveChannel: (channelId: string) => void
 }) {
+  const { t } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const navigate = useNavigate()
   const type = channel.type as ConvType
@@ -861,6 +998,13 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
   const [readStatus, setReadStatus] = useState<Record<string, string>>({})
   const [reactions, setReactions] = useState<Record<string, { emoji: string; userId: string }[]>>({})
   const [emojiPickerMsgId, setEmojiPickerMsgId] = useState<string | null>(null)
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [filePreview, setFilePreview] = useState<{ storagePath: string; fileName: string; fileSize: number } | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [forwardMsg, setForwardMsg] = useState<Message | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -873,12 +1017,27 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
     setLocalAttachments([])
     setReadStatus({})
     setReactions({})
-    MessageService.getMessages(channel.id, currentOrg.id).then(setMessages)
+    setHasMore(false)
+    setReplyingTo(null)
+    MessageService.getMessages(channel.id, currentOrg.id).then(({ messages, hasMore }) => {
+      setMessages(messages)
+      setHasMore(hasMore)
+    })
     MessageService.markConversationRead(channel.id, currentUser.id).then(() => {
       MessageService.getReadStatus(channel.id).then(setReadStatus)
     })
     MessageService.getReactions(channel.id).then(setReactions)
   }, [channel.id])
+
+  async function loadOlderMessages() {
+    if (loadingMore || !hasMore || messages.length === 0) return
+    setLoadingMore(true)
+    const oldest = messages[0].createdAt
+    const { messages: older, hasMore: moreExist } = await MessageService.getMessages(channel.id, currentOrg.id, 100, oldest)
+    setMessages(prev => [...older, ...prev])
+    setHasMore(moreExist)
+    setLoadingMore(false)
+  }
 
   // Realtime subscription
   useEffect(() => {
@@ -900,19 +1059,25 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
     if (!f) return
     e.target.value = ''
     setUploading(true)
+    setUploadError(null)
     const { path, url, error } = await MessageService.uploadAttachment(currentOrg.id, channel.id, f)
     setUploading(false)
-    if (error || !path) return
+    if (error || !path) { setUploadError(error ?? t('messages.uploadFileError')); return }
     const att: Attachment = { id: `a${Date.now()}`, name: f.name, size: f.size, type: f.type || 'application/octet-stream', url: url ?? undefined, storagePath: path }
     setLocalAttachments(prev => [...prev, att])
-    await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path], channel.type)
+    const { error: sendErr } = await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path], channel.type)
+    if (sendErr) setUploadError(sendErr)
   }
 
   async function handleSend() {
     const trimmed = text.trim()
     if (!trimmed) return
+    setUploadError(null)
     setText('')
-    await MessageService.send(channel.id, currentUser.id, trimmed, currentOrg.id, undefined, channel.type)
+    const replyId = replyingTo?.id
+    setReplyingTo(null)
+    const { error: sendErr } = await MessageService.send(channel.id, currentUser.id, trimmed, currentOrg.id, undefined, channel.type, replyId)
+    if (sendErr) { setText(trimmed); setUploadError(sendErr) }
   }
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -921,12 +1086,14 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
     e.target.value = ''
     setShowPlusMenu(false)
     setUploading(true)
+    setUploadError(null)
     const { path, url, error } = await MessageService.uploadAttachment(currentOrg.id, channel.id, f)
     setUploading(false)
-    if (error || !path) return
+    if (error || !path) { setUploadError(error ?? t('messages.uploadPhotoError')); return }
     const att: Attachment = { id: `a${Date.now()}`, name: f.name, size: f.size, type: f.type || 'image/jpeg', url: url ?? undefined, storagePath: path }
     setLocalAttachments(prev => [...prev, att])
-    await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path], channel.type)
+    const { error: sendErr } = await MessageService.send(channel.id, currentUser.id, `📎 ${f.name}`, currentOrg.id, [path], channel.type)
+    if (sendErr) setUploadError(sendErr)
   }
 
   async function handlePollCreate(question: string, options: string[], multipleChoice: boolean) {
@@ -941,7 +1108,8 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
     })
     if (poll) {
       setPolls(prev => ({ ...prev, [poll.id]: poll }))
-      await MessageService.send(channel.id, currentUser.id, `__poll__:${poll.id}`, currentOrg.id, undefined, channel.type)
+      const { error: sendErr } = await MessageService.send(channel.id, currentUser.id, `__poll__:${poll.id}`, currentOrg.id, undefined, channel.type)
+      if (sendErr) setUploadError(sendErr)
     }
   }
 
@@ -953,6 +1121,13 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
   async function handleLeave() {
     await MessageService.leaveConversation(channel.id, currentUser.id)
     onLeaveChannel(channel.id)
+  }
+
+  async function handleDeleteMessage(messageId: string) {
+    setDeletingMsgId(messageId)
+    await MessageService.deleteMessage(messageId, currentUser.id)
+    setMessages(prev => prev.filter(m => m.id !== messageId))
+    setDeletingMsgId(null)
   }
 
   async function toggleReaction(messageId: string, emoji: string) {
@@ -998,14 +1173,19 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
 
         {type === 'team' && <div className="w-8 h-8 rounded-xl bg-navy flex items-center justify-center shrink-0"><Hash size={14} className="text-indigo-light" /></div>}
         {type === 'group' && <div className="w-8 h-8 rounded-xl bg-indigo-pale flex items-center justify-center shrink-0"><Lock size={14} className="text-indigo" /></div>}
-        {type === 'direct' && (() => { const p = channel.name.split(' '); return <Avatar firstName={p[0]} lastName={p[1] ?? ''} id={channel.id} size="sm" /> })()}
+        {type === 'direct' && (() => {
+          const otherId = channel.members.find(id => id !== currentUser.id) ?? channel.id
+          const other = orgUsers.find(u => u.id === otherId)
+          const p = channel.name.split(' ')
+          return <Avatar firstName={p[0]} lastName={p[1] ?? ''} id={otherId} size="sm" src={other?.avatarUrl} />
+        })()}
 
         <button className="flex-1 min-w-0 text-left" onClick={() => setShowInfo(true)}>
           <div className="font-semibold text-ink text-sm hover:text-indigo transition-colors">{channel.name}</div>
           <div className="text-[10px] text-muted">
-            {type === 'direct' && 'Conversation privée'}
-            {type === 'group' && `Groupe · ${channel.members.length} membres`}
-            {type === 'team' && `Espace d'équipe · ${channel.members.length} membres`}
+            {type === 'direct' && t('messages.privateConv')}
+            {type === 'group' && t('messages.groupOf', { count: channel.members.length })}
+            {type === 'team' && t('messages.teamSpace', { count: channel.members.length })}
           </div>
         </button>
 
@@ -1026,8 +1206,8 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
       {showAttachments && (
         <div className="bg-bg border-b border-border px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-muted uppercase tracking-wide">Pièces jointes</p>
-            <p className="text-[10px] text-faint">Fichiers privés à cette conversation</p>
+            <p className="text-xs font-semibold text-muted uppercase tracking-wide">{t('messages.attachments')}</p>
+            <p className="text-[10px] text-faint">{t('messages.filesPrivate')}</p>
           </div>
           <div className="flex flex-col gap-2">
             {localAttachments.map(att => (
@@ -1041,7 +1221,7 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
                 </div>
                 <button onClick={() => setPromoteFile(att)}
                   className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-indigo border border-indigo/20 rounded-lg hover:bg-indigo-pale transition-colors shrink-0">
-                  <FolderInput size={11} /> Ajouter aux documents
+                  <FolderInput size={11} /> {t('messages.addToDocuments')}
                 </button>
               </div>
             ))}
@@ -1050,17 +1230,47 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0">
+        {hasMore && (
+          <div className="flex justify-center">
+            <button
+              onClick={loadOlderMessages}
+              disabled={loadingMore}
+              className="text-xs text-indigo hover:underline disabled:opacity-50 flex items-center gap-1.5 py-1"
+            >
+              {loadingMore ? <Loader2 size={12} className="animate-spin" /> : null}
+              {loadingMore ? t('common.loading') : t('messages.loadPrevious')}
+            </button>
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
             <div className="w-12 h-12 rounded-2xl bg-indigo-pale flex items-center justify-center mb-3">
               {type === 'team' ? <Hash size={22} className="text-indigo" /> : type === 'group' ? <Lock size={22} className="text-indigo" /> : <User size={22} className="text-indigo" />}
             </div>
-            <p className="text-sm font-semibold text-ink mb-1">Début de la conversation</p>
-            <p className="text-xs text-muted">Envoyez le premier message.</p>
+            <p className="text-sm font-semibold text-ink mb-1">{t('messages.beginConversation')}</p>
+            <p className="text-xs text-muted">{t('messages.sendFirst')}</p>
           </div>
         )}
-        {messages.map(msg => {
+        {messages.map((msg, index) => {
+          const prevMsg = messages[index - 1]
+          const nextMsg = messages[index + 1]
+          const GROUP_GAP_MS = 5 * 60 * 1000
+
+          // Date separator between different days
+          const showDateSep = !prevMsg || new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString()
+
+          // Grouping: same sender, within 5 minutes, same day
+          const isFirstInGroup = !prevMsg
+            || prevMsg.senderId !== msg.senderId
+            || new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime() > GROUP_GAP_MS
+            || showDateSep
+
+          const isLastInGroup = !nextMsg
+            || nextMsg.senderId !== msg.senderId
+            || new Date(nextMsg.createdAt).getTime() - new Date(msg.createdAt).getTime() > GROUP_GAP_MS
+            || new Date(nextMsg.createdAt).toDateString() !== new Date(msg.createdAt).toDateString()
+
           const user = getUser(msg.senderId)
           const isMe = msg.senderId === currentUser.id
           const isFileMsg = msg.files && msg.files.length > 0
@@ -1079,17 +1289,73 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
             if (r.userId === currentUser.id) acc[r.emoji].isMine = true
             return acc
           }, {})
-          // "Vu" = at least one OTHER member has last_read_at >= message.createdAt
           const isSeen = isMe && Object.entries(readStatus).some(
             ([uid, ts]) => uid !== currentUser.id && new Date(ts) >= new Date(msg.createdAt)
           )
           const isLastMyMsg = isMe && messages.filter(m => m.senderId === currentUser.id).at(-1)?.id === msg.id
 
+          // Bubble radius adapts to position in group
+          const bubbleRadius = isMe
+            ? `rounded-2xl ${isFirstInGroup ? 'rounded-tr-md' : ''} ${isLastInGroup ? 'rounded-br-md' : 'rounded-r-md'}`
+            : `rounded-2xl ${isFirstInGroup ? 'rounded-tl-md' : ''} ${isLastInGroup ? 'rounded-bl-md' : 'rounded-l-md'}`
+
+          // Outer margin: tight within group, more space between groups
+          const rowMargin = isFirstInGroup ? 'mt-3' : 'mt-0.5'
+
+          // Quoted reply
+          const repliedMsg = msg.replyToId ? messages.find(m => m.id === msg.replyToId) : null
+          const replyAuthorName = repliedMsg
+            ? repliedMsg.senderId === currentUser.id
+              ? t('common.you')
+              : (() => { const u = getUser(repliedMsg.senderId); return u ? `${u.firstName} ${u.lastName}` : '—' })()
+            : ''
+          const replyPreview = repliedMsg
+            ? repliedMsg.content.startsWith('__poll__') ? `📊 ${t('messages.pollLabel')}`
+              : repliedMsg.content.startsWith('__meeting__') ? `📅 ${t('messages.meetingLabel')}`
+              : repliedMsg.content.startsWith('📎') ? repliedMsg.content
+              : repliedMsg.content.slice(0, 80)
+            : ''
+          const scrollToReply = () => {
+            if (!repliedMsg) return
+            const el = document.getElementById(`msg-${repliedMsg.id}`)
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el?.classList.add('highlight-flash')
+            setTimeout(() => el?.classList.remove('highlight-flash'), 1200)
+          }
+
           return (
-            <div key={msg.id} className={`group flex items-end gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-              {!isMe && user && <Avatar firstName={user.firstName} lastName={user.lastName} id={user.id} size="sm" />}
-              <div className={`max-w-[75%] flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`}>
-                {!isMe && user && <span className="text-[11px] font-semibold text-muted ml-1">{user.firstName} {user.lastName}</span>}
+            <div key={msg.id} id={`msg-${msg.id}`}>
+              {/* Date separator */}
+              {showDateSep && (
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[10px] font-semibold text-faint uppercase tracking-wide whitespace-nowrap">
+                    {new Date(msg.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              )}
+
+              <div className={`group flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''} ${rowMargin}`}>
+                {/* Avatar — only show for last message in a group, or a spacer otherwise */}
+                {!isMe ? (
+                  isLastInGroup && user
+                    ? <div className="shrink-0 self-end"><Avatar firstName={user.firstName} lastName={user.lastName} id={user.id} size="sm" src={user.avatarUrl} /></div>
+                    : <div className="w-8 shrink-0" />
+                ) : null}
+
+              <div className={`max-w-[75%] flex flex-col gap-0.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                {/* Sender name — only first in group, others only */}
+                {!isMe && isFirstInGroup && user && (
+                  <span className="text-[11px] font-semibold text-muted ml-1 mb-0.5">{user.firstName} {user.lastName}</span>
+                )}
+                {repliedMsg && !isPollMsg && (isFileMsg || isMeetingMsg) && (
+                  <button type="button" onClick={scrollToReply}
+                    className={`block w-full text-left mb-1 px-2 py-1.5 rounded-lg border-l-2 border-indigo bg-indigo/5`}>
+                    <div className="text-[10px] font-semibold mb-0.5 text-indigo truncate">{replyAuthorName}</div>
+                    <div className="text-[11px] text-muted truncate">{replyPreview}</div>
+                  </button>
+                )}
                 {isPollMsg && pollId ? (
                   <PollWidget
                     pollId={pollId}
@@ -1111,34 +1377,41 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
                   <button
                     type="button"
                     onClick={() => navigate('/app/agenda')}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl border text-sm ${isMe ? 'bg-indigo/10 border-indigo/20 rounded-br-md' : 'bg-surface border-border rounded-bl-md'} hover:opacity-80 transition-opacity`}
+                    className={`flex items-center gap-3 px-3 py-2.5 border text-sm ${bubbleRadius} ${isMe ? 'bg-indigo/10 border-indigo/20' : 'bg-surface border-border'} hover:opacity-80 transition-opacity`}
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isMe ? 'bg-amber-500/20' : 'bg-amber-50'}`}>
                       <Calendar size={15} className="text-amber-500" />
                     </div>
                     <div className="text-left min-w-0">
-                      <div className={`text-xs font-semibold truncate ${isMe ? 'text-ink' : 'text-ink'}`}>{meetingData.title}</div>
+                      <div className="text-xs font-semibold text-ink truncate">{meetingData.title}</div>
                       <div className="text-[10px] text-muted mt-0.5">
                         {new Date(meetingData.startAt).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      <div className="text-[10px] text-indigo mt-0.5">Voir dans l'Agenda →</div>
+                      <div className="text-[10px] text-indigo mt-0.5">{t('messages.seeInAgenda')}</div>
                     </div>
                   </button>
                 ) : isFileMsg ? (
-                  <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border text-sm ${isMe ? 'bg-indigo/10 border-indigo/20 text-indigo rounded-br-md' : 'bg-surface border-border text-ink rounded-bl-md'}`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const knownSize = localAttachments.find(a => a.storagePath === storagePath)?.size ?? 0
+                      setFilePreview({ storagePath: storagePath!, fileName, fileSize: knownSize })
+                    }}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 border text-sm text-left ${bubbleRadius} ${isMe ? 'bg-indigo/10 border-indigo/20 text-indigo' : 'bg-surface border-border text-ink'} hover:opacity-80 transition-opacity`}
+                  >
                     {fileIcon(storagePath!)}
                     <span className="truncate max-w-[130px] font-medium">{fileName}</span>
-                    <button
-                      type="button"
-                      onClick={() => MessageService.downloadAndDecrypt(storagePath!, msg.channelId, currentOrg.id, fileName)}
-                      className="ml-1 p-1 rounded-lg hover:bg-black/10 transition-colors shrink-0"
-                      title="Télécharger"
-                    >
-                      <Download size={13} />
-                    </button>
-                  </div>
+                    <Download size={13} className="ml-1 shrink-0 opacity-60" />
+                  </button>
                 ) : (
-                  <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-indigo text-white rounded-br-md' : 'bg-surface border border-border text-ink rounded-bl-md'}`}>
+                  <div className={`px-4 py-2.5 text-sm leading-relaxed break-words ${bubbleRadius} ${isMe ? 'bg-indigo text-white' : 'bg-surface border border-border text-ink'}`}>
+                    {repliedMsg && (
+                      <button type="button" onClick={scrollToReply}
+                        className={`block w-full text-left mb-2 px-2 py-1.5 rounded-lg border-l-2 ${isMe ? 'border-white/50 bg-white/15 text-white/75' : 'border-indigo bg-indigo/8 text-muted'}`}>
+                        <div className="text-[10px] font-semibold mb-0.5 truncate">{replyAuthorName}</div>
+                        <div className="text-[11px] truncate opacity-80">{replyPreview}</div>
+                      </button>
+                    )}
                     {msg.content}
                   </div>
                 )}
@@ -1156,22 +1429,62 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
                     ))}
                   </div>
                 )}
-                <div className={`flex items-center gap-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                {/* Timestamp + actions — always visible for last in group, hover-only otherwise */}
+                <div className={`flex items-center gap-1 ${isMe ? 'flex-row-reverse' : ''} ${isLastInGroup ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
                   <span className="text-[10px] text-faint mx-1">{formatTime(msg.createdAt)}</span>
                   {isMe && isLastMyMsg && (
                     <span className={`text-[10px] font-medium ${isSeen ? 'text-indigo' : 'text-faint'}`}>
-                      {isSeen ? 'Vu' : '✓'}
+                      {isSeen ? t('messages.seen') : '✓'}
                     </span>
                   )}
-                  {/* Add reaction button — shows on hover */}
                   <button
                     type="button"
                     onClick={() => setEmojiPickerMsgId(emojiPickerMsgId === msg.id ? null : msg.id)}
                     className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all text-xs"
-                    title="Réagir"
+                    title={t('messages.react')}
                   >
                     <span>😊</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(msg)}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
+                    title={t('messages.reply')}
+                  >
+                    <Reply size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForwardMsg(msg)}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
+                    title={t('messages.forward')}
+                  >
+                    <Forward size={12} />
+                  </button>
+                  {!isFileMsg && !isPollMsg && !isMeetingMsg && (
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(msg.content)}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
+                      title={t('messages.copy')}
+                    >
+                      <Copy size={12} />
+                    </button>
+                  )}
+                  {isMe && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      disabled={deletingMsgId === msg.id}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-danger transition-all disabled:opacity-30"
+                      title={t('common.delete')}
+                    >
+                      {deletingMsgId === msg.id
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <Trash2 size={12} />
+                      }
+                    </button>
+                  )}
                 </div>
                 {emojiPickerMsgId === msg.id && (
                   <>
@@ -1188,6 +1501,7 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
                 )}
               </div>
             </div>
+          </div>
           )
         })}
         <div ref={messagesEndRef} />
@@ -1195,6 +1509,38 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
 
       {/* Composer */}
       <div className="px-4 pb-4 pt-3 border-t border-border bg-surface shrink-0">
+        {replyingTo && (() => {
+          const isPhoto = replyingTo.files?.length && /\.(png|jpg|jpeg|gif|webp)$/i.test(replyingTo.content.replace('📎 ', ''))
+          const isFile = replyingTo.files?.length && !isPhoto
+          const isPoll = replyingTo.content.startsWith('__poll__')
+          const isMeeting = replyingTo.content.startsWith('__meeting__')
+          const replyAuthor = replyingTo.senderId === currentUser.id
+            ? t('common.you')
+            : (() => { const u = orgUsers.find(u => u.id === replyingTo.senderId); return u ? `${u.firstName} ${u.lastName}` : '—' })()
+          const preview = isPoll ? `📊 ${t('messages.pollLabel')}` : isMeeting ? `📅 ${t('messages.meetingLabel')}` : isFile ? replyingTo.content.replace('📎 ', '') : replyingTo.content.slice(0, 80)
+          return (
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-indigo/5 border border-indigo/20 rounded-lg">
+              <Reply size={12} className="text-indigo shrink-0" />
+              {isPhoto && replyingTo.files?.[0] && (
+                <ReplyPhotoThumb storagePath={replyingTo.files[0]} conversationId={channel.id} orgId={currentOrg.id} />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-semibold text-indigo">{replyAuthor}</div>
+                <div className="text-xs text-muted truncate">{preview}</div>
+              </div>
+              <button type="button" onClick={() => setReplyingTo(null)} className="text-faint hover:text-muted shrink-0">
+                <X size={12} />
+              </button>
+            </div>
+          )
+        })()}
+        {uploadError && (
+          <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-danger/5 border border-danger/20 rounded-lg">
+            <AlertCircle size={13} className="text-danger shrink-0 mt-0.5" />
+            <p className="text-xs text-danger">{uploadError}</p>
+            <button onClick={() => setUploadError(null)} className="ml-auto text-faint hover:text-muted"><X size={12} /></button>
+          </div>
+        )}
         <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
         <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
         <div className="flex items-center gap-2">
@@ -1210,19 +1556,19 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
                 <div className="absolute left-0 bottom-12 z-50 bg-surface border border-border rounded-xl shadow-xl overflow-hidden w-48">
                   <button onClick={() => { setShowPlusMenu(false); fileRef.current?.click() }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg">
-                    <Paperclip size={14} className="text-indigo shrink-0" /> Fichier
+                    <Paperclip size={14} className="text-indigo shrink-0" /> {t('messages.fileLabel')}
                   </button>
                   <button onClick={() => { setShowPlusMenu(false); photoRef.current?.click() }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg border-t border-border">
-                    <Image size={14} className="text-emerald-500 shrink-0" /> Photo
+                    <Image size={14} className="text-emerald-500 shrink-0" /> {t('messages.photo')}
                   </button>
                   <button onClick={() => { setShowPlusMenu(false); setShowMeetingForm(true) }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg border-t border-border">
-                    <Calendar size={14} className="text-amber-500 shrink-0" /> Réunion
+                    <Calendar size={14} className="text-amber-500 shrink-0" /> {t('messages.meetingLabel')}
                   </button>
                   <button onClick={() => { setShowPlusMenu(false); setShowPollForm(true) }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink hover:bg-bg border-t border-border">
-                    <BarChart2 size={14} className="text-indigo shrink-0" /> Sondage
+                    <BarChart2 size={14} className="text-indigo shrink-0" /> {t('messages.pollLabel')}
                   </button>
                 </div>
               </>
@@ -1230,7 +1576,7 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
           </div>
           <input value={text} onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && text.trim()) { e.preventDefault(); handleSend() } }}
-            placeholder={`Message ${channel.name.split(' ')[0]}…`}
+            placeholder={t('messages.messagePlaceholder', { name: channel.name.split(' ')[0] })}
             className="flex-1 px-4 py-3 bg-bg border border-border rounded-full text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent" />
           <button onClick={handleSend} disabled={!text.trim()}
             className="w-10 h-10 rounded-full bg-indigo flex items-center justify-center text-white disabled:opacity-30 hover:opacity-90 transition-opacity shrink-0">
@@ -1263,18 +1609,52 @@ function ConvView({ channel, orgUsers, teams, onBack, onLeaveChannel }: {
               status: 'scheduled',
             })
             const meetingPayload = JSON.stringify({ title, startAt, endAt })
-            await MessageService.send(channel.id, currentUser.id, `__meeting__:${meetingPayload}`, currentOrg.id, undefined, channel.type)
+            const { error: sendErr } = await MessageService.send(channel.id, currentUser.id, `__meeting__:${meetingPayload}`, currentOrg.id, undefined, channel.type)
+            if (sendErr) setUploadError(sendErr)
           }}
         />
       )}
 
       {promoteFile && <PromoteModal file={promoteFile} onClose={() => setPromoteFile(null)} />}
+
+      {forwardMsg && (
+        <ForwardModal
+          msg={forwardMsg}
+          channels={channels}
+          currentChannel={channel}
+          currentUser={currentUser}
+          currentOrg={currentOrg}
+          onClose={() => setForwardMsg(null)}
+        />
+      )}
+
+      {filePreview && (
+        <FilePreviewModal
+          storagePath={filePreview.storagePath}
+          fileName={filePreview.fileName}
+          fileSize={filePreview.fileSize}
+          conversationId={channel.id}
+          orgId={currentOrg.id}
+          onClose={() => setFilePreview(null)}
+          onSaveToMyDocs={() => {
+            const att: Attachment = {
+              id: `prev-${Date.now()}`,
+              name: filePreview.fileName,
+              size: filePreview.fileSize,
+              type: filePreview.fileName.split('.').pop() ?? '',
+              storagePath: filePreview.storagePath,
+            }
+            setPromoteFile(att)
+          }}
+        />
+      )}
     </div>
   )
 }
 
 /* ── Main ── */
 export function Messages() {
+  const { t } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const [channels, setChannels] = useState<Channel[]>([])
   const [orgUsers, setOrgUsers] = useState<AppUser[]>([])
@@ -1288,7 +1668,6 @@ export function Messages() {
 
   async function loadChannels(): Promise<Channel[]> {
     const convs = await MessageService.getConversations(currentOrg.id, currentUser.id)
-    console.log('[loadChannels] got', convs.length, 'convs:', convs.map(c => `${c.type}:${c.id.slice(0,8)}`))
     setChannels(convs)
     return convs
   }
@@ -1304,21 +1683,17 @@ export function Messages() {
         TeamService.getByOrganizationWithMembers(currentOrg.id),
         MessageService.getConversations(currentOrg.id, currentUser.id),
       ])
-      console.log('[init] teams:', allTeams.map(t => `${t.name}(members:${t.members.length})`))
-      console.log('[init] convs:', convs.map(c => `${c.type}:${c.name}`))
       setTeams(allTeams)
 
       const myTeams = allTeams.filter(t => t.members.includes(currentUser.id))
       const channelTeamIds = new Set(convs.filter(c => c.type === 'team').map(c => c.teamId))
       const missing = myTeams.filter(t => !channelTeamIds.has(t.id))
-      console.log('[init] myTeams:', myTeams.map(t => t.name), 'missing channels:', missing.map(t => t.name))
 
       if (missing.length > 0) {
         await Promise.all(missing.map(t =>
           TeamService.ensureTeamConversation(t.id, currentOrg.id, t.members)
         ))
         const updated = await MessageService.getConversations(currentOrg.id, currentUser.id)
-        console.log('[init] after backfill, convs:', updated.map(c => `${c.type}:${c.name}`))
         setChannels(updated)
       } else {
         setChannels(convs)
@@ -1340,12 +1715,15 @@ export function Messages() {
           selected={selected}
           onNewDirect={() => setShowNewDirect(true)}
           onNewGroup={() => setShowNewGroup(true)}
+          orgUsers={orgUsers}
+          currentUserId={currentUser.id}
         />
       </div>
       <div className={`${selected ? 'flex' : 'hidden md:flex'} flex-1 flex-col overflow-hidden bg-bg`}>
         {selectedChannel ? (
           <ConvView
             channel={selectedChannel}
+            channels={channels}
             orgUsers={orgUsers}
             teams={teams}
             onBack={() => setSelected(null)}
@@ -1358,16 +1736,16 @@ export function Messages() {
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
             </div>
-            <h3 className="font-semibold text-ink mb-3">Sélectionnez une conversation</h3>
+            <h3 className="font-semibold text-ink mb-3">{t('messages.selectConversation')}</h3>
             <div className="flex flex-col gap-1.5 mt-1">
               {[
-                { icon: User, label: 'Directs', desc: 'Conversations privées 1:1' },
-                { icon: Lock, label: 'Groupes', desc: 'Discussions privées entre collègues' },
-                { icon: Hash, label: 'Équipes', desc: 'Espaces organisationnels' },
+                { icon: User, label: t('messages.directs'), desc: t('messages.directDesc') },
+                { icon: Lock, label: t('messages.groups'), desc: t('messages.groupDesc') },
+                { icon: Hash, label: t('messages.teams'), desc: t('messages.teamDesc') },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex items-center gap-2 text-left">
                   <Icon size={14} className="text-indigo shrink-0" />
-                  <span className="text-xs text-muted"><span className="font-semibold text-ink">{label}</span> — {desc}</span>
+                  <span className="text-xs text-muted"><span className="font-semibold text-ink">{label}</span> · {desc}</span>
                 </div>
               ))}
             </div>
@@ -1380,11 +1758,7 @@ export function Messages() {
           onClose={() => setShowNewDirect(false)}
           contacts={contacts}
           onCreated={channelId => {
-            console.log('[onCreated] channelId:', channelId)
-            loadChannels().then(() => {
-              console.log('[onCreated] loadChannels done, setting selected:', channelId)
-              setSelected(channelId)
-            })
+            loadChannels().then(() => setSelected(channelId))
           }}
         />
       )}

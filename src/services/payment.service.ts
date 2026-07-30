@@ -138,7 +138,7 @@ export const PaymentService = {
     return data ?? []
   },
 
-  async upgradeSubscription(organizationId: string, plan: 'business', currency: SupportedCurrency, applyDiscount: boolean): Promise<PaymentResult> {
+  async upgradeSubscription(organizationId: string, plan: 'business' | 'enterprise', currency: SupportedCurrency, applyDiscount: boolean): Promise<PaymentResult> {
     return this.createPayment({ organizationId, plan, currency, applyDiscount })
   },
 }

@@ -121,12 +121,29 @@ export const PollService = {
       }
     }
 
-    await supabase.from('poll_votes').upsert({
+    await supabase.from('poll_votes').insert({
       poll_id: pollId,
       option_id: optionId,
       user_id: userId,
     })
 
-    return PollService.getById(pollId)
+    const updatedPoll = await PollService.getById(pollId)
+
+    // Notify poll creator (unless they're voting on their own poll)
+    if (updatedPoll && poll.creatorId !== userId) {
+      const votedOption = updatedPoll.options.find(o => o.id === optionId)
+      const totalVotes = updatedPoll.options.reduce((s, o) => s + o.voteCount, 0)
+      await supabase.rpc('notify_users', {
+        p_user_ids: [poll.creatorId],
+        p_type: 'poll_vote',
+        p_payload: {
+          text: `Nouveau vote sur votre sondage «${poll.question}» · ${totalVotes} vote${totalVotes > 1 ? 's' : ''} au total`,
+          pollId,
+          votedOption: votedOption?.text ?? '',
+        },
+      })
+    }
+
+    return updatedPoll
   },
 }

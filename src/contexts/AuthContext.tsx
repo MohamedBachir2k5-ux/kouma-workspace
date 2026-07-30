@@ -93,7 +93,15 @@ interface AuthContextValue {
 
 // ── Context ───────────────────────────────────────────────────────────────────
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+// Stable context reference across HMR re-imports: store on globalThis so the same
+// object identity is reused when Vite re-evaluates this module during hot reload.
+// Without this, each HMR cycle creates a new context object, breaking useAuth()
+// in already-mounted consumers (they see null from useContext of the new object).
+declare global { interface Window { __KoumaAuthContext__?: React.Context<AuthContextValue | null> } }
+if (!window.__KoumaAuthContext__) {
+  window.__KoumaAuthContext__ = createContext<AuthContextValue | null>(null)
+}
+const AuthContext = window.__KoumaAuthContext__
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
@@ -195,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {
         console.error('[AuthContext] hydrateFromSession error:', e)
-        setOrgLoadError(`Erreur de chargement : ${(e as Error).message}`)
+        setOrgLoadError('Erreur de chargement du compte. Veuillez recharger la page.')
       } finally {
         setLoading(false)
       }
@@ -312,4 +320,12 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth() must be used inside <AuthProvider>')
   return ctx
+}
+
+// Force full-page reload on HMR instead of partial module replacement.
+// Prevents the React context identity mismatch that occurs when AuthContext
+// is hot-replaced while the AuthProvider instance in main.tsx still holds
+// the previous context object — which would crash all useAuth() consumers.
+if (import.meta.hot) {
+  import.meta.hot.invalidate()
 }

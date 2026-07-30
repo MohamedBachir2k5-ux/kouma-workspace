@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { Building2, CreditCard, Bell, Camera, Loader2 } from 'lucide-react'
+import { Building2, CreditCard, Bell, Camera, Loader2, Palette } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { DocumentService } from '../../services/document.service'
 import { UserService } from '../../services/user.service'
 import { OrganizationService } from '../../services/organization.service'
 import { PaymentService } from '../../services/payment.service'
-import { PRICING, STORAGE, PLAN_USER_LIMITS, TRIAL_DAYS, discountedPrice, formatPrice } from '../../config/pricing'
+import { PRICING, STORAGE, PLAN_USER_LIMITS, TRIAL_DAYS, discountedPrice, formatPrice, CURRENCY_LABELS } from '../../config/pricing'
 import { formatFileSize, formatShortDate } from '../../lib/utils'
 import type { SupportedCurrency } from '../../config/pricing'
 
@@ -14,6 +15,7 @@ function orgInitials(name: string) {
 }
 
 export function AdminSettings() {
+  const { t, i18n } = useTranslation()
   const { currentOrg, currentSubscription, updateCurrentOrg } = useAuth()
 
   const [orgForm, setOrgForm] = useState({
@@ -24,11 +26,14 @@ export function AdminSettings() {
     email:   currentOrg.email,
     phone:   currentOrg.phone ?? '',
     website: currentOrg.website ?? '',
+    currency: (currentOrg.currency as SupportedCurrency) ?? 'EUR',
+    language: currentOrg.language || 'fr',
+    primaryColor: currentOrg.primaryColor ?? '',
   })
   const NOTIFS_KEY = `notif_prefs_${currentOrg.id}`
   const [logoPreview, setLogoPreview] = useState<string | null>(currentOrg.logoUrl)
   const [saved, setSaved] = useState(false)
-  const [section, setSection] = useState<'org' | 'plan' | 'notifs'>('org')
+  const [section, setSection] = useState<'org' | 'plan' | 'notifs' | 'brand'>('org')
   const [notifs, setNotifs] = useState(() => {
     try {
       const stored = localStorage.getItem(NOTIFS_KEY)
@@ -86,7 +91,7 @@ export function AdminSettings() {
   async function handleUpgrade() {
     setUpgrading(true)
     setUpgradeError(null)
-    const target = nextPlan ?? 'enterprise'
+    const target = nextPlan ?? 'business'
     const { redirectUrl, error } = await PaymentService.upgradeSubscription(currentOrg.id, target, currency, true)
     setUpgrading(false)
     if (error) { setUpgradeError(error); return }
@@ -95,6 +100,7 @@ export function AdminSettings() {
   }
 
   async function save() {
+    const primaryColor = orgForm.primaryColor.startsWith('#') ? orgForm.primaryColor : null
     const { error } = await OrganizationService.update(currentOrg.id, {
       name: orgForm.name,
       email: orgForm.email,
@@ -102,9 +108,28 @@ export function AdminSettings() {
       website: orgForm.website || null,
       city: orgForm.city || null,
       sector: orgForm.type || null,
+      currency: orgForm.currency,
+      language: orgForm.language,
+      primary_color: primaryColor,
     })
     if (!error) {
-      updateCurrentOrg({ name: orgForm.name, email: orgForm.email, phone: orgForm.phone || undefined, website: orgForm.website || undefined, city: orgForm.city || undefined, sector: orgForm.type || undefined })
+      updateCurrentOrg({
+        name: orgForm.name,
+        email: orgForm.email,
+        phone: orgForm.phone || undefined,
+        website: orgForm.website || undefined,
+        city: orgForm.city || undefined,
+        sector: orgForm.type || undefined,
+        currency: orgForm.currency,
+        language: orgForm.language,
+        primaryColor,
+      })
+      i18n.changeLanguage(orgForm.language)
+      if (primaryColor) {
+        document.documentElement.style.setProperty('--color-navy', primaryColor)
+      } else {
+        document.documentElement.style.removeProperty('--color-navy')
+      }
     }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -113,16 +138,17 @@ export function AdminSettings() {
   return (
     <div className="p-4 md:p-6 max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-ink">Paramètres</h1>
-        <p className="text-sm text-muted mt-0.5">Configuration de votre workspace.</p>
+        <h1 className="text-xl font-bold text-ink">{t('settings.title')}</h1>
+        <p className="text-sm text-muted mt-0.5">{t('settings.subtitle')}</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-bg rounded-xl border border-border mb-6 w-fit">
+      <div className="flex flex-wrap gap-1 p-1 bg-bg rounded-xl border border-border mb-6 w-fit">
         {[
-          { id: 'org',    label: 'Organisation', icon: Building2 },
-          { id: 'plan',   label: 'Abonnement',   icon: CreditCard },
-          { id: 'notifs', label: 'Notifications', icon: Bell },
+          { id: 'org',    label: t('settings.organisation'),   icon: Building2 },
+          { id: 'plan',   label: t('settings.subscription'),   icon: CreditCard },
+          { id: 'notifs', label: t('settings.notifications'),  icon: Bell },
+          { id: 'brand',  label: t('settings.customisation'),  icon: Palette },
         ].map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setSection(id as typeof section)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -135,11 +161,11 @@ export function AdminSettings() {
 
       {section === 'org' && (
         <div className="bg-surface rounded-xl border border-border p-6 space-y-5">
-          <h2 className="text-sm font-bold text-ink">Informations de l'organisation</h2>
+          <h2 className="text-sm font-bold text-ink">{t('settings.orgInfo')}</h2>
 
           {/* Logo */}
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Logo</label>
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('settings.logo')}</label>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl bg-navy flex items-center justify-center shrink-0 overflow-hidden border border-border">
                 {logoPreview
@@ -151,9 +177,9 @@ export function AdminSettings() {
                 <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                 <button type="button" onClick={() => logoRef.current?.click()}
                   className="flex items-center gap-2 px-3 py-2 border border-border rounded-xl text-sm font-medium text-muted hover:bg-bg transition-colors">
-                  <Camera size={14} /> Changer le logo
+                  <Camera size={14} /> {t('settings.changeLogo')}
                 </button>
-                <p className="text-xs text-faint mt-1">JPG, PNG, SVG — max 2 Mo</p>
+                <p className="text-xs text-faint mt-1">{t('settings.logoHint')}</p>
               </div>
             </div>
           </div>
@@ -182,19 +208,31 @@ export function AdminSettings() {
           </div>
 
           <div>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('settings.language')}</label>
+            <select value={orgForm.language} onChange={e => update('language', e.target.value)}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy appearance-none">
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="pt">Português</option>
+            </select>
+            <p className="text-xs text-faint mt-1">{t('settings.languageHint')}</p>
+          </div>
+
+          <div>
             <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Taille</label>
             <div className="flex items-center justify-between w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink">
-              <span>{memberCount} collaborateur{memberCount > 1 ? 's' : ''}</span>
-              <span className="text-xs text-faint">Calculée automatiquement</span>
+              <span>{memberCount} {memberCount > 1 ? t('common.collaborators') : t('common.collaborator')}</span>
+              <span className="text-xs text-faint">{t('settings.sizeAuto')}</span>
             </div>
-            <p className="text-xs text-faint mt-1">La taille évolue automatiquement selon le nombre réel d'utilisateurs.</p>
+            <p className="text-xs text-faint mt-1">{t('settings.sizeHint')}</p>
           </div>
 
           <button onClick={save}
             className={`mt-2 px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
               saved ? 'bg-success text-white' : 'bg-navy text-white hover:bg-navy-light'
             }`}>
-            {saved ? 'Enregistré' : 'Enregistrer'}
+            {saved ? t('common.saved') : t('common.save')}
           </button>
         </div>
       )}
@@ -203,16 +241,16 @@ export function AdminSettings() {
         <div className="space-y-4">
           <div className="bg-surface rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-ink">Plan actuel</h2>
+              <h2 className="text-sm font-bold text-ink">{t('settings.currentPlan')}</h2>
               <span className="text-xs font-semibold px-2 py-1 bg-success/10 text-success rounded-full capitalize">
-                {currentSubscription.status === 'active' ? 'Actif' : currentSubscription.status}
+                {currentSubscription.status === 'active' ? t('settings.active') : currentSubscription.status}
               </span>
             </div>
             <div className="flex items-center justify-between p-4 bg-navy rounded-xl mb-4">
               <div>
                 <div className="text-white font-bold text-lg capitalize">{plan}</div>
                 <div className="text-indigo-light text-sm">
-                  {userLimit ? `Jusqu'à ${userLimit} utilisateurs` : 'Utilisateurs illimités'} · {STORAGE[plan]}
+                  {userLimit ? `${t('pricing.upTo')} ${userLimit} ${t('settings.activeUsers')}` : t('settings.unlimitedUsers')} · {STORAGE[plan]}
                 </div>
               </div>
               <div className="text-right">
@@ -229,24 +267,24 @@ export function AdminSettings() {
             </div>
             <div className="space-y-2 text-sm text-muted">
               <div className="flex justify-between">
-                <span>Collaborateurs</span>
+                <span>{t('common.collaborators')}</span>
                 <span className="font-semibold text-ink">{memberCount}{userLimit ? ` / ${userLimit}` : ''}</span>
               </div>
               <div className="flex justify-between">
-                <span>Stockage utilisé</span>
+                <span>{t('settings.storageUsed')}</span>
                 <span className="font-semibold text-ink">{formatFileSize(storageUsed)} / {STORAGE[plan]}</span>
               </div>
               {currentSubscription.discountEndsAt && (
                 <div className="flex justify-between">
-                  <span>Remise de lancement</span>
+                  <span>{t('settings.launchDiscount')}</span>
                   <span className="font-semibold text-success">
-                    −{currentSubscription.discountPercent}% · jusqu'au {formatShortDate(currentSubscription.discountEndsAt)}
+                    −{currentSubscription.discountPercent}% · {t('pricing.until')} {formatShortDate(currentSubscription.discountEndsAt)}
                   </span>
                 </div>
               )}
               {currentSubscription.renewsAt && (
                 <div className="flex justify-between">
-                  <span>Prochain prélèvement</span>
+                  <span>{t('settings.nextBilling')}</span>
                   <span className="font-semibold text-ink">{formatShortDate(currentSubscription.renewsAt)}</span>
                 </div>
               )}
@@ -318,6 +356,82 @@ export function AdminSettings() {
             </div>
           ))}
         </div>
+        </div>
+      )}
+
+      {section === 'brand' && (
+        <div className="bg-surface rounded-xl border border-border p-6 space-y-6">
+          <h2 className="text-sm font-bold text-ink">{t('settings.customisation')}</h2>
+
+          {/* Currency */}
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('settings.currency')}</label>
+            <select
+              value={orgForm.currency}
+              onChange={e => { update('currency', e.target.value); setSaved(false) }}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy appearance-none">
+              {(Object.entries(CURRENCY_LABELS) as [SupportedCurrency, string][]).map(([code, label]) => (
+                <option key={code} value={code}>{label} ({code})</option>
+              ))}
+            </select>
+            <p className="text-xs text-faint mt-1">Utilisée pour les prix et l'abonnement.</p>
+          </div>
+
+          {/* Primary color */}
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('settings.primaryColor')}</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={orgForm.primaryColor || '#0f1628'}
+                onChange={e => { update('primaryColor', e.target.value); setSaved(false) }}
+                className="w-12 h-12 rounded-xl border border-border cursor-pointer bg-bg p-1"
+              />
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={orgForm.primaryColor}
+                  onChange={e => { update('primaryColor', e.target.value); setSaved(false) }}
+                  placeholder="#0f1628"
+                  className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-navy"
+                />
+              </div>
+              {orgForm.primaryColor && (
+                <button type="button" onClick={() => { update('primaryColor', ''); setSaved(false) }}
+                  className="px-3 py-3 border border-border rounded-xl text-xs text-muted hover:bg-bg">
+                  {t('settings.resetColor')}
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-faint mt-1">{t('settings.primaryColorHint')}</p>
+          </div>
+
+          {/* Preview */}
+          {orgForm.primaryColor && (
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-bg">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold"
+                style={{ backgroundColor: orgForm.primaryColor }}>
+                {orgInitials(orgForm.name)}
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-ink">{orgForm.name}</div>
+                <div className="text-xs text-muted">{t('settings.colorPreview')}</div>
+              </div>
+              <div className="ml-auto">
+                <div className="px-4 py-2 rounded-lg text-white text-xs font-semibold"
+                  style={{ backgroundColor: orgForm.primaryColor }}>
+                  Bouton
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button onClick={save}
+            className={`mt-2 px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
+              saved ? 'bg-success text-white' : 'bg-navy text-white hover:bg-navy-light'
+            }`}>
+            {saved ? t('common.saved') : t('common.save')}
+          </button>
         </div>
       )}
     </div>

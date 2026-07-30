@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { friendlyError } from '../lib/errors'
 import type { Event, EventStatus } from '../lib/types'
 
 type EventRow = {
@@ -78,7 +79,7 @@ export const EventService = {
       .select()
       .single()
 
-    if (error || !row) throw new Error(error?.message ?? 'Erreur lors de la création.')
+    if (error || !row) throw new Error(friendlyError(error?.message) ?? 'Erreur lors de la création.')
 
     // Notify all participants (except the creator) via SECURITY DEFINER RPC
     const others = data.participants.filter(id => id !== data.createdById)
@@ -190,13 +191,21 @@ export const EventService = {
     await q
   },
 
-  async respondToEvent(eventId: string, userId: string, response: 'accepted' | 'declined'): Promise<void> {
-    const { data: current } = await supabase
-      .from('events')
-      .select('rsvp')
-      .eq('id', eventId)
-      .single()
-    const rsvp = { ...((current?.rsvp as Record<string, string>) ?? {}), [userId]: response }
-    await supabase.from('events').update({ rsvp }).eq('id', eventId)
+  async respondToEvent(
+    eventId: string,
+    _userId: string,
+    response: 'accepted' | 'declined',
+    creatorId?: string,
+    eventTitle?: string,
+    notifBody?: string,
+  ): Promise<void> {
+    await supabase.rpc('rsvp_to_event', { p_event_id: eventId, p_response: response })
+    if (creatorId && notifBody) {
+      await supabase.rpc('notify_users', {
+        p_user_ids: [creatorId],
+        p_type: 'meeting_rsvp',
+        p_payload: { text: notifBody, eventId: eventId, eventTitle: eventTitle ?? '' },
+      })
+    }
   },
 }

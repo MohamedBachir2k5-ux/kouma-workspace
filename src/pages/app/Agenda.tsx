@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Clock, Users, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Calendar, Search, X, MapPin, Link as LinkIcon, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Plus, Clock, Users, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Calendar, Search, X, MapPin, Link as LinkIcon, ThumbsUp, ThumbsDown, ClipboardList } from 'lucide-react'
 import { EventService } from '../../services/event.service'
 import { UserService } from '../../services/user.service'
 import { TeamService } from '../../services/team.service'
@@ -8,10 +9,29 @@ import { MessageService } from '../../services/message.service'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatEventTime } from '../../lib/utils'
 import { Avatar } from '../../components/ui/Avatar'
-import type { EventStatus, Event, User, Team, Channel } from '../../lib/types'
+import { MeetingMinutesModal } from '../../components/ui/MeetingMinutesModal'
+import { MeetingMinutesService } from '../../services/meeting-minutes.service'
+import type { EventStatus, Event, User, Team, Channel, MeetingMinutes } from '../../lib/types'
 
-const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-const DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+const LANG_TO_LOCALE: Record<string, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', pt: 'pt-BR' }
+function calLocale() {
+  const lang = localStorage.getItem('kouma_lang') ?? 'fr'
+  return LANG_TO_LOCALE[lang] ?? 'fr-FR'
+}
+function getMonths(): string[] {
+  return Array.from({ length: 12 }, (_, i) =>
+    new Date(2024, i, 1).toLocaleDateString(calLocale(), { month: 'long' })
+      .replace(/^./, c => c.toUpperCase())
+  )
+}
+function getDays(): string[] {
+  const locale = calLocale()
+  // Jan 1 2024 = Monday; Jan 2 = Tue; ... Jan 7 = Sun → gives Mon-Sun order
+  return Array.from({ length: 7 }, (_, i) =>
+    new Date(2024, 0, i + 1).toLocaleDateString(locale, { weekday: 'short' })
+      .replace(/\.$/, '').slice(0, 3).replace(/^./, c => c.toUpperCase())
+  )
+}
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate()
@@ -21,19 +41,22 @@ function getFirstDayOfMonth(year: number, month: number) {
   return day === 0 ? 6 : day - 1
 }
 
-const STATUS_CONFIG: Record<EventStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
-  scheduled: { label: 'Planifié',  icon: Calendar,      className: 'bg-indigo/10 text-indigo' },
-  modified:  { label: 'Modifié',   icon: AlertTriangle,  className: 'bg-amber/10 text-amber' },
-  cancelled: { label: 'Annulé',    icon: XCircle,        className: 'bg-danger/10 text-danger' },
-  done:      { label: 'Terminé',   icon: CheckCircle2,   className: 'bg-success/10 text-success' },
+type StatusKey = 'agenda.statusScheduled' | 'agenda.statusModified' | 'agenda.statusCancelled' | 'agenda.statusDone'
+
+const STATUS_CONFIG: Record<EventStatus, { labelKey: StatusKey; icon: typeof CheckCircle2; className: string }> = {
+  scheduled: { labelKey: 'agenda.statusScheduled', icon: Calendar,      className: 'bg-indigo/10 text-indigo' },
+  modified:  { labelKey: 'agenda.statusModified',  icon: AlertTriangle,  className: 'bg-amber/10 text-amber' },
+  cancelled: { labelKey: 'agenda.statusCancelled', icon: XCircle,        className: 'bg-danger/10 text-danger' },
+  done:      { labelKey: 'agenda.statusDone',      icon: CheckCircle2,   className: 'bg-success/10 text-success' },
 }
 
 function StatusBadge({ status }: { status: EventStatus }) {
+  const { t } = useTranslation()
   const cfg = STATUS_CONFIG[status]
   const Icon = cfg.icon
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.className}`}>
-      <Icon size={10} />{cfg.label}
+      <Icon size={10} />{t(cfg.labelKey)}
     </span>
   )
 }
@@ -46,6 +69,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
   myTeams: Team[]
   myGroups: Channel[]
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -87,7 +111,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
             if (!u) return null
             return (
               <span key={id} className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 bg-indigo-pale rounded-full text-xs font-medium text-indigo">
-                <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                 {u.firstName}
                 <button type="button" onClick={() => remove(id)} className="ml-0.5 text-indigo/50 hover:text-indigo">
                   <X size={10} />
@@ -105,7 +129,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          placeholder="Rechercher un participant par nom…"
+          placeholder={t('agenda.searchParticipant')}
           className="w-full pl-9 pr-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo"
         />
         {open && searchResults.length > 0 && (
@@ -114,10 +138,10 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
               <button key={u.id} type="button"
                 onClick={() => { add(u.id); setQuery(''); setOpen(false) }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-bg transition-colors ${participants.includes(u.id) ? 'opacity-50 cursor-default' : ''}`}>
-                <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" />
+                <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
-                  <div className="text-xs text-muted">{u.jobTitle ?? 'Collaborateur'}</div>
+                  <div className="text-xs text-muted">{u.jobTitle ?? t('common.collaborator')}</div>
                 </div>
                 {participants.includes(u.id) && <CheckCircle2 size={14} className="text-indigo shrink-0" />}
               </button>
@@ -129,7 +153,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
       {/* Quick-add by team */}
       {myTeams.length > 0 && (
         <div className="mt-2">
-          <p className="text-[10px] font-semibold text-faint uppercase tracking-wider mb-1.5">Ajouter une équipe</p>
+          <p className="text-[10px] font-semibold text-faint uppercase tracking-wider mb-1.5">{t('agenda.addTeam')}</p>
           <div className="flex flex-wrap gap-1.5">
             {myTeams.map(t => (
               <button key={t.id} type="button" onClick={() => addTeam(t.id)}
@@ -145,7 +169,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
       {/* Quick-add by group */}
       {myGroups.length > 0 && (
         <div className="mt-2">
-          <p className="text-[10px] font-semibold text-faint uppercase tracking-wider mb-1.5">Ajouter un groupe</p>
+          <p className="text-[10px] font-semibold text-faint uppercase tracking-wider mb-1.5">{t('agenda.addGroup')}</p>
           <div className="flex flex-wrap gap-1.5">
             {myGroups.map(g => (
               <button key={g.id} type="button" onClick={() => addGroup(g.id)}
@@ -186,6 +210,7 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
   onClose: () => void
   onSave: (form: EventForm) => void
 }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<EventForm>(() => {
     if (!event) return { ...emptyForm(), ...prefill }
     const start = new Date(event.startAt)
@@ -210,63 +235,63 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-surface rounded-2xl border border-border shadow-2xl max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h3 className="font-bold text-navy text-base">{event ? 'Modifier la réunion' : 'Nouvelle réunion'}</h3>
+          <h3 className="font-bold text-navy text-base">{event ? t('agenda.editMeeting') : t('agenda.newMeeting')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
         </div>
 
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Titre *</label>
-            <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Réunion budget" autoFocus
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('agenda.meetingTitle')}</label>
+            <input value={form.title} onChange={e => set('title', e.target.value)} placeholder={t('agenda.newMeeting')} autoFocus
               className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Date *</label>
+              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('agenda.dateLabel')}</label>
               <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
                 className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Début *</label>
+              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('agenda.start')}</label>
               <input type="time" value={form.timeStart} onChange={e => set('timeStart', e.target.value)}
                 className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Fin *</label>
+              <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('agenda.end')}</label>
               <input type="time" value={form.timeEnd} onChange={e => set('timeEnd', e.target.value)}
                 className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Lieu</label>
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('agenda.location')}</label>
             <div className="relative">
               <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
-              <input value={form.location} onChange={e => set('location', e.target.value)} placeholder="Salle de réunion, adresse…"
+              <input value={form.location} onChange={e => set('location', e.target.value)} placeholder={t('agenda.location')}
                 className="w-full pl-9 pr-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Lien de réunion</label>
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('agenda.meetingLink')}</label>
             <div className="relative">
               <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
               <input value={form.externalLink} onChange={e => set('externalLink', e.target.value)}
                 placeholder="https://meet.example.com/… (Teams, Zoom…)"
                 className="w-full pl-9 pr-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo" />
             </div>
-            {form.externalLink && (
+            {form.externalLink && /^https?:\/\//i.test(form.externalLink) && (
               <a href={form.externalLink} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 mt-1.5 text-xs text-indigo hover:underline">
-                <LinkIcon size={11} /> Ouvrir le lien
+                <LinkIcon size={11} /> {t('agenda.openLink')}
               </a>
             )}
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-              Participants ({form.participants.length})
+              {t('agenda.participants')} ({form.participants.length})
             </label>
             <ParticipantPicker
               participants={form.participants}
@@ -278,20 +303,20 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Description</label>
+            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">{t('agenda.description')}</label>
             <textarea value={form.description} onChange={e => set('description', e.target.value)}
-              rows={2} placeholder="Ordre du jour, contexte…"
+              rows={2} placeholder={`${t('agenda.description')}…`}
               className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo" />
           </div>
         </div>
 
         <div className="flex gap-3 p-5 border-t border-border">
-          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">Annuler</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button
             disabled={!form.title.trim() || !form.date}
             onClick={() => { onSave(form); onClose() }}
             className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
-            {event ? 'Enregistrer' : 'Créer la réunion'}
+            {event ? t('agenda.save') : t('agenda.newMeeting')}
           </button>
         </div>
       </div>
@@ -300,6 +325,7 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
 }
 
 export function Agenda() {
+  const { t, i18n } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const [searchParams] = useSearchParams()
   const today = new Date()
@@ -307,6 +333,14 @@ export function Agenda() {
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate())
   const [showCreate, setShowCreate] = useState(() => searchParams.has('participants') || searchParams.has('title'))
   const [editEvent, setEditEvent] = useState<Event | null>(null)
+  const [minutesEvent, setMinutesEvent] = useState<Event | null>(null)
+  const [minutesMap, setMinutesMap] = useState<Record<string, MeetingMinutes>>({})
+  const [pendingDoneId, setPendingDoneId] = useState<string | null>(null)
+  const [rsvpToast, setRsvpToast] = useState<string | null>(null)
+
+  // Recompute months/days when language changes
+  const MONTHS = useMemo(() => getMonths(), [i18n.language])
+  const DAYS = useMemo(() => getDays(), [i18n.language])
 
   // Pre-fill from navigation params (e.g. from Messages: ?participants=id1,id2&title=...)
   const createPrefill = useMemo<Partial<EventForm>>(() => {
@@ -325,7 +359,17 @@ export function Agenda() {
   const [myGroups, setMyGroups] = useState<Channel[]>([])
 
   useEffect(() => {
-    EventService.list(currentOrg.id).then(setEvents)
+    EventService.list(currentOrg.id).then(evts => {
+      setEvents(evts)
+      const doneIds = evts.filter(e => e.status === 'done').map(e => e.id)
+      if (doneIds.length > 0) {
+        Promise.all(doneIds.map(id => MeetingMinutesService.getByEvent(id))).then(results => {
+          const map: Record<string, MeetingMinutes> = {}
+          results.forEach((m, i) => { if (m) map[doneIds[i]] = m })
+          setMinutesMap(map)
+        })
+      }
+    })
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
     TeamService.getByOrganizationWithMembers(currentOrg.id).then(all => {
       setMyTeams(all.filter(t => t.members.includes(currentUser.id)))
@@ -371,7 +415,7 @@ export function Agenda() {
     const startAt = new Date(`${form.date}T${form.timeStart}:00`).toISOString()
     const endAt = new Date(`${form.date}T${form.timeEnd}:00`).toISOString()
     if (hasConflict(startAt, endAt)) {
-      if (!window.confirm('Vous avez déjà une réunion à ce créneau. Créer quand même ?')) return
+      if (!window.confirm(t('agenda.conflict'))) return
     }
     const event = await EventService.create({
       organizationId: currentOrg.id,
@@ -394,21 +438,38 @@ export function Agenda() {
   }
 
   async function cancelEvent(id: string) {
-    await EventService.cancel(id, "Annulé par l'organisateur.", currentOrg.id)
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' as EventStatus, cancelReason: "Annulé par l'organisateur." } : e))
+    await EventService.cancel(id, t('agenda.canceledBy'), currentOrg.id)
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' as EventStatus, cancelReason: t('agenda.canceledBy') } : e))
   }
 
   async function markDone(id: string) {
+    const event = events.find(e => e.id === id)
+    if (!event) return
+    setPendingDoneId(id)
+    setMinutesEvent(event)
+  }
+
+  async function confirmMarkDone(id: string) {
     await EventService.markDone(id, currentOrg.id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'done' as EventStatus } : e))
+    setMinutesEvent(null)
+    setPendingDoneId(null)
   }
 
   async function respondToEvent(id: string, response: 'accepted' | 'declined') {
-    await EventService.respondToEvent(id, currentUser.id, response)
+    const event = events.find(e => e.id === id)
+    const responderName = `${currentUser.firstName ?? ''} ${currentUser.lastName ?? ''}`.trim()
+    const notifBody = event
+      ? t(response === 'accepted' ? 'agenda.rsvpNotifAccepted' : 'agenda.rsvpNotifDeclined', { name: responderName, title: event.title })
+      : undefined
+    await EventService.respondToEvent(id, currentUser.id, response, event?.createdById, event?.title, notifBody)
     setEvents(prev => prev.map(e => e.id === id
       ? { ...e, rsvp: { ...(e.rsvp ?? {}), [currentUser.id]: response } }
       : e
     ))
+    const msg = t(response === 'accepted' ? 'agenda.rsvpAccepted' : 'agenda.rsvpDeclined')
+    setRsvpToast(msg)
+    setTimeout(() => setRsvpToast(null), 3000)
   }
 
   function hasConflict(startAt: string, endAt: string, excludeId?: string): boolean {
@@ -424,15 +485,23 @@ export function Agenda() {
     })
   }
 
+  const statusFilters: [EventStatus | 'all', string][] = [
+    ['all', t('agenda.allStatus')],
+    ['scheduled', t('agenda.statusScheduledPlural')],
+    ['modified', t('agenda.statusModifiedPlural')],
+    ['cancelled', t('agenda.statusCancelledPlural')],
+    ['done', t('agenda.statusDonePlural')],
+  ]
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="px-4 py-4 max-w-2xl">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-base font-bold text-ink">Agenda</h2>
+          <h2 className="text-base font-bold text-ink">{t('agenda.title')}</h2>
           <button onClick={() => setShowCreate(true)}
             className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity">
             <Plus size={14} />
-            <span className="hidden sm:inline">Nouvelle réunion</span>
+            <span className="hidden sm:inline">{t('agenda.newMeeting')}</span>
           </button>
         </div>
 
@@ -477,14 +546,14 @@ export function Agenda() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 filterScope === s ? 'bg-indigo text-white' : 'bg-surface border border-border text-muted hover:bg-bg'
               }`}>
-              {s === 'all' ? 'Toutes les réunions' : 'Mes réunions'}
+              {s === 'all' ? t('agenda.allMeetings') : t('agenda.myMeetings')}
             </button>
           ))}
         </div>
 
         {/* Status filter */}
         <div className="flex gap-2 mb-4 flex-wrap">
-          {([['all','Tous'],['scheduled','Planifiés'],['modified','Modifiés'],['cancelled','Annulés'],['done','Terminés']] as const).map(([id, label]) => (
+          {statusFilters.map(([id, label]) => (
             <button key={id} onClick={() => setFilterStatus(id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 filterStatus === id ? 'bg-navy text-white' : 'bg-surface border border-border text-muted hover:bg-bg'
@@ -495,7 +564,10 @@ export function Agenda() {
         {/* Events list */}
         <div>
           <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
-            {selectedDay ? `${selectedDay} ${MONTHS[month]}${selectedEvents.length === 0 ? ' — aucun événement' : ''}` : 'Prochains événements'}
+            {selectedDay
+              ? `${selectedDay} ${MONTHS[month]}${selectedEvents.length === 0 ? ` · ${t('agenda.noEventDay')}` : ''}`
+              : t('agenda.upcomingEvents')
+            }
           </h3>
 
           <div className="space-y-3">
@@ -506,6 +578,7 @@ export function Agenda() {
               const canModify = isCreator || currentUser.role === 'admin'
               const isParticipant = event.participants.includes(currentUser.id) && !isCreator
               const myRsvp = event.rsvp?.[currentUser.id]
+              const pCount = event.participants.length
 
               return (
                 <div key={event.id} className={`bg-surface rounded-xl border p-4 transition-colors ${isDisabled ? 'border-border opacity-70' : 'border-border hover:border-indigo/30'}`}>
@@ -547,10 +620,10 @@ export function Agenda() {
                             {event.participants.slice(0,4).map(pid => {
                               const p = getParticipant(pid)
                               if (!p) return null
-                              return <Avatar key={pid} firstName={p.firstName} lastName={p.lastName} id={p.id} size="sm" />
+                              return <Avatar key={pid} firstName={p.firstName} lastName={p.lastName} id={p.id} size="sm" src={p.avatarUrl} />
                             })}
                           </div>
-                          <span>{event.participants.length} participant{event.participants.length > 1 ? 's' : ''}</span>
+                          <span>{pCount} {pCount > 1 ? t('agenda.participants') : t('agenda.participants')}</span>
                         </div>
                       </div>
 
@@ -559,32 +632,69 @@ export function Agenda() {
                         <div className="flex gap-2 flex-wrap">
                           <button onClick={() => setEditEvent(event)}
                             className="px-2.5 py-1 text-[11px] font-medium text-indigo border border-indigo/20 rounded-lg hover:bg-indigo-pale transition-colors">
-                            Modifier
+                            {t('agenda.edit')}
                           </button>
                           <button onClick={() => cancelEvent(event.id)}
                             className="px-2.5 py-1 text-[11px] font-medium text-danger border border-danger/20 rounded-lg hover:bg-danger/5 transition-colors">
-                            Annuler
+                            {t('agenda.cancelEvent')}
                           </button>
                           <button onClick={() => markDone(event.id)}
                             className="px-2.5 py-1 text-[11px] font-medium text-success border border-success/20 rounded-lg hover:bg-success/5 transition-colors">
-                            Terminer
+                            {t('agenda.finish')}
                           </button>
                         </div>
                       )}
+                      {/* Meeting minutes link for done events */}
+                      {event.status === 'done' && minutesMap[event.id] && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <ClipboardList size={12} className="text-indigo shrink-0" />
+                          <span className="text-[11px] text-indigo font-medium">{t('minutes.title')}</span>
+                          <span className="text-[10px] text-muted">· {minutesMap[event.id].actions?.length ?? 0} action{(minutesMap[event.id].actions?.length ?? 0) !== 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+
                       {/* RSVP for participants (non-creator) */}
                       {!isDisabled && isParticipant && (
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-muted uppercase tracking-wide font-semibold">Ma réponse :</span>
-                          <button
-                            onClick={() => respondToEvent(event.id, 'accepted')}
-                            className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border transition-colors ${myRsvp === 'accepted' ? 'bg-success/10 border-success text-success' : 'border-border text-muted hover:border-success hover:text-success'}`}>
-                            <ThumbsUp size={10} /> Accepter
-                          </button>
-                          <button
-                            onClick={() => respondToEvent(event.id, 'declined')}
-                            className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border transition-colors ${myRsvp === 'declined' ? 'bg-danger/10 border-danger text-danger' : 'border-border text-muted hover:border-danger hover:text-danger'}`}>
-                            <ThumbsDown size={10} /> Décliner
-                          </button>
+                          <span className="text-[10px] text-muted uppercase tracking-wide font-semibold">{t('agenda.myRsvp')}</span>
+                          {!myRsvp && (
+                            <>
+                              <button
+                                onClick={() => respondToEvent(event.id, 'accepted')}
+                                className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-border text-muted hover:border-success hover:text-success transition-colors">
+                                <ThumbsUp size={10} /> {t('agenda.accept')}
+                              </button>
+                              <button
+                                onClick={() => respondToEvent(event.id, 'declined')}
+                                className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-border text-muted hover:border-danger hover:text-danger transition-colors">
+                                <ThumbsDown size={10} /> {t('agenda.decline')}
+                              </button>
+                            </>
+                          )}
+                          {myRsvp === 'accepted' && (
+                            <>
+                              <span className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-success/10 border border-success text-success">
+                                <ThumbsUp size={10} /> {t('agenda.accept')}
+                              </span>
+                              <button
+                                onClick={() => respondToEvent(event.id, 'declined')}
+                                className="text-[11px] text-muted underline hover:text-danger transition-colors">
+                                {t('agenda.decline')}
+                              </button>
+                            </>
+                          )}
+                          {myRsvp === 'declined' && (
+                            <>
+                              <span className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-danger/10 border border-danger text-danger">
+                                <ThumbsDown size={10} /> {t('agenda.decline')}
+                              </span>
+                              <button
+                                onClick={() => respondToEvent(event.id, 'accepted')}
+                                className="text-[11px] text-muted underline hover:text-success transition-colors">
+                                {t('agenda.accept')}
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -598,9 +708,9 @@ export function Agenda() {
                 <div className="w-12 h-12 rounded-2xl bg-bg flex items-center justify-center mx-auto mb-3">
                   <Plus size={22} className="text-faint" />
                 </div>
-                <p className="text-sm text-muted mb-3">Aucune réunion ce jour.</p>
+                <p className="text-sm text-muted mb-3">{t('agenda.noMeeting')}</p>
                 <button onClick={() => setShowCreate(true)} className="text-sm text-indigo font-medium hover:underline">
-                  Créer une réunion
+                  {t('agenda.createMeeting')}
                 </button>
               </div>
             )}
@@ -618,6 +728,29 @@ export function Agenda() {
           onClose={() => { setShowCreate(false); setEditEvent(null) }}
           onSave={form => editEvent ? updateEvent(editEvent.id, form) : createEvent(form)}
         />
+      )}
+
+      {minutesEvent && pendingDoneId && (
+        <MeetingMinutesModal
+          event={minutesEvent}
+          orgUsers={orgUsers}
+          organizationId={currentOrg.id}
+          createdBy={currentUser.id}
+          onSaved={async () => {
+            await confirmMarkDone(pendingDoneId)
+            const m = await MeetingMinutesService.getByEvent(pendingDoneId)
+            if (m) setMinutesMap(prev => ({ ...prev, [pendingDoneId]: m }))
+          }}
+          onSkip={() => confirmMarkDone(pendingDoneId)}
+          onClose={() => { setMinutesEvent(null); setPendingDoneId(null) }}
+        />
+      )}
+
+      {rsvpToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl shadow-lg bg-navy text-white text-sm font-medium flex items-center gap-2 animate-in slide-in-from-bottom-4">
+          <CheckCircle2 size={15} className="text-success shrink-0" />
+          {rsvpToast}
+        </div>
       )}
     </div>
   )

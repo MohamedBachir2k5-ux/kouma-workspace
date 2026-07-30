@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { serviceError, friendlyError } from '../lib/errors'
 import { CryptoService } from './crypto.service'
 import { KeyService } from './key.service'
 import { cryptoSession } from '../lib/crypto-session'
@@ -15,12 +16,12 @@ export const RecoveryService = {
     if (limitErr) return { error: limitErr as string }
 
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async verifyOtp(email: string, token: string): Promise<{ userId: string | null; error: string | null }> {
     const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
-    if (error || !data.user) return { userId: null, error: error?.message ?? 'Code invalide ou expiré.' }
+    if (error || !data.user) return { userId: null, error: friendlyError(error?.message) ?? 'Code invalide ou expiré.' }
     return { userId: data.user.id, error: null }
   },
 
@@ -65,7 +66,7 @@ export const RecoveryService = {
       target_id: userId,
       target_type: 'user',
       detail: deviceInfo ? `Clé breakglass utilisée · ${deviceInfo}` : 'Clé breakglass utilisée',
-    }).catch(() => {})
+    })
 
     try {
       // 1. Fetch breakglass-protected row (any row with bg_encrypted_key in this org)

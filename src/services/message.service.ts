@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { serviceError, friendlyError } from '../lib/errors'
 import type { Channel, Message, ChannelType } from '../lib/types'
 import { CryptoService } from './crypto.service'
 import { KeyService } from './key.service'
@@ -158,19 +159,35 @@ export const MessageService = {
     return count ?? 0
   },
 
-  // Phase 4: decrypts messages transparently (plaintext fallback for legacy rows).
-  async getMessages(conversationId: string, orgId: string): Promise<Message[]> {
-    const { data } = await supabase
+  // Returns the most recent `limit` messages (or messages before `before` timestamp).
+  // hasMore=true means older messages exist and can be fetched with a new `before` call.
+  async getMessages(
+    conversationId: string,
+    orgId: string,
+    limit = 100,
+    before?: string,
+  ): Promise<{ messages: Message[]; hasMore: boolean }> {
+    let q = supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(limit + 1) // fetch one extra to detect whether more exist
 
-    if (!data?.length) return []
-    return Promise.all((data as unknown as MessageRow[]).map(r => decryptRow(r, orgId)))
+    if (before) q = q.lt('created_at', before)
+
+    const { data } = await q
+    if (!data?.length) return { messages: [], hasMore: false }
+
+    const hasMore = data.length > limit
+    const slice = (hasMore ? data.slice(0, limit) : data) as unknown as MessageRow[]
+    const decrypted = await Promise.all(slice.map(r => decryptRow(r, orgId)))
+    return { messages: decrypted.reverse(), hasMore } // reverse to chronological order
   },
 
   // Phase 4: encrypts content when a conversation key is available.
+  // Returns an error if the crypto session is loaded but encryption fails —
+  // never silently falls back to plaintext when E2E is expected.
   async send(
     conversationId: string,
     senderId: string,
@@ -178,21 +195,25 @@ export const MessageService = {
     orgId: string,
     files?: string[],
     convType?: string,
-  ): Promise<Message | null> {
+    replyToId?: string,
+  ): Promise<{ message: Message | null; error: string | null }> {
     let finalContent = content
     let encrypted = false
 
     if (cryptoSession.isLoaded) {
       const convKey = await ensureConvKey(conversationId, orgId)
-      if (convKey) {
-        try {
-          finalContent = await CryptoService.encryptMessage(content, convKey)
-          encrypted = true
-        } catch { /* fall back to plaintext */ }
+      if (!convKey) {
+        return { message: null, error: 'Clé de chiffrement indisponible pour cette conversation. Rechargez la page.' }
+      }
+      try {
+        finalContent = await CryptoService.encryptMessage(content, convKey)
+        encrypted = true
+      } catch {
+        return { message: null, error: 'Erreur de chiffrement. Le message n\'a pas été envoyé.' }
       }
     }
 
-    const { data, error: sendErr } = await supabase
+    const { data } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
@@ -201,11 +222,12 @@ export const MessageService = {
         content_encrypted: encrypted,
         status: 'sent',
         ...(files?.length ? { files } : {}),
+        ...(replyToId ? { reply_to_id: replyToId } : {}),
       })
       .select()
       .single()
 
-    if (!data) return null
+    if (!data) return { message: null, error: null }
 
     // Notify all other participants for all conversation types (fire-and-forget)
     supabase
@@ -226,29 +248,25 @@ export const MessageService = {
       })
 
     // Return the plaintext version for immediate local display
-    return rowToMessage({ ...(data as unknown as MessageRow), content, content_encrypted: false })
+    return { message: rowToMessage({ ...(data as unknown as MessageRow), content, content_encrypted: false }), error: null }
   },
 
   async createDirectConversation(orgId: string, userId1: string, userId2: string): Promise<{ id: string | null; error: string | null }> {
-    console.log('[createDirect] calling RPC create_direct_conversation', { orgId, userId1, userId2 })
     const { data, error } = await supabase.rpc('create_direct_conversation', {
       p_org_id: orgId,
       p_user1: userId1,
       p_user2: userId2,
     })
-    console.log('[createDirect] RPC result:', data, 'error:', error?.message)
-    if (error) return { id: null, error: error.message }
+    if (error) return { id: null, error: friendlyError(error.message) }
     return { id: data as string, error: null }
   },
 
   async createGroupConversation(orgId: string, memberIds: string[]): Promise<{ id: string | null; error: string | null }> {
-    console.log('[MESSAGING][CREATE_GROUP] calling RPC', { orgId, members: memberIds.length })
     const { data, error } = await supabase.rpc('create_group_conversation', {
       p_org_id: orgId,
       p_members: memberIds,
     })
-    console.log('[MESSAGING][CREATE_GROUP] result:', data, 'error:', error?.message)
-    if (error) return { id: null, error: error.message }
+    if (error) return { id: null, error: friendlyError(error.message) }
     return { id: data as string, error: null }
   },
 
@@ -309,16 +327,19 @@ export const MessageService = {
 
     if (cryptoSession.isLoaded) {
       const convKey = await ensureConvKey(conversationId, orgId)
-      if (convKey) {
-        try {
-          const buf = await file.arrayBuffer()
-          const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
-          const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, buf)
-          const out = new Uint8Array(12 + cipherBuf.byteLength)
-          out.set(iv, 0)
-          out.set(new Uint8Array(cipherBuf), 12)
-          uploadBlob = new Blob([out], { type: 'application/octet-stream' })
-        } catch { /* fall back to plaintext upload */ }
+      if (!convKey) {
+        return { path: null, url: null, error: 'Clé de chiffrement indisponible. Rechargez la page.' }
+      }
+      try {
+        const buf = await file.arrayBuffer()
+        const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
+        const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, buf)
+        const out = new Uint8Array(12 + cipherBuf.byteLength)
+        out.set(iv, 0)
+        out.set(new Uint8Array(cipherBuf), 12)
+        uploadBlob = new Blob([out], { type: 'application/octet-stream' })
+      } catch {
+        return { path: null, url: null, error: 'Erreur de chiffrement du fichier. L\'envoi a été annulé.' }
       }
     }
 
@@ -326,7 +347,7 @@ export const MessageService = {
       .from('attachments')
       .upload(path, uploadBlob, { contentType: uploadBlob.type })
 
-    if (error) return { path: null, url: null, error: error.message }
+    if (error) return { path: null, url: null, error: friendlyError(error.message) }
 
     // Bucket is private — always use signed URLs (1 h)
     const { data: signed, error: signErr } = await supabase.storage
@@ -388,13 +409,83 @@ export const MessageService = {
     return error ? null : data.signedUrl
   },
 
+  // Download, decrypt, return raw Blob — used for forwarding files to another conversation.
+  async getDecryptedBlob(
+    storagePath: string,
+    conversationId: string,
+    orgId: string,
+  ): Promise<Blob | null> {
+    try {
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(storagePath, 300)
+      if (signErr || !signed) return null
+
+      const response = await fetch(signed.signedUrl)
+      if (!response.ok) return null
+      const encBuf = await response.arrayBuffer()
+
+      let plainBuf: ArrayBuffer = encBuf
+
+      if (cryptoSession.isLoaded && encBuf.byteLength > 12) {
+        const convKey = await KeyService.getOrLoadConversationKey(conversationId, orgId)
+        if (convKey) {
+          try {
+            const iv = new Uint8Array(encBuf, 0, 12) as Uint8Array<ArrayBuffer>
+            const cipher = new Uint8Array(encBuf, 12) as Uint8Array<ArrayBuffer>
+            plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
+          } catch { /* serve raw if decryption fails */ }
+        }
+      }
+
+      return new Blob([plainBuf])
+    } catch {
+      return null
+    }
+  },
+
+  // Download, decrypt, and return a blob URL ready for <img src>. Caller must revoke when done.
+  async getDecryptedImageUrl(
+    storagePath: string,
+    conversationId: string,
+    orgId: string,
+  ): Promise<string | null> {
+    try {
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(storagePath, 3600)
+      if (signErr || !signed) return null
+
+      const response = await fetch(signed.signedUrl)
+      if (!response.ok) return null
+      const encBuf = await response.arrayBuffer()
+
+      let plainBuf: ArrayBuffer = encBuf
+
+      if (cryptoSession.isLoaded && encBuf.byteLength > 12) {
+        const convKey = await KeyService.getOrLoadConversationKey(conversationId, orgId)
+        if (convKey) {
+          try {
+            const iv = new Uint8Array(encBuf, 0, 12) as Uint8Array<ArrayBuffer>
+            const cipher = new Uint8Array(encBuf, 12) as Uint8Array<ArrayBuffer>
+            plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
+          } catch { /* not encrypted or wrong key — serve raw */ }
+        }
+      }
+
+      return URL.createObjectURL(new Blob([plainBuf]))
+    } catch {
+      return null
+    }
+  },
+
   async leaveConversation(conversationId: string, userId: string): Promise<{ error: string | null }> {
     const { error } = await supabase
       .from('conversation_members')
       .delete()
       .eq('conversation_id', conversationId)
       .eq('user_id', userId)
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   // Returns last_read_at per user_id for all members of the conversation
@@ -440,5 +531,14 @@ export const MessageService = {
       .eq('message_id', messageId)
       .eq('user_id', userId)
       .eq('emoji', emoji)
+  },
+
+  async deleteMessage(messageId: string, senderId: string): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId)
+      .eq('sender_id', senderId)
+    return { error: serviceError(error) }
   },
 }

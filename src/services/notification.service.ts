@@ -49,7 +49,7 @@ export const NotificationService = {
   async markAllByConversation(userId: string, conversationId: string): Promise<void> {
     const { data: toMark } = await supabase
       .from('notifications')
-      .select('id')
+      .select('id, payload')
       .eq('user_id', userId)
       .eq('type', 'new_message')
       .eq('read', false)
@@ -59,5 +59,31 @@ export const NotificationService = {
       .map(r => r.id)
     if (ids.length === 0) return
     await supabase.from('notifications').update({ read: true }).in('id', ids)
+  },
+}
+
+export type NotifPrefType = 'new_message' | 'meeting_invite' | 'team_update' | 'announcement' | 'document_shared'
+
+export interface NotifPref {
+  type: NotifPrefType
+  push: boolean
+  inapp: boolean
+}
+
+export const NotifPrefService = {
+  async getAll(userId: string, orgId: string): Promise<NotifPref[]> {
+    const { data } = await supabase
+      .from('user_notification_preferences')
+      .select('type, push, inapp')
+      .eq('user_id', userId)
+      .eq('org_id', orgId)
+    return (data ?? []) as NotifPref[]
+  },
+
+  async upsert(userId: string, orgId: string, type: NotifPrefType, push: boolean, inapp: boolean): Promise<void> {
+    await supabase.from('user_notification_preferences').upsert(
+      { user_id: userId, org_id: orgId, type, push, inapp },
+      { onConflict: 'user_id,org_id,type' }
+    )
   },
 }

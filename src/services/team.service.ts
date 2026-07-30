@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { serviceError, friendlyError } from '../lib/errors'
 import type { TeamRow, TeamMemberRow, TeamPermissionRow } from '../lib/database.types'
 import type { Team } from '../lib/types'
 
@@ -23,13 +24,11 @@ export const TeamService = {
   },
 
   async ensureTeamConversation(teamId: string, orgId: string, memberIds: string[]): Promise<void> {
-    console.log('[ensureTeamConversation] calling RPC ensure_team_conversation', { teamId, orgId, members: memberIds.length })
-    const { data, error } = await supabase.rpc('ensure_team_conversation', {
+    await supabase.rpc('ensure_team_conversation', {
       p_org_id: orgId,
       p_team_id: teamId,
       p_members: memberIds,
     })
-    console.log('[ensureTeamConversation] RPC result:', data, 'error:', error?.message)
   },
 
   async create(params: CreateTeamParams): Promise<{ teamId: string | null; error: string | null }> {
@@ -45,16 +44,14 @@ export const TeamService = {
       .select()
       .single()
 
-    if (error) return { teamId: null, error: error.message }
+    if (error) return { teamId: null, error: friendlyError(error.message) }
 
     // Add owner as first member with owner role
-    const { error: memberErr } = await supabase.from('team_members').insert({
+    await supabase.from('team_members').insert({
       team_id: team.id,
       user_id: params.ownerId,
       role: 'owner',
     })
-    console.log('[TEAM][CREATE] team_members insert error:', memberErr?.message)
-
     // Create team conversation via RPC (bypasses RLS for conversation + members)
     await supabase.rpc('ensure_team_conversation', {
       p_org_id: params.organizationId,
@@ -145,7 +142,7 @@ export const TeamService = {
         target_name: updates.name ?? existing?.name ?? '',
       })
     }
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async delete(teamId: string, organizationId: string, actorId: string): Promise<{ error: string | null }> {
@@ -161,7 +158,7 @@ export const TeamService = {
         target_name: existing?.name ?? '',
       })
     }
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async getMembers(teamId: string): Promise<TeamMemberRow[]> {
@@ -170,14 +167,11 @@ export const TeamService = {
   },
 
   async addMember(teamId: string, userId: string, role: 'admin' | 'member' = 'member'): Promise<{ error: string | null }> {
-    console.log('[TEAM][ADD_MEMBER] teamId:', teamId, 'userId:', userId, 'role:', role)
     const { error } = await supabase.from('team_members').upsert({ team_id: teamId, user_id: userId, role })
-    console.log('[TEAM][ADD_MEMBER] upsert error:', error?.message)
     if (!error) {
       const convId = await this.getTeamConversationId(teamId)
       if (convId) {
-        const { error: convErr } = await supabase.from('conversation_members').upsert({ conversation_id: convId, user_id: userId })
-        console.log('[TEAM][ADD_MEMBER] conversation_members upsert error:', convErr?.message)
+        await supabase.from('conversation_members').upsert({ conversation_id: convId, user_id: userId })
       }
       // Notify the added member
       const { data: team } = await supabase.from('teams').select('name').eq('id', teamId).single()
@@ -189,20 +183,18 @@ export const TeamService = {
         })
       }
     }
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async removeMember(teamId: string, userId: string): Promise<{ error: string | null }> {
-    console.log('[TEAM][REMOVE_MEMBER] teamId:', teamId, 'userId:', userId)
     const { error } = await supabase.from('team_members').delete().eq('team_id', teamId).eq('user_id', userId)
-    console.log('[TEAM][REMOVE_MEMBER] delete error:', error?.message)
     if (!error) {
       const convId = await this.getTeamConversationId(teamId)
       if (convId) {
         await supabase.from('conversation_members').delete().eq('conversation_id', convId).eq('user_id', userId)
       }
     }
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async getPermissions(teamId: string): Promise<TeamPermissionRow[]> {
@@ -214,6 +206,6 @@ export const TeamService = {
     const { error } = await supabase
       .from('team_permissions')
       .upsert({ team_id: teamId, permission_name: permissionName, enabled })
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 }

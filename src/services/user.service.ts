@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
 import type { User } from '../lib/types'
+import { serviceError, friendlyError } from '../lib/errors'
 
 export const UserService = {
   async getById(id: string): Promise<ProfileRow | null> {
@@ -28,7 +29,7 @@ export const UserService = {
       .from('profiles')
       .update(updates)
       .eq('id', userId)
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
   async updateStatus(
@@ -47,7 +48,7 @@ export const UserService = {
       ? ((`${profile.firstname ?? ''} ${profile.lastname ?? ''}`).trim() || profile.email)
       : ''
 
-    const updates: Record<string, unknown> = { status }
+    const updates: { status: string; deleted_at?: string | null } = { status }
     if (status === 'deleted') updates.deleted_at = new Date().toISOString()
     if (status === 'active') updates.deleted_at = null
 
@@ -77,10 +78,10 @@ export const UserService = {
       }
     }
 
-    return { error: error?.message ?? null }
+    return { error: serviceError(error) }
   },
 
-  async invite(organizationId: string, actorId: string): Promise<{ token: string | null; error: string | null }> {
+  async invite(organizationId: string, actorId: string, expiryDays?: number | null): Promise<{ token: string | null; error: string | null }> {
     // Reuse any valid unexpired invitation (avoids multiple active tokens)
     const { data: existing } = await supabase
       .from('invitations')
@@ -95,7 +96,9 @@ export const UserService = {
     if (existing) return { token: existing.token, error: null }
 
     const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7)
+    // null means "never expire" — use 10 years; undefined falls back to 7 days default
+    const daysToAdd = expiryDays === null ? 3650 : (expiryDays ?? 7)
+    expiresAt.setDate(expiresAt.getDate() + daysToAdd)
 
     const { data, error } = await supabase
       .from('invitations')
@@ -107,7 +110,7 @@ export const UserService = {
       .select()
       .single()
 
-    if (error) return { token: null, error: error.message }
+    if (error) return { token: null, error: friendlyError(error.message) }
 
     await supabase.from('audit_logs').insert({
       organization_id: organizationId,
@@ -130,7 +133,7 @@ export const UserService = {
       p_department_id: meta?.departmentId ?? null,
       p_job_title: meta?.jobTitle ?? null,
     })
-    if (error) return { error: error.message }
+    if (error) return { error: friendlyError(error.message) }
     const result = data as { error: string | null } | null
     return { error: result?.error ?? null }
   },
@@ -232,7 +235,7 @@ export const UserService = {
       .eq('organization_id', organizationId)
       .eq('user_id', targetUserId)
 
-    if (error) return { error: error.message }
+    if (error) return { error: friendlyError(error.message) }
 
     await supabase.from('audit_logs').insert({
       organization_id: organizationId,

@@ -19,7 +19,7 @@ type InviteStep = 'idle' | 'link' | 'copied'
 type FilterValue = 'all' | 'active' | 'invited' | 'suspended' | 'deleted'
 type ConfirmAction = { userId: string; action: 'suspend' | 'reactivate' | 'revoke' }
 
-function UserDetail({ user, orgUsers, currentOrg, onBack, onAction, statusLabel, inGracePeriod }: {
+function UserDetail({ user, orgUsers: _orgUsers, currentOrg, onBack, onAction, statusLabel, inGracePeriod }: {
   user: User
   orgUsers: User[]
   currentOrg: ReturnType<typeof useAuth>['currentOrg']
@@ -76,7 +76,7 @@ function UserDetail({ user, orgUsers, currentOrg, onBack, onAction, statusLabel,
           </div>
           <div>
             <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">{t('admin.colDept')}</div>
-            <div className="text-sm text-ink">{isAdmin ? '—' : (user.department || '—')}</div>
+            <div className="text-sm text-ink">{isAdmin ? '-' : (user.department || '-')}</div>
           </div>
           {!isAdmin && user.status === 'deleted' && user.deletedAt && inGracePeriod(user) && (
             <div className="col-span-2">
@@ -205,7 +205,7 @@ export function AdminUsers() {
   async function generateLink() {
     const userLimit = PLAN_USER_LIMITS[currentSubscription.plan]
     if (userLimit !== null) {
-      const activeSeatCount = users.filter(u => u.status === 'active' || u.status === 'invited').length
+      const activeSeatCount = users.filter(u => u.status === 'active' || u.status === 'suspended' || u.status === 'invited').length
       if (activeSeatCount >= userLimit) {
         setInviteError(`Limite du plan ${currentSubscription.plan === 'free' ? 'Free' : 'Business'} atteinte (${userLimit} utilisateurs). Passez au plan supérieur pour inviter davantage de collaborateurs.`)
         return
