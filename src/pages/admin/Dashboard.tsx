@@ -202,7 +202,6 @@ export function AdminDashboard() {
           </div>
           <div className="space-y-4">
             {recentLogs.map(log => {
-              const actor = orgUsers.find(u => u.id === log.userId)
               const Icon  = ACTION_ICON[log.action] ?? Activity
               const color = ACTION_COLOR[log.action] ?? 'text-muted'
               return (
@@ -211,10 +210,7 @@ export function AdminDashboard() {
                     <Icon size={14} className={color} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-ink">
-                      {actor && <span className="font-semibold">{actor.firstName} {actor.lastName} · </span>}
-                      <span className="text-muted">{t(ACTION_LOG_KEY[log.action] ?? 'admin.logAction')}</span>
-                    </p>
+                    <p className="text-sm text-muted">{t(ACTION_LOG_KEY[log.action] ?? 'admin.logAction')}</p>
                     <p className="text-xs text-faint mt-0.5">{relativeDay(log.createdAt)}</p>
                   </div>
                 </div>
