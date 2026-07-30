@@ -3,9 +3,8 @@ import { UserCheck, UserX, Users, ShieldCheck, Link as LinkIcon, Pencil, Search,
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { AuditService } from '../../services/audit.service'
-import { UserService } from '../../services/user.service'
 import { useAuth } from '../../contexts/AuthContext'
-import type { AuditLog, AuditAction, User } from '../../lib/types'
+import type { AuditLog, AuditAction } from '../../lib/types'
 
 const PAGE_SIZE = 5
 
@@ -40,23 +39,22 @@ const ACTION_CONFIG: Partial<Record<AuditAction, ActionConfigEntry>> = {
 const FALLBACK_CONFIG: ActionConfigEntry = { icon: ShieldCheck, labelKey: 'admin.logAction', color: 'bg-muted/10 text-muted' }
 
 function actionText(log: AuditLog, t: TFunction): string {
-  const name = log.targetName || null
   switch (log.action) {
-    case 'user_joined':          return name ? t('admin.actUserJoined', { name }) : t('admin.actUserJoinedGeneric')
-    case 'user_suspended':       return name ? t('admin.actUserSuspended', { name }) : t('admin.actUserSuspendedGeneric')
-    case 'user_revoked':         return name ? t('admin.actUserRevoked', { name }) : t('admin.actUserRevokedGeneric')
-    case 'user_activated':       return name ? t('admin.actUserActivated', { name }) : t('admin.actUserActivatedGeneric')
-    case 'team_created':         return name ? t('admin.actTeamCreated', { name }) : t('admin.actTeamCreatedGeneric')
-    case 'team_updated':         return name ? t('admin.actTeamUpdated', { name }) : t('admin.actTeamUpdatedGeneric')
-    case 'team_deleted':         return name ? t('admin.actTeamDeleted', { name }) : t('admin.actTeamDeletedGeneric')
-    case 'permission_changed':   return name ? t('admin.actPermChanged', { name }) : t('admin.actPermChangedGeneric')
-    case 'document_added':       return name ? t('admin.actDocAdded', { name }) : t('admin.actDocAddedGeneric')
-    case 'document_deleted':     return name ? t('admin.actDocDeleted', { name }) : t('admin.actDocDeletedGeneric')
+    case 'user_joined':          return t('admin.actUserJoinedGeneric')
+    case 'user_suspended':       return t('admin.actUserSuspendedGeneric')
+    case 'user_revoked':         return t('admin.actUserRevokedGeneric')
+    case 'user_activated':       return t('admin.actUserActivatedGeneric')
+    case 'team_created':         return t('admin.actTeamCreatedGeneric')
+    case 'team_updated':         return t('admin.actTeamUpdatedGeneric')
+    case 'team_deleted':         return t('admin.actTeamDeletedGeneric')
+    case 'permission_changed':   return t('admin.actPermChangedGeneric')
+    case 'document_added':       return t('admin.actDocAddedGeneric')
+    case 'document_deleted':     return t('admin.actDocDeletedGeneric')
     case 'invite_generated':     return t('admin.actInviteGen')
     case 'subscription_changed': return t('admin.actSubChanged')
     case 'organization_created': return t('admin.actOrgCreated')
-    case 'admin_promoted':       return name ? t('admin.actAdminPromoted', { name }) : t('admin.actAdminPromotedGeneric')
-    case 'admin_demoted':        return name ? t('admin.actAdminDemoted', { name }) : t('admin.actAdminDemotedGeneric')
+    case 'admin_promoted':       return t('admin.actAdminPromotedGeneric')
+    case 'admin_demoted':        return t('admin.actAdminDemotedGeneric')
     case 'recovery_initiated':
     case 'recovery_completed':   return t('admin.actRecovery')
     case 'breakglass_used':      return t('admin.actBreakglass')
@@ -86,14 +84,10 @@ export function AdminJournal() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [allLogs, setAllLogs] = useState<AuditLog[]>([])
-  const [orgUsers, setOrgUsers] = useState<User[]>([])
 
   useEffect(() => {
     AuditService.getLogs(currentOrg.id).then(setAllLogs)
-    UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
   }, [currentOrg.id])
-
-  function getActor(id: string | null) { return id ? orgUsers.find(u => u.id === id) : null }
 
   const base = allLogs.filter(l => {
     if (!ORG_AUDIT_ACTIONS.has(l.action)) return false
@@ -152,7 +146,6 @@ export function AdminJournal() {
         )}
         {paged.map((log, idx) => {
           const config = ACTION_CONFIG[log.action] ?? FALLBACK_CONFIG
-          const actor = getActor(log.userId)
           const Icon = config.icon
 
           return (
@@ -167,11 +160,6 @@ export function AdminJournal() {
                 </div>
                 {log.detail && (
                   <p className="text-xs text-muted mt-0.5">{log.detail}</p>
-                )}
-                {actor && (
-                  <p className="text-[10px] text-faint mt-1">
-                    {t('common.by')} <span className="font-medium text-muted">{actor.firstName} {actor.lastName}</span>
-                  </p>
                 )}
               </div>
             </div>
