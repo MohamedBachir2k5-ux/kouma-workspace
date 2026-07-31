@@ -1230,7 +1230,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0">
+      <div className="flex-1 overflow-y-auto overscroll-y-contain px-4 py-3 space-y-0">
         {hasMore && (
           <div className="flex justify-center">
             <button
@@ -1430,7 +1430,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                   </div>
                 )}
                 {/* Timestamp + actions — always visible for last in group, hover-only otherwise */}
-                <div className={`flex items-center gap-1 ${isMe ? 'flex-row-reverse' : ''} ${isLastInGroup ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                <div className={`flex items-center gap-1 ${isMe ? 'flex-row-reverse' : ''} ${isLastInGroup ? 'opacity-100' : 'md:opacity-0 md:group-hover:opacity-100'} transition-opacity`}>
                   <span className="text-[10px] text-faint mx-1">{formatTime(msg.createdAt)}</span>
                   {isMe && isLastMyMsg && (
                     <span className={`text-[10px] font-medium ${isSeen ? 'text-indigo' : 'text-faint'}`}>
@@ -1440,7 +1440,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                   <button
                     type="button"
                     onClick={() => setEmojiPickerMsgId(emojiPickerMsgId === msg.id ? null : msg.id)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all text-xs"
+                    className="md:opacity-0 md:group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all text-xs"
                     title={t('messages.react')}
                   >
                     <span>😊</span>
@@ -1448,7 +1448,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                   <button
                     type="button"
                     onClick={() => setReplyingTo(msg)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
+                    className="md:opacity-0 md:group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
                     title={t('messages.reply')}
                   >
                     <Reply size={12} />
@@ -1456,7 +1456,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                   <button
                     type="button"
                     onClick={() => setForwardMsg(msg)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
+                    className="md:opacity-0 md:group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
                     title={t('messages.forward')}
                   >
                     <Forward size={12} />
@@ -1465,7 +1465,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                     <button
                       type="button"
                       onClick={() => navigator.clipboard.writeText(msg.content)}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
+                      className="md:opacity-0 md:group-hover:opacity-100 p-0.5 rounded text-faint hover:text-ink transition-all"
                       title={t('messages.copy')}
                     >
                       <Copy size={12} />
@@ -1476,7 +1476,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                       type="button"
                       onClick={() => handleDeleteMessage(msg.id)}
                       disabled={deletingMsgId === msg.id}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-faint hover:text-danger transition-all disabled:opacity-30"
+                      className="md:opacity-0 md:group-hover:opacity-100 p-0.5 rounded text-faint hover:text-danger transition-all disabled:opacity-30"
                       title={t('common.delete')}
                     >
                       {deletingMsgId === msg.id

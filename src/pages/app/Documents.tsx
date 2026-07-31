@@ -455,7 +455,7 @@ export function Documents() {
                         type="button"
                         onClick={e => { e.stopPropagation(); handleDeleteFolder(fid) }}
                         disabled={deletingFolderId === fid}
-                        className="opacity-0 group-hover/folder:opacity-100 p-1 rounded-lg text-faint hover:text-danger hover:bg-danger/10 transition-all shrink-0"
+                        className="md:opacity-0 md:group-hover/folder:opacity-100 p-1 rounded-lg text-faint hover:text-danger hover:bg-danger/10 transition-all shrink-0"
                         title={t('documents.deleteFolder')}
                       >
                         {deletingFolderId === fid ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}

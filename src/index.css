@@ -63,6 +63,16 @@ html.dark {
   body { display: none !important; }
 }
 
+/* iOS safe area — accounts for home indicator and notch */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Prevent full-page bounce on iOS when scrolling inside fixed-height containers */
+body {
+  overscroll-behavior: none;
+}
+
 @keyframes highlight-flash {
   0%   { background-color: color-mix(in srgb, var(--color-indigo) 15%, transparent); }
   100% { background-color: transparent; }

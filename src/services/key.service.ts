@@ -281,6 +281,47 @@ export const KeyService = {
     }
   },
 
+  // Re-wrap our existing conversation key for members who are missing theirs.
+  // Called after every message send to catch late-joiners.
+  async distributeKeyToMissingMembers(
+    conversationId: string,
+    orgId: string,
+    ownKey: CryptoKey,
+  ): Promise<void> {
+    try {
+      // Find members who have no conversation_keys row
+      const { data: allMembers } = await supabase
+        .from('conversation_members')
+        .select('user_id')
+        .eq('conversation_id', conversationId)
+      if (!allMembers?.length) return
+
+      const { data: existingKeys } = await supabase
+        .from('conversation_keys')
+        .select('user_id')
+        .eq('conversation_id', conversationId)
+      const haveKey = new Set((existingKeys ?? []).map(k => k.user_id))
+
+      const missing = allMembers.filter(m => !haveKey.has(m.user_id))
+      if (!missing.length) return
+
+      for (const { user_id } of missing) {
+        const pub = await this.getUserPublicKey(user_id)
+        if (!pub) continue
+        const wrap = await CryptoService.eciesWrapKey(ownKey, pub, orgId)
+        await supabase.rpc('add_user_conversation_key', {
+          p_conversation_id: conversationId,
+          p_user_id: user_id,
+          p_encrypted_key: wrap.ciphertext,
+          p_eph_public_key: wrap.ephPub,
+          p_ecies_iv: wrap.iv,
+        })
+      }
+    } catch {
+      // Non-fatal: next message send will retry
+    }
+  },
+
   // Load (and cache) the symmetric key for a conversation.
   async getOrLoadConversationKey(conversationId: string, orgId: string): Promise<CryptoKey | null> {
     const cached = cryptoSession.getConvKey(conversationId)

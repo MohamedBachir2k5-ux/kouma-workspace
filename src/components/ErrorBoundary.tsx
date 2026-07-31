@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { tracer } from '../lib/tracer'
+import { supabase } from '../lib/supabase'
 
 interface Props {
   children: ReactNode
@@ -50,6 +51,14 @@ export class ErrorBoundary extends Component<Props, State> {
       error: error.stack?.slice(0, 500),
       detail: { component: info.componentStack?.split('\n')[1]?.trim() },
     })
+    if (!import.meta.env.DEV) {
+      supabase.rpc('log_client_error', {
+        p_message: `[React crash] ${error.message}`,
+        p_stack: `${error.stack ?? ''}\n\nComponent:${(info.componentStack ?? '').slice(0, 500)}`,
+        p_url: window.location.href,
+        p_user_agent: navigator.userAgent,
+      }).then(() => {})
+    }
   }
 
   render() {

@@ -46,10 +46,29 @@ async function decryptRow(row: MessageRow, orgId: string): Promise<Message> {
 }
 
 // Ensure conversation keys exist; initialises them on first use.
+// IMPORTANT: Only generates a new key when no key exists for ANY participant.
+// If keys already exist for others but not for the current user, we do NOT
+// generate a new key — that would create incompatible keys with the DO NOTHING
+// conflict resolution. Instead, we return null and let the caller handle the error.
+// Key redistribution to late-joiners happens proactively in the send() path.
 async function ensureConvKey(conversationId: string, orgId: string): Promise<CryptoKey | null> {
-  let convKey = await KeyService.getOrLoadConversationKey(conversationId, orgId)
+  const convKey = await KeyService.getOrLoadConversationKey(conversationId, orgId)
   if (convKey) return convKey
 
+  // Check if any participant already has a key for this conversation
+  const { count } = await supabase
+    .from('conversation_keys')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('conversation_id', conversationId)
+
+  if ((count ?? 0) > 0) {
+    // Keys exist for other members. Generating a new key here would make
+    // existing messages undecryptable for everyone. Return null so the caller
+    // can show an appropriate error rather than silently corrupting key state.
+    return null
+  }
+
+  // No keys exist at all — safe to initialize fresh for all members
   const { data: members } = await supabase
     .from('conversation_members')
     .select('user_id')
@@ -208,6 +227,9 @@ export const MessageService = {
       try {
         finalContent = await CryptoService.encryptMessage(content, convKey)
         encrypted = true
+        // Proactively distribute key to any members who are missing it (late joiners).
+        // Fire-and-forget: non-fatal if it fails; next send will retry.
+        KeyService.distributeKeyToMissingMembers(conversationId, orgId, convKey).catch(() => {})
       } catch {
         return { message: null, error: 'Erreur de chiffrement. Le message n\'a pas été envoyé.' }
       }
