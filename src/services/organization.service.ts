@@ -126,8 +126,9 @@ export const OrganizationService = {
     if (uploadErr) return { logoUrl: null, error: uploadErr.message }
     // Public bucket — permanent URL, no expiry
     const { data: pub } = supabase.storage.from('logos').getPublicUrl(path)
-    const logoUrl = pub.publicUrl
-    await supabase.from('organizations').update({ logo_url: logoUrl }).eq('id', orgId)
+    const logoUrl = `${pub.publicUrl}?v=${Date.now()}`
+    const { error: dbErr } = await supabase.from('organizations').update({ logo_url: logoUrl }).eq('id', orgId)
+    if (dbErr) return { logoUrl: null, error: dbErr.message }
     return { logoUrl, error: null }
   },
 

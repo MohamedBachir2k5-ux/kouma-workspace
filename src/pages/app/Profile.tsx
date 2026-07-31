@@ -86,7 +86,7 @@ export function Profile() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
-  const [notifEnabled, setNotifEnabled] = useState(() => Notification.permission === 'granted')
+  const [notifEnabled, setNotifEnabled] = useState(() => typeof Notification !== 'undefined' && Notification.permission === 'granted')
 
   // Per-type notification preferences
   const [notifPrefs, setNotifPrefs] = useState<NotifPref[]>(DEFAULT_NOTIF_PREFS)
@@ -179,6 +179,7 @@ export function Profile() {
     if (notifEnabled) {
       setNotifEnabled(false)
     } else {
+      if (typeof Notification === 'undefined') return
       const perm = await Notification.requestPermission()
       setNotifEnabled(perm === 'granted')
     }

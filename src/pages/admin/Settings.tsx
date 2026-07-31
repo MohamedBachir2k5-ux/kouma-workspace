@@ -24,7 +24,7 @@ export function AdminSettings() {
 
   const [orgForm, setOrgForm] = useState({
     name:    currentOrg.name,
-    type:    currentOrg.sector ?? 'Secteur privé',
+    type:    currentOrg.sector ?? '',
     country: currentOrg.country,
     city:    currentOrg.city ?? '',
     email:   currentOrg.email,
@@ -47,6 +47,7 @@ export function AdminSettings() {
     }
   })
   const [notifSaved, setNotifSaved] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
   const logoRef = useRef<HTMLInputElement>(null)
 
   const currency = currentOrg.currency as SupportedCurrency
@@ -81,14 +82,17 @@ export function AdminSettings() {
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    setLogoError(null)
     const reader = new FileReader()
     reader.onload = () => setLogoPreview(reader.result as string)
     reader.readAsDataURL(file)
-    setSaved(false)
     const { logoUrl, error } = await OrganizationService.uploadLogo(currentOrg.id, file)
     if (!error && logoUrl) {
       setLogoPreview(logoUrl)
       updateCurrentOrg({ logoUrl })
+    } else {
+      setLogoPreview(currentOrg.logoUrl)
+      setLogoError(error ?? 'Échec du téléversement du logo.')
     }
   }
 
@@ -184,6 +188,7 @@ export function AdminSettings() {
                   <Camera size={14} /> {t('settings.changeLogo')}
                 </button>
                 <p className="text-xs text-faint mt-1">{t('settings.logoHint')}</p>
+                {logoError && <p className="text-xs text-danger mt-1">{logoError}</p>}
               </div>
             </div>
           </div>
@@ -207,6 +212,7 @@ export function AdminSettings() {
             <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Secteur</label>
             <select value={orgForm.type} onChange={e => update('type', e.target.value)}
               className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy appearance-none">
+              <option value="">-- Choisir un secteur --</option>
               {['Secteur privé', 'Secteur public', 'Organisation à but non lucratif', 'Autre'].map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
