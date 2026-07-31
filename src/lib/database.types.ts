@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -216,6 +196,7 @@ export type Database = {
           created_at: string
           id: string
           message: string
+          organization_id: string | null
           stack: string | null
           url: string | null
           user_agent: string | null
@@ -225,6 +206,7 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          organization_id?: string | null
           stack?: string | null
           url?: string | null
           user_agent?: string | null
@@ -234,12 +216,20 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          organization_id?: string | null
           stack?: string | null
           url?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "client_errors_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_errors_user_id_fkey"
             columns: ["user_id"]
@@ -1947,6 +1937,16 @@ export type Database = {
         }
         Returns: Json
       }
+      add_user_conversation_key: {
+        Args: {
+          p_conversation_id: string
+          p_ecies_iv: string
+          p_encrypted_key: string
+          p_eph_public_key: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       check_otp_rate_limit: { Args: { p_email: string }; Returns: string }
       cleanup_all_org_sessions: { Args: never; Returns: undefined }
       cleanup_expired_sessions: {
@@ -2162,21 +2162,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
-
-// Convenience Row aliases
-export type ProfileRow = Database['public']['Tables']['profiles']['Row']
-export type OrganizationRow = Database['public']['Tables']['organizations']['Row']
-export type OrganizationMemberRow = Database['public']['Tables']['organization_members']['Row']
-export type PaymentRow = Database['public']['Tables']['payments']['Row']
-export type TeamRow = Database['public']['Tables']['teams']['Row']
-export type TeamMemberRow = Database['public']['Tables']['team_members']['Row']
-export type TeamPermissionRow = Database['public']['Tables']['team_permissions']['Row']
-export type SubscriptionRow = Database['public']['Tables']['subscriptions']['Row']
-
