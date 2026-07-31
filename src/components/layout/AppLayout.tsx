@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom'
-import { MessageSquare, FileText, Calendar, Users, User, Megaphone, Sparkles } from 'lucide-react'
+import { MessageSquare, FileText, Calendar, Users, User, Megaphone, Sparkles, MoreHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -50,6 +50,13 @@ const NAV_ITEMS = [
   { to: '/app/assistant', icon: Sparkles,      key: 'nav.assistant' },
   { to: '/app/profil',    icon: User,          key: 'nav.profile' },
 ]
+
+const NAV_ITEMS_MOBILE_MAIN = NAV_ITEMS.filter(i =>
+  ['/app/messages', '/app/agenda', '/app/documents', '/app/equipes'].includes(i.to)
+)
+const NAV_ITEMS_MOBILE_MORE = NAV_ITEMS.filter(i =>
+  !['/app/messages', '/app/agenda', '/app/documents', '/app/equipes'].includes(i.to)
+)
 
 function FullPageSpinner() {
   return (
@@ -194,8 +201,8 @@ export function AppLayout() {
       <PWAInstallBanner />
 
       {/* Bottom nav — mobile */}
-      <nav className="md:hidden flex items-center justify-around h-16 bg-surface border-t border-border shrink-0 px-2 safe-area-bottom">
-        {NAV_ITEMS.map(({ to, icon: Icon, key }) => (
+      <nav className="md:hidden flex items-center justify-around h-16 bg-surface border-t border-border shrink-0 px-2 safe-area-bottom relative">
+        {NAV_ITEMS_MOBILE_MAIN.map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}
@@ -209,6 +216,28 @@ export function AppLayout() {
             <span className="text-[10px] font-medium">{t(key)}</span>
           </NavLink>
         ))}
+        <details className="group flex flex-col items-center">
+          <summary className="list-none flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-faint cursor-pointer [&::-webkit-details-marker]:hidden">
+            <MoreHorizontal size={22} />
+            <span className="text-[10px] font-medium">{t('nav.more', 'Plus')}</span>
+          </summary>
+          <div className="absolute bottom-16 right-2 bg-surface border border-border rounded-xl shadow-lg py-2 min-w-[170px] z-50">
+            {NAV_ITEMS_MOBILE_MORE.map(({ to, icon: Icon, key }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                    isActive ? 'text-indigo' : 'text-ink'
+                  }`
+                }
+              >
+                <Icon size={18} />
+                {t(key)}
+              </NavLink>
+            ))}
+          </div>
+        </details>
       </nav>
     </div>
   )
