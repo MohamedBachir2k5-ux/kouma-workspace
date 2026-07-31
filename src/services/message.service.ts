@@ -4,6 +4,7 @@ import type { Channel, Message, ChannelType } from '../lib/types'
 import { CryptoService } from './crypto.service'
 import { KeyService } from './key.service'
 import { cryptoSession } from '../lib/crypto-session'
+import { downloadBlob } from '../lib/utils'
 
 type MessageRow = {
   id: string
@@ -411,13 +412,7 @@ export const MessageService = {
         }
       }
 
-      const blob = new Blob([plainBuf])
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = fileName
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+      await downloadBlob(new Blob([plainBuf]), fileName)
       return { error: null }
     } catch (e) {
       return { error: (e as Error).message }

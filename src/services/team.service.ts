@@ -67,12 +67,14 @@ export const TeamService = {
       { team_id: team.id, permission_name: 'admin_space',      enabled: false },
     ])
 
-    // Create a dedicated folder for this team's documents
+    // Create a dedicated folder for this team's documents (org-visible so all members can see it)
     await supabase.from('folders').insert({
       organization_id: params.organizationId,
       team_id: team.id,
       name: params.name,
       parent_id: null,
+      visibility: 'org',
+      created_by: params.actorId,
     })
 
     await supabase.from('audit_logs').insert({

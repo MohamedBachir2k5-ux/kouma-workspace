@@ -307,7 +307,7 @@ export function Documents() {
   async function handleDownload(doc: Document) {
     setDownloadingId(doc.id)
     setDownloadError(null)
-    const { error } = await DocumentService.downloadDocument(doc.id, currentOrg.id)
+    const { error } = await DocumentService.downloadDocument(doc.id, currentOrg.id, currentUser.id)
     setDownloadingId(null)
     if (error) setDownloadError(error)
   }

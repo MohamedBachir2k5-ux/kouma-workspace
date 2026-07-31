@@ -86,3 +86,26 @@ export function avatarColor(id: string): string {
   const idx = id.charCodeAt(id.length - 1) % colors.length
   return colors[idx]
 }
+
+// iOS-compatible blob download. Uses Web Share API on iOS (where <a download> is silently ignored),
+// falls back to anchor-click on other platforms.
+export async function downloadBlob(blob: Blob, fileName: string): Promise<void> {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  if (isIOS && navigator.canShare) {
+    const file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' })
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: fileName })
+        return
+      } catch { /* user cancelled or API failed — fall through to anchor */ }
+    }
+  }
+  const blobUrl = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = blobUrl
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+}

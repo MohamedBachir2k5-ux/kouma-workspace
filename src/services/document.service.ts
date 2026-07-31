@@ -3,6 +3,7 @@ import type { Document, DocumentVisibility, Folder } from '../lib/types'
 import { cryptoSession } from '../lib/crypto-session'
 import { KeyService } from './key.service'
 import { serviceError, friendlyError } from '../lib/errors'
+import { downloadBlob } from '../lib/utils'
 
 type DocumentWithFile = {
   id: string
@@ -293,15 +294,33 @@ export const DocumentService = {
   },
 
   async deleteDocument(documentId: string): Promise<{ error: string | null }> {
-    const { error } = await supabase
+    // Fetch file metadata before deletion for cleanup
+    const { data: doc } = await supabase
       .from('documents')
-      .delete()
+      .select('file_id, files(storage_path)')
       .eq('id', documentId)
-    return { error: serviceError(error) }
+      .single()
+
+    const fileId = doc?.file_id as string | null
+    const storagePath = (doc?.files as { storage_path: string } | null)?.storage_path
+
+    const { error } = await supabase.from('documents').delete().eq('id', documentId)
+    if (error) return { error: serviceError(error) }
+
+    // Clean up storage object and file record (fire-and-forget; non-fatal if they fail)
+    if (storagePath) {
+      supabase.storage.from('attachments').remove([storagePath]).then(() => {})
+      supabase.from('file_keys').delete().eq('storage_path', storagePath).then(() => {})
+    }
+    if (fileId) {
+      supabase.from('files').delete().eq('id', fileId).then(() => {})
+    }
+
+    return { error: null }
   },
 
   // Download a document and decrypt it if the file key is available.
-  async downloadDocument(documentId: string, orgId: string): Promise<{ error: string | null }> {
+  async downloadDocument(documentId: string, orgId: string, userId?: string): Promise<{ error: string | null }> {
     const { data: doc } = await supabase
       .from('documents')
       .select('title, files(storage_path, name)')
@@ -326,6 +345,7 @@ export const DocumentService = {
     supabase.from('document_access_logs').insert({
       document_id: documentId,
       organization_id: orgId,
+      user_id: userId ?? null,
       action: 'download',
     }).then(() => {})
 
@@ -343,14 +363,7 @@ export const DocumentService = {
       }
     }
 
-    const blob = new Blob([plainBuf])
-    const blobUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = blobUrl
-    a.download = fileInfo.name
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
-
+    await downloadBlob(new Blob([plainBuf]), fileInfo.name)
     return { error: null }
   },
 
