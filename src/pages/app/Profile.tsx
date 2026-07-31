@@ -9,6 +9,7 @@ import { SessionService } from '../../services/session.service'
 import type { SessionRecord } from '../../services/session.service'
 import { NotifPrefService } from '../../services/notification.service'
 import type { NotifPref, NotifPrefType } from '../../services/notification.service'
+import { PushService } from '../../services/push.service'
 import { Avatar } from '../../components/ui/Avatar'
 import i18n from '../../i18n/index'
 
@@ -86,6 +87,7 @@ export function Profile() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+  const pushSupported = PushService.isSupported()
   const [notifEnabled, setNotifEnabled] = useState(() => typeof Notification !== 'undefined' && Notification.permission === 'granted')
 
   // Per-type notification preferences
@@ -176,10 +178,10 @@ export function Profile() {
   }
 
   async function toggleNotifications() {
+    if (!pushSupported) return
     if (notifEnabled) {
       setNotifEnabled(false)
     } else {
-      if (typeof Notification === 'undefined') return
       const perm = await Notification.requestPermission()
       setNotifEnabled(perm === 'granted')
     }
@@ -367,19 +369,21 @@ export function Profile() {
             <div>
               <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{t('profile.notifications')}</h3>
               <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                <button onClick={toggleNotifications}
-                  className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-bg transition-colors">
+                <button onClick={toggleNotifications} disabled={!pushSupported}
+                  className={`w-full flex items-center gap-4 px-4 py-3.5 text-left transition-colors ${pushSupported ? 'hover:bg-bg' : 'opacity-50 cursor-not-allowed'}`}>
                   <div className="w-8 h-8 rounded-lg bg-indigo-pale flex items-center justify-center shrink-0">
                     <Bell size={16} className="text-indigo" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-ink">{t('profile.pushNotifs')}</div>
                     <div className="text-xs text-muted">
-                      {notifEnabled ? t('profile.pushEnabled') : t('profile.pushDisabled')}
+                      {!pushSupported
+                        ? 'Non supporté sur cet appareil/navigateur'
+                        : notifEnabled ? t('profile.pushEnabled') : t('profile.pushDisabled')}
                     </div>
                   </div>
-                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${notifEnabled ? 'bg-indigo' : 'bg-border'}`}>
-                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${notifEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${notifEnabled && pushSupported ? 'bg-indigo' : 'bg-border'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${notifEnabled && pushSupported ? 'translate-x-5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
