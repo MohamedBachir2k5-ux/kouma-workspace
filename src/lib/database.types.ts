@@ -2166,3 +2166,13 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+// Convenience Row aliases
+export type ProfileRow = Database['public']['Tables']['profiles']['Row']
+export type OrganizationRow = Database['public']['Tables']['organizations']['Row']
+export type OrganizationMemberRow = Database['public']['Tables']['organization_members']['Row']
+export type PaymentRow = Database['public']['Tables']['payments']['Row']
+export type TeamRow = Database['public']['Tables']['teams']['Row']
+export type TeamMemberRow = Database['public']['Tables']['team_members']['Row']
+export type TeamPermissionRow = Database['public']['Tables']['team_permissions']['Row']
+export type SubscriptionRow = Database['public']['Tables']['subscriptions']['Row']
