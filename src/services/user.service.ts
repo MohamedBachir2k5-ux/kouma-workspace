@@ -332,7 +332,8 @@ export const UserService = {
       .createSignedUrl(path, 60 * 60 * 24 * 365)
     if (signErr || !signed) return { avatarUrl: null, error: signErr?.message ?? 'URL avatar introuvable.' }
     const avatarUrl = signed.signedUrl
-    await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId)
+    const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId)
+    if (dbErr) return { avatarUrl: null, error: dbErr.message }
     return { avatarUrl, error: null }
   },
 

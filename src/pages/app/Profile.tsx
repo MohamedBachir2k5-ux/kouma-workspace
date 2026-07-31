@@ -89,6 +89,7 @@ export function Profile() {
   }, [theme])
   const pushSupported = PushService.isSupported()
   const [notifEnabled, setNotifEnabled] = useState(() => typeof Notification !== 'undefined' && Notification.permission === 'granted')
+  const [photoError, setPhotoError] = useState<string | null>(null)
 
   // Per-type notification preferences
   const [notifPrefs, setNotifPrefs] = useState<NotifPref[]>(DEFAULT_NOTIF_PREFS)
@@ -121,11 +122,17 @@ export function Profile() {
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    setPhotoError(null)
     const reader = new FileReader()
     reader.onload = () => setPhotoPreview(reader.result as string)
     reader.readAsDataURL(file)
     const { avatarUrl, error } = await UserService.uploadAvatar(currentUser.id, currentOrg.id, file)
-    if (!error && avatarUrl) setPhotoPreview(avatarUrl)
+    if (!error && avatarUrl) {
+      setPhotoPreview(avatarUrl)
+    } else {
+      setPhotoPreview(currentUser.avatarUrl ?? null)
+      setPhotoError(error ?? 'Échec du téléversement de la photo.')
+    }
   }
 
   function openEdit() { setDraft(profile); setEditing(true) }
@@ -227,6 +234,7 @@ export function Profile() {
             <h2 className="text-base font-bold text-navy">{profile.firstName} {profile.lastName}</h2>
             <p className="text-xs text-muted">{currentUser.jobTitle ?? (currentUser.role === 'admin' ? t('common.administrator') : t('common.collaborator'))}</p>
             <p className="text-xs text-faint mt-0.5">{currentUser.email}</p>
+            {photoError && <p className="text-xs text-danger mt-1">{photoError}</p>}
           </div>
         </div>
 
