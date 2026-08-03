@@ -138,9 +138,9 @@ export function AdminSettings() {
       } else {
         document.documentElement.style.removeProperty('--color-navy')
       }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     }
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
   }
 
   return (

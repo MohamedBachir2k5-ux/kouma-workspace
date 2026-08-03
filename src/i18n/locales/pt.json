@@ -700,6 +700,7 @@
     "teamsTitle": "Equipes",
     "teamsCount": "{{count}} equipe",
     "teamsCountPlural": "{{count}} equipes",
+    "teamsDeleteConfirm": "Excluir equipe \"{{name}}\"? Esta ação é irreversível.",
     "journalTitle": "Registro de atividades",
     "journalSubtitle": "Registo de governação organizacional.",
     "noActivity": "Nenhuma atividade registrada.",

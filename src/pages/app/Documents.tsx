@@ -56,12 +56,14 @@ function DocumentPreviewModal({ docId, docName, docType, orgId, onClose, onDownl
 
   useEffect(() => {
     if (!canPreview) { setLoading(false); return }
+    let blobUrl: string | null = null
     DocumentService.getDocumentPreviewUrl(docId, orgId).then(res => {
       setLoading(false)
-      if (res.error || !res.url) { setError(res.error); return }
+      if (res.error || !res.url) { setError(res.error ?? null); return }
+      blobUrl = res.url
       setUrl(res.url)
     })
-    return () => { if (url) URL.revokeObjectURL(url) }
+    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl) }
   }, [docId])
 
   return (

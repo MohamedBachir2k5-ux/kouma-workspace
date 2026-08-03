@@ -194,8 +194,10 @@ export function AdminTeams() {
   }
 
   async function deleteTeam(id: string) {
+    const team = teams.find(te => te.id === id)
+    if (!window.confirm(t('admin.teamsDeleteConfirm', { name: team?.name ?? '' }))) return
     await TeamService.delete(id, currentOrg.id, currentUser.id)
-    setTeams(prev => prev.filter(t => t.id !== id))
+    setTeams(prev => prev.filter(te => te.id !== id))
     setMenuOpen(null)
   }
 

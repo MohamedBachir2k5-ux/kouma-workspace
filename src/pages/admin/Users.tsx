@@ -194,12 +194,12 @@ export function AdminUsers() {
 
     const statusMap = { suspend: 'suspended', reactivate: 'active', revoke: 'deleted' } as const
     const newStatus = statusMap[confirm.action]
-    await UserService.updateStatus(confirm.userId, currentOrg.id, newStatus, currentUser.id)
+    const { error } = await UserService.updateStatus(confirm.userId, currentOrg.id, newStatus, currentUser.id)
+    setActionLoading(false)
+    if (error) { setActionError(error); return }
     setUsers(prev => prev.map(u => u.id === confirm.userId ? { ...u, status: newStatus } : u))
     setConfirm(null)
     setSelectedUserId(null)
-
-    setActionLoading(false)
   }
 
   async function generateLink() {

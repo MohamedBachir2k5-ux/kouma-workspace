@@ -700,6 +700,7 @@
     "teamsTitle": "Teams",
     "teamsCount": "{{count}} team",
     "teamsCountPlural": "{{count}} teams",
+    "teamsDeleteConfirm": "Delete team \"{{name}}\"? This action is irreversible.",
     "journalTitle": "Activity log",
     "journalSubtitle": "Organisational governance log.",
     "noActivity": "No activity recorded.",

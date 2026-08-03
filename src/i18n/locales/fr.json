@@ -701,6 +701,7 @@
     "teamsTitle": "Équipes",
     "teamsCount": "{{count}} équipe",
     "teamsCountPlural": "{{count}} équipes",
+    "teamsDeleteConfirm": "Supprimer l'équipe \"{{name}}\" ? Cette action est irréversible.",
     "journalTitle": "Journal d'activité",
     "journalSubtitle": "Journal de gouvernance organisationnelle.",
     "noActivity": "Aucune activité enregistrée.",
