@@ -47,6 +47,7 @@ export function AdminSettings() {
     }
   })
   const [notifSaved, setNotifSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [logoError, setLogoError] = useState<string | null>(null)
   const logoRef = useRef<HTMLInputElement>(null)
 
@@ -108,6 +109,7 @@ export function AdminSettings() {
   }
 
   async function save() {
+    setSaveError(null)
     const primaryColor = orgForm.primaryColor.startsWith('#') ? orgForm.primaryColor : null
     const { error } = await OrganizationService.update(currentOrg.id, {
       name: orgForm.name,
@@ -120,27 +122,26 @@ export function AdminSettings() {
       language: orgForm.language,
       primary_color: primaryColor,
     })
-    if (!error) {
-      updateCurrentOrg({
-        name: orgForm.name,
-        email: orgForm.email,
-        phone: orgForm.phone || undefined,
-        website: orgForm.website || undefined,
-        city: orgForm.city || undefined,
-        sector: orgForm.type || undefined,
-        currency: orgForm.currency,
-        language: orgForm.language,
-        primaryColor,
-      })
-      i18n.changeLanguage(orgForm.language)
-      if (primaryColor) {
-        document.documentElement.style.setProperty('--color-navy', primaryColor)
-      } else {
-        document.documentElement.style.removeProperty('--color-navy')
-      }
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+    if (error) { setSaveError(error); return }
+    updateCurrentOrg({
+      name: orgForm.name,
+      email: orgForm.email,
+      phone: orgForm.phone || undefined,
+      website: orgForm.website || undefined,
+      city: orgForm.city || undefined,
+      sector: orgForm.type || undefined,
+      currency: orgForm.currency,
+      language: orgForm.language,
+      primaryColor,
+    })
+    i18n.changeLanguage(orgForm.language)
+    if (primaryColor) {
+      document.documentElement.style.setProperty('--color-navy', primaryColor)
+    } else {
+      document.documentElement.style.removeProperty('--color-navy')
     }
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   return (
@@ -243,6 +244,7 @@ export function AdminSettings() {
             <p className="text-xs text-faint mt-1">{t('settings.sizeHint')}</p>
           </div>
 
+          {saveError && <p className="text-xs text-danger">{saveError}</p>}
           <button onClick={save}
             className={`mt-2 px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
               saved ? 'bg-success text-white' : 'bg-navy text-white hover:bg-navy-light'
@@ -441,6 +443,7 @@ export function AdminSettings() {
             </div>
           )}
 
+          {saveError && <p className="text-xs text-danger">{saveError}</p>}
           <button onClick={save}
             className={`mt-2 px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
               saved ? 'bg-success text-white' : 'bg-navy text-white hover:bg-navy-light'

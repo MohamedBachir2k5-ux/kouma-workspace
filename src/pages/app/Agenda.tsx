@@ -352,6 +352,7 @@ export function Agenda() {
   const [minutesMap, setMinutesMap] = useState<Record<string, MeetingMinutes>>({})
   const [pendingDoneId, setPendingDoneId] = useState<string | null>(null)
   const [rsvpToast, setRsvpToast] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // Recompute months/days when language changes
   const MONTHS = useMemo(() => getMonths(), [i18n.language])
@@ -453,8 +454,13 @@ export function Agenda() {
   }
 
   async function cancelEvent(id: string) {
-    await EventService.cancel(id, t('agenda.canceledBy'), currentOrg.id)
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' as EventStatus, cancelReason: t('agenda.canceledBy') } : e))
+    try {
+      await EventService.cancel(id, t('agenda.canceledBy'), currentOrg.id)
+      setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' as EventStatus, cancelReason: t('agenda.canceledBy') } : e))
+    } catch {
+      setActionError(t('errors.creationError'))
+      setTimeout(() => setActionError(null), 3000)
+    }
   }
 
   async function markDone(id: string) {
@@ -465,8 +471,13 @@ export function Agenda() {
   }
 
   async function confirmMarkDone(id: string) {
-    await EventService.markDone(id, currentOrg.id)
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'done' as EventStatus } : e))
+    try {
+      await EventService.markDone(id, currentOrg.id)
+      setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'done' as EventStatus } : e))
+    } catch {
+      setActionError(t('errors.creationError'))
+      setTimeout(() => setActionError(null), 3000)
+    }
     setMinutesEvent(null)
     setPendingDoneId(null)
   }
@@ -760,6 +771,12 @@ export function Agenda() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl shadow-lg bg-navy text-white text-sm font-medium flex items-center gap-2 animate-in slide-in-from-bottom-4">
           <CheckCircle2 size={15} className="text-success shrink-0" />
           {rsvpToast}
+        </div>
+      )}
+      {actionError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl shadow-lg bg-danger text-white text-sm font-medium flex items-center gap-2 animate-in slide-in-from-bottom-4">
+          <XCircle size={15} className="shrink-0" />
+          {actionError}
         </div>
       )}
     </div>

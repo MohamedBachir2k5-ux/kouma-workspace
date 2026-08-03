@@ -116,7 +116,8 @@ export function AdminDepartments() {
     const dept = depts.find(d => d.id === id)
     const confirmed = window.confirm(t('admin.deptDeleteConfirm', { name: dept?.name ?? id }))
     if (!confirmed) return
-    await DepartmentService.delete(id)
+    const { error } = await DepartmentService.delete(id)
+    if (error) { window.alert(error); return }
     setDepts(prev => prev.filter(d => d.id !== id))
     setMenuOpen(null)
   }

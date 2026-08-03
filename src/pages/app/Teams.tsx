@@ -51,9 +51,11 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   const [tab, setTab] = useState<'membres' | 'documents' | 'canal' | 'permissions' | 'parametres'>('membres')
   const [perms, setPerms] = useState<Record<string, boolean>>({})
   const [permSaved, setPermSaved] = useState(false)
+  const [permError, setPermError] = useState<string | null>(null)
   const [selectedMemberForPerms, setSelectedMemberForPerms] = useState<string | null>(null)
   const [memberPerms, setMemberPerms] = useState<Record<string, boolean>>({})
   const [memberPermSaved, setMemberPermSaved] = useState(false)
+  const [memberPermError, setMemberPermError] = useState<string | null>(null)
   const [memberIds, setMemberIds] = useState<string[]>(team.members)
   const [memberQuery, setMemberQuery] = useState('')
   const [memberSaved, setMemberSaved] = useState(false)
@@ -128,14 +130,18 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   }
 
   async function savePerms() {
-    await PermissionService.updateTeamPerms(team.id, perms)
+    setPermError(null)
+    const { error } = await PermissionService.updateTeamPerms(team.id, perms)
+    if (error) { setPermError(error); return }
     setPermSaved(true)
     setTimeout(() => setPermSaved(false), 2000)
   }
 
   async function saveMemberPerms() {
     if (!selectedMemberForPerms) return
-    await PermissionService.updateMemberPerms(team.id, selectedMemberForPerms, memberPerms)
+    setMemberPermError(null)
+    const { error } = await PermissionService.updateMemberPerms(team.id, selectedMemberForPerms, memberPerms)
+    if (error) { setMemberPermError(error); return }
     setMemberPermSaved(true)
     setTimeout(() => setMemberPermSaved(false), 2000)
   }
@@ -332,12 +338,15 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                 ))}
               </div>
               {isResponsable && (
-                <button onClick={savePerms}
-                  className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
-                    permSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
-                  }`}>
-                  {permSaved ? t('common.saved') : t('teams.permissions')}
-                </button>
+                <>
+                  {permError && <p className="text-xs text-danger">{permError}</p>}
+                  <button onClick={savePerms}
+                    className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                      permSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
+                    }`}>
+                    {permSaved ? t('common.saved') : t('teams.permissions')}
+                  </button>
+                </>
               )}
             </div>
 
@@ -395,7 +404,8 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                           </div>
                         ))}
                       </div>
-                      <div className="px-4 py-3 border-t border-border">
+                      <div className="px-4 py-3 border-t border-border space-y-2">
+                        {memberPermError && <p className="text-xs text-danger">{memberPermError}</p>}
                         <button onClick={saveMemberPerms}
                           className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
                             memberPermSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
