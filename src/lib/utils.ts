@@ -18,7 +18,7 @@ export function formatTime(iso: string): string {
   if (mins < 1) return locale.startsWith('fr') ? 'À l\'instant' : locale.startsWith('es') ? 'Ahora' : locale.startsWith('pt') ? 'Agora' : 'Just now'
   if (mins < 60) return `${mins}m`
   if (hours < 24) return `${hours}h`
-  if (days < 7) return `${days}${locale.startsWith('en') ? 'd' : 'j'}`
+  if (days < 7) return `${days}${locale.startsWith('fr') ? 'j' : 'd'}`
   return date.toLocaleDateString(locale, { day: '2-digit', month: 'short' })
 }
 
