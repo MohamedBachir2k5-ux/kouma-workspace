@@ -33,9 +33,11 @@ export function formatEventTime(iso: string): string {
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
+  const lang = localStorage.getItem('kouma_lang') ?? 'fr'
+  const [b, kb, mb] = lang === 'fr' ? ['o', 'Ko', 'Mo'] : ['B', 'KB', 'MB']
+  if (bytes < 1024) return `${bytes} ${b}`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} ${kb}`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} ${mb}`
 }
 
 export function relativeDay(iso: string): string {
