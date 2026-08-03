@@ -195,17 +195,8 @@ export const EventService = {
     eventId: string,
     _userId: string,
     response: 'accepted' | 'declined',
-    creatorId?: string,
-    eventTitle?: string,
-    notifBody?: string,
   ): Promise<void> {
+    // rsvp_to_event already notifies the creator internally — no duplicate call needed.
     await supabase.rpc('rsvp_to_event', { p_event_id: eventId, p_response: response })
-    if (creatorId && notifBody) {
-      await supabase.rpc('notify_users', {
-        p_user_ids: [creatorId],
-        p_type: 'meeting_rsvp',
-        p_payload: { text: notifBody, eventId: eventId, eventTitle: eventTitle ?? '' },
-      })
-    }
   },
 }

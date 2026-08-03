@@ -457,12 +457,7 @@ export function Agenda() {
   }
 
   async function respondToEvent(id: string, response: 'accepted' | 'declined') {
-    const event = events.find(e => e.id === id)
-    const responderName = `${currentUser.firstName ?? ''} ${currentUser.lastName ?? ''}`.trim()
-    const notifBody = event
-      ? t(response === 'accepted' ? 'agenda.rsvpNotifAccepted' : 'agenda.rsvpNotifDeclined', { name: responderName, title: event.title })
-      : undefined
-    await EventService.respondToEvent(id, currentUser.id, response, event?.createdById, event?.title, notifBody)
+    await EventService.respondToEvent(id, currentUser.id, response)
     setEvents(prev => prev.map(e => e.id === id
       ? { ...e, rsvp: { ...(e.rsvp ?? {}), [currentUser.id]: response } }
       : e
