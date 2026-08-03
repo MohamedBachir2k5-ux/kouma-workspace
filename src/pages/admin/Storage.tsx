@@ -49,7 +49,7 @@ export function AdminStorage() {
   const byDept: Record<string, number> = {}
   docs.forEach(d => {
     const uploader = orgUsers.find(u => u.id === d.ownerId)
-    const dept = uploader?.department ?? 'Autre'
+    const dept = uploader?.department ?? t('common.other')
     byDept[dept] = (byDept[dept] ?? 0) + d.size
   })
 

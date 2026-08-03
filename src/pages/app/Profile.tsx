@@ -751,7 +751,7 @@ export function Profile() {
             <div className="p-5 space-y-4">
               {[
                 { field: 'current', label: t('profile.currentPin'), placeholder: '••••••' },
-                { field: 'next',    label: t('profile.newPin'),     placeholder: '6 chiffres' },
+                { field: 'next',    label: t('profile.newPin'),     placeholder: t('profile.pin6digits') },
                 { field: 'confirm', label: t('profile.confirmPin'), placeholder: '••••••' },
               ].map(({ field, label, placeholder }) => (
                 <div key={field}>
