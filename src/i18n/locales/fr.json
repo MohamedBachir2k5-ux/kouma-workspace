@@ -314,7 +314,10 @@
     "uploadPhotoError": "Erreur lors de l'envoi de la photo.",
     "groupNamePlaceholder": "Ex. Coordination projet",
     "statusActive": "Actif",
-    "statusSuspended": "Suspendu"
+    "statusSuspended": "Suspendu",
+    "imageUnavailable": "Image indisponible",
+    "newConversation": "Nouvelle conversation",
+    "unnamedFile": "fichier"
   },
   "announcements": {
     "pinned": "Épinglées",
@@ -551,7 +554,16 @@
     "appInstalled": "Application installée",
     "appInstalledDesc": "Kouma est disponible sur votre écran d'accueil",
     "offlineMode": "Mode hors-ligne actif",
-    "offlineModeDesc": "Kouma fonctionne sans connexion internet"
+    "offlineModeDesc": "Kouma fonctionne sans connexion internet",
+    "cropTitle": "Recadrer la photo",
+    "cropHint": "Glissez pour positionner · zoomez pour cadrer",
+    "pushNotSupported": "Non supporté sur cet appareil/navigateur",
+    "helpTitle": "Aide",
+    "helpGuideTitle": "Guide utilisateur",
+    "helpGuideDesc": "Comment utiliser chaque fonctionnalité",
+    "helpSupportTitle": "Contacter le support",
+    "helpSupportDesc": "Une question ? On vous répond.",
+    "disconnect": "Déconnecter"
   },
   "admin": {
     "dashboard": "Tableau de bord",
@@ -1117,5 +1129,11 @@
     "err-file-type-a": "Formats autorisés : PDF, Word, Excel, PowerPoint, Images (PNG/JPG/GIF/WebP), Texte (txt/csv), ZIP. Les exécutables (.exe, .app…) sont bloqués.",
     "err-quota-q": "Mon quota de stockage est atteint",
     "err-quota-a": "Votre quota de stockage est atteint. Supprimez des fichiers ou contactez votre admin pour augmenter le quota (Console admin → Stockage)."
+  },
+  "pwa": {
+    "bannerTitle": "Installer Kouma",
+    "bannerDesc": "Accès rapide depuis votre écran d'accueil",
+    "install": "Installer",
+    "later": "Plus tard"
   }
 }

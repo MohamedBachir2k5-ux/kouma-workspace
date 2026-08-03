@@ -313,7 +313,10 @@
     "uploadPhotoError": "Erro ao enviar a foto.",
     "groupNamePlaceholder": "Ex. Coordenação de projeto",
     "statusActive": "Ativo",
-    "statusSuspended": "Suspenso"
+    "statusSuspended": "Suspenso",
+    "imageUnavailable": "Imagem indisponível",
+    "newConversation": "Nova conversa",
+    "unnamedFile": "ficheiro"
   },
   "announcements": {
     "pinned": "Fixados",
@@ -550,7 +553,16 @@
     "appInstalled": "Aplicação instalada",
     "appInstalledDesc": "Kouma está disponível no seu ecrã inicial",
     "offlineMode": "Modo offline ativo",
-    "offlineModeDesc": "Kouma funciona sem ligação à internet"
+    "offlineModeDesc": "Kouma funciona sem ligação à internet",
+    "cropTitle": "Recortar foto",
+    "cropHint": "Arraste para reposicionar · zoom para enquadrar",
+    "pushNotSupported": "Não compatível com este dispositivo/navegador",
+    "helpTitle": "Ajuda",
+    "helpGuideTitle": "Guia de utilizador",
+    "helpGuideDesc": "Como usar cada funcionalidade",
+    "helpSupportTitle": "Contactar suporte",
+    "helpSupportDesc": "Uma pergunta? Nós respondemos.",
+    "disconnect": "Desligar"
   },
   "admin": {
     "dashboard": "Painel de controlo",
@@ -1118,5 +1130,11 @@
     "err-file-type-a": "Verifique que o seu ficheiro é de um tipo aceite (PDF, Word, Excel, imagens...). Os ficheiros executáveis não são permitidos.",
     "err-quota-q": "Atingi a minha quota de armazenamento",
     "err-quota-a": "Se atingiu a sua quota:\n\n- Elimine ficheiros que já não necessita\n- Contacte o seu administrador para ampliar o espaço\n- Verifique a utilização em Administração > Definições"
+  },
+  "pwa": {
+    "bannerTitle": "Instalar Kouma",
+    "bannerDesc": "Acesso rápido a partir do seu ecrã inicial",
+    "install": "Instalar",
+    "later": "Mais tarde"
   }
 }

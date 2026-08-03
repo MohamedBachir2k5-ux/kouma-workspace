@@ -56,6 +56,7 @@ function AvatarCropModal({ src, onConfirm, onCancel }: {
   onConfirm: (blob: Blob) => void
   onCancel: () => void
 }) {
+  const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [nat, setNat] = useState<{ w: number; h: number } | null>(null)
   const [pos, setPos] = useState({ x: 0, y: 0 })
@@ -123,10 +124,10 @@ function AvatarCropModal({ src, onConfirm, onCancel }: {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60" onClick={onCancel}>
       <div className="bg-surface rounded-2xl border border-border p-5 w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-bold text-navy text-base">Recadrer la photo</h3>
+          <h3 className="font-bold text-navy text-base">{t('profile.cropTitle')}</h3>
           <button onClick={onCancel} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
-        <p className="text-xs text-muted mb-4">Glissez pour positionner · zoomez pour cadrer</p>
+        <p className="text-xs text-muted mb-4">{t('profile.cropHint')}</p>
 
         <div
           className="relative mx-auto mb-4 touch-none select-none"
@@ -154,10 +155,10 @@ function AvatarCropModal({ src, onConfirm, onCancel }: {
         )}
 
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">Annuler</button>
+          <button onClick={onCancel} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">{t('common.cancel')}</button>
           <button onClick={confirm} disabled={!nat}
             className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
-            Confirmer
+            {t('common.confirm')}
           </button>
         </div>
         <canvas ref={canvasRef} className="hidden" />
@@ -333,10 +334,11 @@ export function Profile() {
   }
 
   async function installPWA() {
-    const prompt = pwaPrompt as (Event & { prompt?: () => Promise<{ outcome: string }> })
-    if (!prompt?.prompt) return
-    const result = await prompt.prompt()
-    if (result.outcome === 'accepted') {
+    const prompt = pwaPrompt as (Event & { prompt?: () => Promise<void>; userChoice?: Promise<{ outcome: string }> })
+    if (!prompt?.prompt || !prompt?.userChoice) return
+    await prompt.prompt()
+    const { outcome } = await prompt.userChoice
+    if (outcome === 'accepted') {
       setPwaInstalled(true)
       setPwaPrompt(null)
     }
@@ -503,7 +505,7 @@ export function Profile() {
                           onClick={() => revokeSession(s.id)}
                           disabled={revoking === s.id}
                           className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-40"
-                          title="Déconnecter"
+                          title={t('profile.disconnect')}
                         >
                           {revoking === s.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                         </button>
@@ -532,7 +534,7 @@ export function Profile() {
                     <div className="text-sm font-medium text-ink">{t('profile.pushNotifs')}</div>
                     <div className="text-xs text-muted">
                       {!pushSupported
-                        ? 'Non supporté sur cet appareil/navigateur'
+                        ? t('profile.pushNotSupported')
                         : notifEnabled ? t('profile.pushEnabled') : t('profile.pushDisabled')}
                     </div>
                   </div>
@@ -667,7 +669,7 @@ export function Profile() {
 
         {/* ── Aide & Support ── */}
         <div className="mt-6 border-t border-border pt-5">
-          <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3 px-1">Aide</p>
+          <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3 px-1">{t('profile.helpTitle')}</p>
           <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
             <a href="/resources/guides" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-3 px-4 py-3 hover:bg-bg transition-colors">
@@ -675,8 +677,8 @@ export function Profile() {
                 <FileText size={14} className="text-indigo" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-ink">Guide utilisateur</div>
-                <div className="text-xs text-muted">Comment utiliser chaque fonctionnalité</div>
+                <div className="text-sm font-medium text-ink">{t('profile.helpGuideTitle')}</div>
+                <div className="text-xs text-muted">{t('profile.helpGuideDesc')}</div>
               </div>
             </a>
             <a href="/resources/support" target="_blank" rel="noopener noreferrer"
@@ -685,8 +687,8 @@ export function Profile() {
                 <MessageSquare size={14} className="text-success" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-ink">Contacter le support</div>
-                <div className="text-xs text-muted">Une question ? On vous répond.</div>
+                <div className="text-sm font-medium text-ink">{t('profile.helpSupportTitle')}</div>
+                <div className="text-xs text-muted">{t('profile.helpSupportDesc')}</div>
               </div>
             </a>
           </div>

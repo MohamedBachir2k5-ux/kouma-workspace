@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Download, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -9,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISSED_KEY = 'kouma_pwa_dismissed'
 
 export function PWAInstallBanner() {
+  const { t } = useTranslation()
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -58,20 +60,20 @@ export function PWAInstallBanner() {
         <Download size={17} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold">Installer Kouma</div>
-        <div className="text-xs text-indigo-light mt-0.5">Accès rapide depuis votre écran d'accueil</div>
+        <div className="text-sm font-semibold">{t('pwa.bannerTitle')}</div>
+        <div className="text-xs text-indigo-light mt-0.5">{t('pwa.bannerDesc')}</div>
         <div className="flex gap-2 mt-3">
           <button
             onClick={install}
             className="px-3 py-1.5 bg-indigo text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
           >
-            Installer
+            {t('pwa.install')}
           </button>
           <button
             onClick={dismiss}
             className="px-3 py-1.5 text-indigo-light text-xs font-medium rounded-lg hover:text-white transition-colors"
           >
-            Plus tard
+            {t('pwa.later')}
           </button>
         </div>
       </div>

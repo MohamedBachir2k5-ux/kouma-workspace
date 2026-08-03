@@ -383,6 +383,7 @@ function FilePreviewModal({ storagePath, fileName, fileSize, conversationId, org
 function InlineImage({ storagePath, fileName, conversationId, orgId, isMe }: {
   storagePath: string; fileName: string; conversationId: string; orgId: string; isMe: boolean
 }) {
+  const { t } = useTranslation()
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [lightbox, setLightbox] = useState(false)
@@ -399,7 +400,7 @@ function InlineImage({ storagePath, fileName, conversationId, orgId, isMe }: {
   if (loadError) return (
     <div className="w-40 h-24 rounded-xl bg-bg border border-border flex flex-col items-center justify-center gap-1">
       <AlertCircle size={16} className="text-faint" />
-      <span className="text-[10px] text-faint">Image indisponible</span>
+      <span className="text-[10px] text-faint">{t('messages.imageUnavailable')}</span>
     </div>
   )
   if (!blobUrl) return (
@@ -909,7 +910,7 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup, orgUs
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-ink">{t('messages.title')}</h2>
           <div className="relative">
-            <button onClick={() => setShowNewMenu(m => !m)} title="Nouvelle conversation"
+            <button onClick={() => setShowNewMenu(m => !m)} title={t('messages.newConversation')}
               className="w-8 h-8 rounded-full bg-indigo-pale flex items-center justify-center text-indigo hover:bg-indigo hover:text-white transition-colors">
               <Plus size={16} />
             </button>
@@ -989,7 +990,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
   onBack: () => void
   onLeaveChannel: (channelId: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const navigate = useNavigate()
   const type = channel.type as ConvType
@@ -1289,7 +1290,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
           const pollId = isPollMsg ? msg.content.replace('__poll__:', '') : null
           const meetingData = isMeetingMsg ? (() => { try { return JSON.parse(msg.content.slice('__meeting__:'.length)) as { title: string; startAt: string; endAt: string } } catch { return null } })() : null
           const storagePath = isFileMsg ? msg.files![0] : null
-          const fileName = msg.content.replace('📎 ', '') || storagePath?.split('/').pop() || 'fichier'
+          const fileName = msg.content.replace('📎 ', '') || storagePath?.split('/').pop() || t('messages.unnamedFile')
           const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
           const isImageFile = isFileMsg && /^(png|jpg|jpeg|gif|webp|svg)$/.test(ext)
           const msgReactions = reactions[msg.id] ?? []
@@ -1340,7 +1341,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                 <div className="flex items-center gap-3 my-4">
                   <div className="flex-1 h-px bg-border" />
                   <span className="text-[10px] font-semibold text-faint uppercase tracking-wide whitespace-nowrap">
-                    {new Date(msg.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    {new Date(msg.createdAt).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })}
                   </span>
                   <div className="flex-1 h-px bg-border" />
                 </div>
@@ -1395,7 +1396,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                     <div className="text-left min-w-0">
                       <div className="text-xs font-semibold text-ink truncate">{meetingData.title}</div>
                       <div className="text-[10px] text-muted mt-0.5">
-                        {new Date(meetingData.startAt).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(meetingData.startAt).toLocaleString(i18n.language, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </div>
                       <div className="text-[10px] text-indigo mt-0.5">{t('messages.seeInAgenda')}</div>
                     </div>

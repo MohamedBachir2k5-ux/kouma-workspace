@@ -313,7 +313,10 @@
     "uploadPhotoError": "Error sending the photo.",
     "groupNamePlaceholder": "e.g. Project coordination",
     "statusActive": "Active",
-    "statusSuspended": "Suspended"
+    "statusSuspended": "Suspended",
+    "imageUnavailable": "Image unavailable",
+    "newConversation": "New conversation",
+    "unnamedFile": "file"
   },
   "announcements": {
     "pinned": "Pinned",
@@ -550,7 +553,16 @@
     "appInstalled": "App installed",
     "appInstalledDesc": "Kouma is available on your home screen",
     "offlineMode": "Offline mode active",
-    "offlineModeDesc": "Kouma works without an internet connection"
+    "offlineModeDesc": "Kouma works without an internet connection",
+    "cropTitle": "Crop photo",
+    "cropHint": "Drag to reposition · zoom to frame",
+    "pushNotSupported": "Not supported on this device/browser",
+    "helpTitle": "Help",
+    "helpGuideTitle": "User guide",
+    "helpGuideDesc": "How to use each feature",
+    "helpSupportTitle": "Contact support",
+    "helpSupportDesc": "A question? We'll answer.",
+    "disconnect": "Disconnect"
   },
   "admin": {
     "dashboard": "Dashboard",
@@ -1116,5 +1128,11 @@
     "err-file-type-a": "Allowed formats: PDF, Word, Excel, PowerPoint, Images (PNG/JPG/GIF/WebP), Text (txt/csv), ZIP. Executables (.exe, .app…) are blocked.",
     "err-quota-q": "My storage quota is reached",
     "err-quota-a": "Your storage quota is reached. Delete files or contact your admin to increase the quota (Admin console → Storage)."
+  },
+  "pwa": {
+    "bannerTitle": "Install Kouma",
+    "bannerDesc": "Quick access from your home screen",
+    "install": "Install",
+    "later": "Later"
   }
 }
