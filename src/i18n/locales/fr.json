@@ -1340,6 +1340,7 @@
     "fileUrlNotFound": "URL du fichier introuvable.",
     "avatarUrlNotFound": "URL de l'avatar introuvable.",
     "fileKeyNotFound": "Clé de chiffrement introuvable pour ce fichier.",
-    "decryptionFailed": "Échec du déchiffrement du fichier."
+    "decryptionFailed": "Échec du déchiffrement du fichier.",
+    "fileKeyStoreFailed": "Impossible de stocker la clé de chiffrement. Réessayez."
   }
 }

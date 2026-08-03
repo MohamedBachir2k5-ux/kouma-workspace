@@ -1341,6 +1341,7 @@
     "fileUrlNotFound": "URL del archivo no encontrada.",
     "avatarUrlNotFound": "URL del avatar no encontrada.",
     "fileKeyNotFound": "Clave de cifrado no encontrada para este archivo.",
-    "decryptionFailed": "Error al descifrar el archivo."
+    "decryptionFailed": "Error al descifrar el archivo.",
+    "fileKeyStoreFailed": "No se puede almacenar la clave de cifrado. Por favor, inténtalo de nuevo."
   }
 }

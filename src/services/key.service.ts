@@ -373,13 +373,14 @@ export const KeyService = {
 
       // Wrap for the uploading user
       const userWrap = await CryptoService.eciesWrapKey(fileKey, pub, orgId)
-      await supabase.from('file_keys').upsert({
+      const { error: keyStoreErr } = await supabase.from('file_keys').upsert({
         storage_path: storagePath,
         user_id: userId,
         encrypted_key: userWrap.ciphertext,
         eph_public_key: userWrap.ephPub,
         ecies_iv: userWrap.iv,
       }, { onConflict: 'storage_path,user_id' })
+      if (keyStoreErr) return { key: null, error: i18n.t('errors.fileKeyStoreFailed') }
 
       // Wrap for org recovery (best-effort — no recovery key = still ok)
       const { data: recoveryRow } = await supabase

@@ -1339,6 +1339,7 @@
     "fileUrlNotFound": "File URL not found.",
     "avatarUrlNotFound": "Avatar URL not found.",
     "fileKeyNotFound": "Encryption key not found for this file.",
-    "decryptionFailed": "File decryption failed."
+    "decryptionFailed": "File decryption failed.",
+    "fileKeyStoreFailed": "Unable to store encryption key. Please try again."
   }
 }
