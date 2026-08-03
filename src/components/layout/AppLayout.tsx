@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom'
-import { MessageSquare, FileText, Calendar, Users, User, Megaphone, Sparkles, MoreHorizontal } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { NavLink, Outlet, useNavigate, Navigate, useLocation } from 'react-router-dom'
+import { MessageSquare, FileText, Calendar, Users, User, Megaphone, Sparkles, MoreHorizontal, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -71,12 +71,26 @@ export function AppLayout() {
   const { currentUser, currentOrg, loading, isOrgReady, signOut } = useAuth()
   const { checking } = useRequireAuth('/connexion/utilisateur')
   const navigate = useNavigate()
+  const location = useLocation()
+  const [showMore, setShowMore] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
 
   const [cryptoLoaded, setCryptoLoaded] = useState(() => cryptoSession.isLoaded)
 
   useEffect(() => {
     if (cryptoSession.isLoaded) setCryptoLoaded(true)
   }, [isOrgReady])
+
+  // Close "Plus" menu on route change or outside click
+  useEffect(() => { setShowMore(false) }, [location.pathname])
+  useEffect(() => {
+    if (!showMore) return
+    function onOutside(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [showMore])
 
   // Push subscription + browser notifications (tab hidden only)
   const showBrowserNotif = useCallback((n: Notification) => {
@@ -110,7 +124,9 @@ export function AppLayout() {
   }, [currentUser.id, showBrowserNotif])
 
   if (checking || loading) return <FullPageSpinner />
-  if (!isOrgReady) return <Navigate to="/creer" replace />
+  // Only redirect to /creer when authenticated but org setup is incomplete.
+  // If the user is signed out (id === 'u1'), useRequireAuth handles the login redirect.
+  if (!isOrgReady && currentUser.id !== 'u1') return <Navigate to="/creer" replace />
 
   return (
     <div className="flex flex-col h-dvh bg-bg overflow-hidden">
@@ -216,28 +232,40 @@ export function AppLayout() {
             <span className="text-[10px] font-medium">{t(key)}</span>
           </NavLink>
         ))}
-        <details className="group flex flex-col items-center">
-          <summary className="list-none flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-faint cursor-pointer [&::-webkit-details-marker]:hidden">
+        <div ref={moreRef} className="relative flex flex-col items-center">
+          <button
+            type="button"
+            onClick={() => setShowMore(v => !v)}
+            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${showMore ? 'text-indigo' : 'text-faint'}`}
+          >
             <MoreHorizontal size={22} />
             <span className="text-[10px] font-medium">{t('nav.more', 'Plus')}</span>
-          </summary>
-          <div className="absolute bottom-16 right-2 bg-surface border border-border rounded-xl shadow-lg py-2 min-w-[170px] z-50">
-            {NAV_ITEMS_MOBILE_MORE.map(({ to, icon: Icon, key }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                    isActive ? 'text-indigo' : 'text-ink'
-                  }`
-                }
-              >
-                <Icon size={18} />
-                {t(key)}
-              </NavLink>
-            ))}
-          </div>
-        </details>
+          </button>
+          {showMore && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowMore(false)} />
+              <div className="absolute bottom-14 right-0 bg-surface border border-border rounded-2xl shadow-2xl py-2 min-w-[180px] z-50">
+                <div className="flex items-center justify-between px-4 py-1.5 mb-1 border-b border-border">
+                  <span className="text-xs font-semibold text-muted uppercase tracking-wide">{t('nav.more', 'Plus')}</span>
+                  <button type="button" onClick={() => setShowMore(false)} className="text-faint hover:text-ink"><X size={13} /></button>
+                </div>
+                {NAV_ITEMS_MOBILE_MORE.map(({ to, icon: Icon, key }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => setShowMore(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${isActive ? 'text-indigo font-semibold' : 'text-ink'}`
+                    }
+                  >
+                    <Icon size={18} />
+                    {t(key)}
+                  </NavLink>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </nav>
     </div>
   )

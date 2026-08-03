@@ -141,8 +141,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ])
 
         if (!profile) {
-          // Profile missing — JWT is orphaned (account deleted). Force sign out.
-          await supabase.auth.signOut()
+          // Profile returned null. This can mean:
+          // a) Account genuinely deleted (force signout)
+          // b) JWT just expired mid-request (transient 401, not a deleted account)
+          // Verify with a direct auth check before forcing signout.
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) {
+            await supabase.auth.signOut()
+          }
+          // If user still exists, the profile fetch failed transiently — do nothing;
+          // TOKEN_REFRESHED will trigger another hydrateFromSession call.
           return
         }
         if (!orgRow) {
@@ -234,10 +242,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         wasAuthenticatedRef.current = false
         if (heartbeatRef.current) clearInterval(heartbeatRef.current)
         setLoading(false)
-        // Token expired or revoked externally — redirect to login so the user
-        // re-authenticates instead of remaining on a protected page with broken state.
+        // On SIGNED_OUT: wait briefly for BroadcastChannel to sync a token refresh
+        // from another tab before deciding to redirect. This prevents false logouts
+        // when two tabs race to refresh the same refresh token and one loses.
         if (hadSession && event === 'SIGNED_OUT') {
-          window.location.href = '/connexion'
+          setTimeout(async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+              window.location.href = '/connexion'
+            }
+            // If a session exists here, TOKEN_REFRESHED re-hydrates via onAuthChange
+          }, 1200)
         }
       }
     })

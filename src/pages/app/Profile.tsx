@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bell, Smartphone, LogOut, Moon, X, Check, Camera, KeyRound, Monitor, Tablet, Loader2, Sun, Trash2, Download, MessageSquare, CalendarDays, Users, Megaphone, FileText } from 'lucide-react'
+import { Bell, Smartphone, LogOut, Moon, X, Check, Camera, KeyRound, Monitor, Tablet, Loader2, Sun, Trash2, Download, MessageSquare, CalendarDays, Users, Megaphone, FileText, ZoomIn, ZoomOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { UserService } from '../../services/user.service'
@@ -48,6 +48,124 @@ function formatRelative(iso: string, t: (key: string, opts?: Record<string, unkn
   return t('admin.daysAgo', { count: Math.floor(h / 24) })
 }
 
+const CROP_PX = 260
+const OUTPUT_PX = 400
+
+function AvatarCropModal({ src, onConfirm, onCancel }: {
+  src: string
+  onConfirm: (blob: Blob) => void
+  onCancel: () => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [nat, setNat] = useState<{ w: number; h: number } | null>(null)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const drag = useRef<{ active: boolean; lx: number; ly: number }>({ active: false, lx: 0, ly: 0 })
+
+  const minZoom = nat ? Math.max(CROP_PX / nat.w, CROP_PX / nat.h) : 1
+
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => {
+      const z0 = Math.max(CROP_PX / img.naturalWidth, CROP_PX / img.naturalHeight)
+      setNat({ w: img.naturalWidth, h: img.naturalHeight })
+      setZoom(z0)
+      setPos({ x: (CROP_PX - img.naturalWidth * z0) / 2, y: (CROP_PX - img.naturalHeight * z0) / 2 })
+    }
+    img.src = src
+  }, [src])
+
+  function clampPos(p: { x: number; y: number }, z: number, n: { w: number; h: number }) {
+    const w = n.w * z, h = n.h * z
+    return {
+      x: w >= CROP_PX ? Math.min(0, Math.max(CROP_PX - w, p.x)) : (CROP_PX - w) / 2,
+      y: h >= CROP_PX ? Math.min(0, Math.max(CROP_PX - h, p.y)) : (CROP_PX - h) / 2,
+    }
+  }
+
+  function onDown(e: React.PointerEvent<HTMLDivElement>) {
+    drag.current = { active: true, lx: e.clientX, ly: e.clientY }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  function onMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!drag.current.active || !nat) return
+    const dx = e.clientX - drag.current.lx, dy = e.clientY - drag.current.ly
+    drag.current.lx = e.clientX; drag.current.ly = e.clientY
+    setPos(p => clampPos({ x: p.x + dx, y: p.y + dy }, zoom, nat))
+  }
+  function onUp() { drag.current.active = false }
+
+  function onZoomChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!nat) return
+    const z = Number(e.target.value)
+    setZoom(z)
+    setPos(p => clampPos(p, z, nat))
+  }
+
+  function confirm() {
+    if (!nat || !canvasRef.current) return
+    const canvas = canvasRef.current
+    canvas.width = OUTPUT_PX; canvas.height = OUTPUT_PX
+    const ctx = canvas.getContext('2d')!
+    ctx.beginPath()
+    ctx.arc(OUTPUT_PX / 2, OUTPUT_PX / 2, OUTPUT_PX / 2, 0, Math.PI * 2)
+    ctx.clip()
+    const r = OUTPUT_PX / CROP_PX
+    const img = new Image()
+    img.onload = () => {
+      ctx.drawImage(img, pos.x * r, pos.y * r, nat.w * zoom * r, nat.h * zoom * r)
+      canvas.toBlob(b => { if (b) onConfirm(b) }, 'image/jpeg', 0.92)
+    }
+    img.src = src
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60" onClick={onCancel}>
+      <div className="bg-surface rounded-2xl border border-border p-5 w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-bold text-navy text-base">Recadrer la photo</h3>
+          <button onClick={onCancel} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+        </div>
+        <p className="text-xs text-muted mb-4">Glissez pour positionner · zoomez pour cadrer</p>
+
+        <div
+          className="relative mx-auto mb-4 touch-none select-none"
+          style={{ width: CROP_PX, height: CROP_PX, borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--color-indigo)', cursor: 'grab', boxSizing: 'content-box' }}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}
+        >
+          {nat ? (
+            <img src={src} alt="" draggable={false}
+              style={{ position: 'absolute', left: pos.x, top: pos.y, width: nat.w * zoom, height: nat.h * zoom, pointerEvents: 'none' }}
+            />
+          ) : (
+            <div className="w-full h-full bg-bg flex items-center justify-center">
+              <Loader2 size={24} className="animate-spin text-faint" />
+            </div>
+          )}
+        </div>
+
+        {nat && (
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <ZoomOut size={14} className="text-faint shrink-0" />
+            <input type="range" min={minZoom} max={minZoom * 3} step={minZoom * 0.01}
+              value={zoom} onChange={onZoomChange} className="flex-1 accent-indigo" />
+            <ZoomIn size={14} className="text-faint shrink-0" />
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">Annuler</button>
+          <button onClick={confirm} disabled={!nat}
+            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
+            Confirmer
+          </button>
+        </div>
+        <canvas ref={canvasRef} className="hidden" />
+      </div>
+    </div>
+  )
+}
+
 export function Profile() {
   const { t } = useTranslation()
   const { currentUser, currentOrg, currentSessionId, signOut } = useAuth()
@@ -90,6 +208,8 @@ export function Profile() {
   const pushSupported = PushService.isSupported()
   const [notifEnabled, setNotifEnabled] = useState(() => typeof Notification !== 'undefined' && Notification.permission === 'granted')
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [photoUploading, setPhotoUploading] = useState(false)
 
   // Per-type notification preferences
   const [notifPrefs, setNotifPrefs] = useState<NotifPref[]>(DEFAULT_NOTIF_PREFS)
@@ -119,14 +239,25 @@ export function Profile() {
     }
   }, [tab, currentUser.id, currentOrg.id, sessions.length, prefsLoaded])
 
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    e.target.value = ''
     setPhotoError(null)
     const reader = new FileReader()
-    reader.onload = () => setPhotoPreview(reader.result as string)
+    reader.onload = () => setCropSrc(reader.result as string)
     reader.readAsDataURL(file)
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setCropSrc(null)
+    setPhotoUploading(true)
+    const previewUrl = URL.createObjectURL(blob)
+    setPhotoPreview(previewUrl)
+    const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
     const { avatarUrl, error } = await UserService.uploadAvatar(currentUser.id, currentOrg.id, file)
+    setPhotoUploading(false)
+    URL.revokeObjectURL(previewUrl)
     if (!error && avatarUrl) {
       setPhotoPreview(avatarUrl)
     } else {
@@ -215,18 +346,33 @@ export function Profile() {
 
   return (
     <div className="flex-1 overflow-y-auto">
+      {cropSrc && (
+        <AvatarCropModal
+          src={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
       <div className="px-4 py-4 max-w-xl">
 
         {/* Profile header */}
         <div className="flex items-center gap-4 mb-5">
           <div className="relative shrink-0">
             <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-            {photoPreview
-              ? <img src={photoPreview} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-border" />
-              : <Avatar firstName={profile.firstName} lastName={profile.lastName} id={currentUser.id} size="xl" src={currentUser.avatarUrl} />
-            }
-            <button onClick={() => photoRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-6 h-6 bg-indigo rounded-full flex items-center justify-center border-2 border-surface hover:bg-indigo/90 transition-colors">
+            <div className="relative">
+              {photoPreview
+                ? <img src={photoPreview} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-border" />
+                : <Avatar firstName={profile.firstName} lastName={profile.lastName} id={currentUser.id} size="xl" src={currentUser.avatarUrl} />
+              }
+              {photoUploading && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <Loader2 size={16} className="animate-spin text-white" />
+                </div>
+              )}
+            </div>
+            <button onClick={() => !photoUploading && photoRef.current?.click()}
+              disabled={photoUploading}
+              className="absolute -bottom-1 -right-1 w-6 h-6 bg-indigo rounded-full flex items-center justify-center border-2 border-surface hover:bg-indigo/90 transition-colors disabled:opacity-50">
               <Camera size={11} className="text-white" />
             </button>
           </div>

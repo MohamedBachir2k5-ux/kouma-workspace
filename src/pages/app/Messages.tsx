@@ -384,15 +384,24 @@ function InlineImage({ storagePath, fileName, conversationId, orgId, isMe }: {
   storagePath: string; fileName: string; conversationId: string; orgId: string; isMe: boolean
 }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
   const [lightbox, setLightbox] = useState(false)
   useEffect(() => {
     let url: string | null = null
+    setLoadError(false)
     MessageService.getDecryptedImageUrl(storagePath, conversationId, orgId).then(u => {
+      if (!u) { setLoadError(true); return }
       url = u
       setBlobUrl(u)
-    })
+    }).catch(() => setLoadError(true))
     return () => { if (url) URL.revokeObjectURL(url) }
   }, [storagePath, conversationId, orgId])
+  if (loadError) return (
+    <div className="w-40 h-24 rounded-xl bg-bg border border-border flex flex-col items-center justify-center gap-1">
+      <AlertCircle size={16} className="text-faint" />
+      <span className="text-[10px] text-faint">Image indisponible</span>
+    </div>
+  )
   if (!blobUrl) return (
     <div className="w-40 h-24 rounded-xl bg-bg border border-border flex items-center justify-center">
       <Loader2 size={16} className="text-faint animate-spin" />
@@ -1075,9 +1084,10 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
     setUploadError(null)
     setText('')
     const replyId = replyingTo?.id
+    const savedReplyingTo = replyingTo
     setReplyingTo(null)
     const { error: sendErr } = await MessageService.send(channel.id, currentUser.id, trimmed, currentOrg.id, undefined, channel.type, replyId)
-    if (sendErr) { setText(trimmed); setUploadError(sendErr) }
+    if (sendErr) { setText(trimmed); setReplyingTo(savedReplyingTo); setUploadError(sendErr) }
   }
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
