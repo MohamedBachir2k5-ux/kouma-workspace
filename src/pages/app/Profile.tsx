@@ -180,7 +180,10 @@ export function Profile() {
   const [tab, setTab] = useState<Tab>('moi')
   const [photoPreview, setPhotoPreview] = useState<string | null>(currentUser.avatarUrl ?? null)
   const [editing, setEditing] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
   const [changingPin, setChangingPin] = useState(false)
+  const [pinSaving, setPinSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [pwSaved, setPwSaved] = useState(false)
 
@@ -270,12 +273,16 @@ export function Profile() {
   function openEdit() { setDraft(profile); setEditing(true) }
 
   async function saveEdit() {
-    await UserService.updateProfile(currentUser.id, {
+    setEditSaving(true)
+    setEditError(null)
+    const { error } = await UserService.updateProfile(currentUser.id, {
       firstname: draft.firstName,
       lastname: draft.lastName,
       phone: draft.phone || null,
       language: draft.language,
     })
+    setEditSaving(false)
+    if (error) { setEditError(error); return }
     setProfile(draft)
     if (draft.language !== i18n.language) i18n.changeLanguage(draft.language)
     setEditing(false)
@@ -285,9 +292,11 @@ export function Profile() {
 
   async function savePassword() {
     setPwError(null)
+    setPinSaving(true)
     const { error } = await AuthService.updatePassword(pwForm.next)
-    if (error) { setPwError(error); return }
+    if (error) { setPwError(error); setPinSaving(false); return }
     const { error: keyError } = await KeyService.rewrapPrivateKey(currentUser.id, pwForm.next)
+    setPinSaving(false)
     if (keyError) { setPwError(t('errors.pinUpdatedRewrapFailed')); return }
     setPwForm({ current: '', next: '', confirm: '' })
     setChangingPin(false)
@@ -731,10 +740,14 @@ export function Profile() {
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy" />
               </div>
             </div>
+            {editError && <p className="px-5 pb-2 text-xs text-danger">{editError}</p>}
             <div className="flex gap-3 px-5 pb-5">
-              <button onClick={() => setEditing(false)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
-              <button onClick={saveEdit} disabled={!draft.firstName.trim() || !draft.lastName.trim()}
-                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.save')}</button>
+              <button onClick={() => setEditing(false)} disabled={editSaving} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
+              <button onClick={saveEdit} disabled={!draft.firstName.trim() || !draft.lastName.trim() || editSaving}
+                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
+                {editSaving && <Loader2 size={14} className="animate-spin" />}
+                {t('common.save')}
+              </button>
             </div>
           </div>
         </div>
@@ -771,9 +784,12 @@ export function Profile() {
               {pwError && <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{pwError}</p>}
             </div>
             <div className="flex gap-3 px-5 pb-5">
-              <button onClick={() => setChangingPin(false)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
-              <button onClick={savePassword} disabled={!pwValid}
-                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.save')}</button>
+              <button onClick={() => setChangingPin(false)} disabled={pinSaving} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
+              <button onClick={savePassword} disabled={!pwValid || pinSaving}
+                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
+                {pinSaving && <Loader2 size={14} className="animate-spin" />}
+                {t('common.save')}
+              </button>
             </div>
           </div>
         </div>

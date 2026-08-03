@@ -86,7 +86,7 @@ function TeamModal({ team, users, onClose, onSave }: {
   team?: Team | null
   users: User[]
   onClose: () => void
-  onSave: (data: Partial<Team>) => void
+  onSave: (data: Partial<Team>) => Promise<void>
 }) {
   const { t } = useTranslation()
   const [form, setForm] = useState({
@@ -95,6 +95,8 @@ function TeamModal({ team, users, onClose, onSave }: {
     responsableId: team?.responsableId ?? '',
     color: team?.color ?? TEAM_COLORS[0],
   })
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   function update(field: string, val: string) { setForm(p => ({ ...p, [field]: val })) }
 
@@ -139,13 +141,27 @@ function TeamModal({ team, users, onClose, onSave }: {
           </div>
         </div>
 
+        {saveError && <p className="px-6 pb-2 text-xs text-danger">{saveError}</p>}
+
         <div className="flex gap-3 p-6 border-t border-border">
-          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} disabled={saving} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
           <button
-            disabled={!canSubmit}
-            onClick={() => { onSave(form); onClose() }}
-            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+            disabled={!canSubmit || saving}
+            onClick={async () => {
+              setSaveError(null)
+              setSaving(true)
+              try {
+                await onSave(form)
+                onClose()
+              } catch (e) {
+                setSaveError(e instanceof Error ? e.message : t('errors.creationError'))
+              } finally {
+                setSaving(false)
+              }
+            }}
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
           >
+            {saving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {isEdit ? t('common.save') : t('admin.teamsCreateCta')}
           </button>
         </div>
@@ -177,19 +193,21 @@ export function AdminTeams() {
       ownerId: data.responsableId ?? currentUser.id,
       actorId: currentUser.id,
     })
-    if (!error && teamId) {
+    if (error) throw new Error(error)
+    if (teamId) {
       const updated = await TeamService.getByOrganizationWithMembers(currentOrg.id)
       setTeams(updated)
     }
   }
 
   async function updateTeam(id: string, data: Partial<Team>) {
-    await TeamService.update(
+    const { error } = await TeamService.update(
       id,
       { name: data.name, description: data.description ?? null, color: data.color, owner_id: data.responsableId },
       currentOrg.id,
       currentUser.id,
     )
+    if (error) throw new Error(error)
     setTeams(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
   }
 
