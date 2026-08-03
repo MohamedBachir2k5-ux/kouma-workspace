@@ -1339,6 +1339,8 @@
     "accountLoadError": "Error al cargar la cuenta. Por favor, recarga la página.",
     "lastAdminCannotBeRevoked": "No se puede eliminar al último administrador. Primero promueve a otro colaborador.",
     "fileUrlNotFound": "URL del archivo no encontrada.",
-    "avatarUrlNotFound": "URL del avatar no encontrada."
+    "avatarUrlNotFound": "URL del avatar no encontrada.",
+    "fileKeyNotFound": "Clave de cifrado no encontrada para este archivo.",
+    "decryptionFailed": "Error al descifrar el archivo."
   }
 }

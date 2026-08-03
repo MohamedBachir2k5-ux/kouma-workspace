@@ -430,6 +430,19 @@ export const MessageService = {
     return error ? null : data.signedUrl
   },
 
+  async getFileSize(storagePath: string): Promise<number> {
+    const { data: signed } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(storagePath, 60)
+    if (!signed) return 0
+    try {
+      const resp = await fetch(signed.signedUrl, { method: 'HEAD' })
+      return parseInt(resp.headers.get('content-length') ?? '0', 10)
+    } catch {
+      return 0
+    }
+  },
+
   // Download, decrypt, return raw Blob — used for forwarding files to another conversation.
   async getDecryptedBlob(
     storagePath: string,

@@ -244,6 +244,7 @@ export const DocumentService = {
     fileExt: string,
     fileSize: number,
     folderId?: string,
+    conversationId?: string,
   ): Promise<{ document: Document | null; error: string | null }> {
     const { data: fileRecord, error: fileErr } = await supabase
       .from('files')
@@ -270,6 +271,7 @@ export const DocumentService = {
         file_id: fileRecord.id,
         folder_id: folderId ?? null,
         visibility: 'personal',
+        conversation_id: conversationId ?? null,
       })
       .select('*, files(name, type, size, storage_path)')
       .single()
@@ -324,7 +326,7 @@ export const DocumentService = {
   async downloadDocument(documentId: string, orgId: string, userId?: string): Promise<{ error: string | null }> {
     const { data: doc } = await supabase
       .from('documents')
-      .select('title, files(storage_path, name)')
+      .select('title, conversation_id, files(storage_path, name)')
       .eq('id', documentId)
       .single()
 
@@ -353,14 +355,31 @@ export const DocumentService = {
     const rawBuf = await response.arrayBuffer()
     let plainBuf: ArrayBuffer = rawBuf
 
-    if (fileInfo.storage_path.endsWith('.enc') && cryptoSession.isLoaded) {
+    const isEncDoc = fileInfo.storage_path.endsWith('.enc')
+    const convId = (doc as unknown as { conversation_id: string | null }).conversation_id
+
+    if (isEncDoc) {
+      if (!cryptoSession.isLoaded) return { error: i18n.t('errors.sessionNotLoaded') }
       const fileKey = await KeyService.getOrLoadFileKey(fileInfo.storage_path, orgId)
-      if (fileKey && rawBuf.byteLength > 12) {
+      if (!fileKey) return { error: i18n.t('errors.fileKeyNotFound') }
+      if (rawBuf.byteLength > 12) {
         try {
           const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
           const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
           plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey, cipher)
-        } catch { /* serve raw if decryption fails */ }
+        } catch {
+          return { error: i18n.t('errors.decryptionFailed') }
+        }
+      }
+    } else if (convId && cryptoSession.isLoaded) {
+      // Promoted message attachment — try conv-key decryption, fall back to raw if not encrypted
+      const convKey = await KeyService.getOrLoadConversationKey(convId, orgId)
+      if (convKey && rawBuf.byteLength > 12) {
+        try {
+          const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
+          const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
+          plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
+        } catch { /* file was stored unencrypted — serve as-is */ }
       }
     }
 
@@ -372,7 +391,7 @@ export const DocumentService = {
   async getDocumentPreviewUrl(documentId: string, orgId: string): Promise<{ url: string | null; mimeType: string; name: string; error: string | null }> {
     const { data: doc } = await supabase
       .from('documents')
-      .select('title, files(storage_path, name)')
+      .select('title, conversation_id, files(storage_path, name)')
       .eq('id', documentId)
       .single()
 
@@ -391,7 +410,10 @@ export const DocumentService = {
     const rawBuf = await response.arrayBuffer()
     let plainBuf: ArrayBuffer = rawBuf
 
-    if (fileInfo.storage_path.endsWith('.enc') && cryptoSession.isLoaded) {
+    const isEncDoc = fileInfo.storage_path.endsWith('.enc')
+    const convId = (doc as unknown as { conversation_id: string | null }).conversation_id
+
+    if (isEncDoc && cryptoSession.isLoaded) {
       const fileKey = await KeyService.getOrLoadFileKey(fileInfo.storage_path, orgId)
       if (fileKey && rawBuf.byteLength > 12) {
         try {
@@ -399,6 +421,16 @@ export const DocumentService = {
           const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
           plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey, cipher)
         } catch { /* serve raw */ }
+      }
+    } else if (!isEncDoc && convId && cryptoSession.isLoaded) {
+      // Promoted message attachment — try conv-key decryption, fall back to raw if not encrypted
+      const convKey = await KeyService.getOrLoadConversationKey(convId, orgId)
+      if (convKey && rawBuf.byteLength > 12) {
+        try {
+          const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
+          const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
+          plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
+        } catch { /* file was stored unencrypted — serve as-is */ }
       }
     }
 

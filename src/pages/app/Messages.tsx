@@ -150,7 +150,7 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
 }
 
 /* ── Promote modal ── */
-function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void }) {
+function PromoteModal({ file, conversationId, onClose }: { file: Attachment; conversationId: string; onClose: () => void }) {
   const { t } = useTranslation()
   const { currentOrg, currentUser } = useAuth()
   const [folders, setFolders] = useState<(Folder | { id: null; name: string })[]>([])
@@ -170,9 +170,10 @@ function PromoteModal({ file, onClose }: { file: Attachment; onClose: () => void
     setSaving(true)
     setError(null)
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+    const actualSize = file.size > 0 ? file.size : await MessageService.getFileSize(file.storagePath)
     const { error: err } = await DocumentService.promoteFromPath(
       file.storagePath, currentOrg.id, currentUser.id,
-      file.name, ext, file.size, folderId ?? undefined,
+      file.name, ext, actualSize, folderId ?? undefined, conversationId,
     )
     setSaving(false)
     if (err) { setError(err); return }
@@ -1626,7 +1627,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
         />
       )}
 
-      {promoteFile && <PromoteModal file={promoteFile} onClose={() => setPromoteFile(null)} />}
+      {promoteFile && <PromoteModal file={promoteFile} conversationId={channel.id} onClose={() => setPromoteFile(null)} />}
 
       {forwardMsg && (
         <ForwardModal

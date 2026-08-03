@@ -1339,6 +1339,8 @@
     "accountLoadError": "Erro ao carregar a conta. Por favor, recarregue a página.",
     "lastAdminCannotBeRevoked": "Não é possível remover o último administrador. Promova outro colaborador primeiro.",
     "fileUrlNotFound": "URL do arquivo não encontrada.",
-    "avatarUrlNotFound": "URL do avatar não encontrada."
+    "avatarUrlNotFound": "URL do avatar não encontrada.",
+    "fileKeyNotFound": "Chave de criptografia não encontrada para este arquivo.",
+    "decryptionFailed": "Falha ao descriptografar o arquivo."
   }
 }

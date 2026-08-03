@@ -1337,6 +1337,8 @@
     "accountLoadError": "Account loading error. Please reload the page.",
     "lastAdminCannotBeRevoked": "Cannot remove the last administrator. Promote another member first.",
     "fileUrlNotFound": "File URL not found.",
-    "avatarUrlNotFound": "Avatar URL not found."
+    "avatarUrlNotFound": "Avatar URL not found.",
+    "fileKeyNotFound": "Encryption key not found for this file.",
+    "decryptionFailed": "File decryption failed."
   }
 }
