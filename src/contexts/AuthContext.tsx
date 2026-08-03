@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         if (!orgRow) {
           if (!isOrgReadyRef.current) {
-            setOrgLoadError('Aucune organisation trouvée pour ce compte. Veuillez compléter l\'inscription.')
+            setOrgLoadError(i18n.t('errors.orgNotFound'))
             setOrgReady(false)
           }
           return
@@ -211,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {
         console.error('[AuthContext] hydrateFromSession error:', e)
-        setOrgLoadError('Erreur de chargement du compte. Veuillez recharger la page.')
+        setOrgLoadError(i18n.t('errors.accountLoadError'))
       } finally {
         setLoading(false)
       }

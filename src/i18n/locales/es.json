@@ -1329,6 +1329,8 @@
     "pushNotSupported": "Las notificaciones push no están soportadas en este navegador.",
     "pushPermissionDenied": "Permiso de notificación denegado.",
     "minutesCreationError": "Error al crear el acta de la reunión.",
-    "pinUpdatedRewrapFailed": "PIN actualizado, pero la clave no pudo ser re-cifrada. Vuelve a iniciar sesión."
+    "pinUpdatedRewrapFailed": "PIN actualizado, pero la clave no pudo ser re-cifrada. Vuelve a iniciar sesión.",
+    "orgNotFound": "No se encontró ninguna organización para esta cuenta. Por favor, completa el registro.",
+    "accountLoadError": "Error al cargar la cuenta. Por favor, recarga la página."
   }
 }

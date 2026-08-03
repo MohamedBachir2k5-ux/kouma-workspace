@@ -1327,6 +1327,8 @@
     "pushNotSupported": "Push notifications are not supported on this browser.",
     "pushPermissionDenied": "Notification permission denied.",
     "minutesCreationError": "Error creating meeting minutes.",
-    "pinUpdatedRewrapFailed": "PIN updated, but the key could not be re-encrypted. Please sign in again."
+    "pinUpdatedRewrapFailed": "PIN updated, but the key could not be re-encrypted. Please sign in again.",
+    "orgNotFound": "No organisation found for this account. Please complete registration.",
+    "accountLoadError": "Account loading error. Please reload the page."
   }
 }

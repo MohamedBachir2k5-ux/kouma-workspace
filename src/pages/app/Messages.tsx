@@ -48,7 +48,7 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
   async function handleCreate() {
     if (!name.trim() || selected.length === 0 || creating) return
     setCreating(true)
-    await MessageService.createGroupConversation(currentOrg.id, [currentUser.id, ...selected])
+    await MessageService.createGroupConversation(currentOrg.id, [currentUser.id, ...selected], name.trim())
     onCreated()
     onClose()
   }

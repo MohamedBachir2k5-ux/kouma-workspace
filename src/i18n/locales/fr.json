@@ -1328,6 +1328,8 @@
     "pushNotSupported": "Les notifications push ne sont pas supportées sur ce navigateur.",
     "pushPermissionDenied": "Permission de notification refusée.",
     "minutesCreationError": "Erreur lors de la création du compte rendu.",
-    "pinUpdatedRewrapFailed": "Code PIN mis à jour, mais la clé n'a pas pu être re-chiffrée. Reconnectez-vous."
+    "pinUpdatedRewrapFailed": "Code PIN mis à jour, mais la clé n'a pas pu être re-chiffrée. Reconnectez-vous.",
+    "orgNotFound": "Aucune organisation trouvée pour ce compte. Veuillez compléter l'inscription.",
+    "accountLoadError": "Erreur de chargement du compte. Veuillez recharger la page."
   }
 }

@@ -152,12 +152,14 @@ export const MessageService = {
       } else if (c.type === 'team' && c.reference_id) {
         name = teamNameMap[c.reference_id] ?? i18n.t('messages.defaultTeam')
       } else {
-        name = members
-          .filter(id => id !== userId)
-          .slice(0, 2)
-          .map(id => profileMap[id]?.firstname ?? '')
-          .filter(Boolean)
-          .join(', ') || i18n.t('messages.defaultGroup')
+        name = (c as unknown as { name?: string | null }).name ?? (
+          members
+            .filter(id => id !== userId)
+            .slice(0, 2)
+            .map(id => profileMap[id]?.firstname ?? '')
+            .filter(Boolean)
+            .join(', ') || i18n.t('messages.defaultGroup')
+        )
       }
 
       return {
@@ -285,9 +287,10 @@ export const MessageService = {
     return { id: data as string, error: null }
   },
 
-  async createGroupConversation(orgId: string, memberIds: string[]): Promise<{ id: string | null; error: string | null }> {
+  async createGroupConversation(orgId: string, memberIds: string[], name?: string): Promise<{ id: string | null; error: string | null }> {
     const { data, error } = await supabase.rpc('create_group_conversation', {
       p_org_id: orgId,
+      p_name: name ?? '',
       p_members: memberIds,
     })
     if (error) return { id: null, error: friendlyError(error.message) }
