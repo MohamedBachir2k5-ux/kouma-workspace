@@ -415,8 +415,13 @@
     "newMessage": "Nova mensagem",
     "meetingInvite": "Convite de reunião",
     "teamMemberAdded": "Adicionado a uma equipa",
+    "teamMemberAddedFull": "Você foi adicionado à equipa \"{{name}}\".",
     "promotedToAdmin": "Você foi promovido a administrador da organização.",
-    "adminRightsRevoked": "Seus direitos de administração foram revogados."
+    "adminRightsRevoked": "Seus direitos de administração foram revogados.",
+    "meetingInvite": "Você foi convidado para a reunião \"{{title}}\" em {{date}} às {{time}}.",
+    "meetingModified": "A reunião \"{{title}}\" foi modificada.",
+    "meetingCancelled": "A reunião \"{{title}}\" foi cancelada.",
+    "meetingCancelledWithReason": "A reunião \"{{title}}\" foi cancelada. Motivo: {{reason}}"
   },
   "documents": {
     "title": "Documentos",
@@ -1331,6 +1336,9 @@
     "minutesCreationError": "Erro ao criar a ata da reunião.",
     "pinUpdatedRewrapFailed": "PIN atualizado, mas a chave não pôde ser re-cifrada. Faça login novamente.",
     "orgNotFound": "Nenhuma organização encontrada para esta conta. Por favor, complete o cadastro.",
-    "accountLoadError": "Erro ao carregar a conta. Por favor, recarregue a página."
+    "accountLoadError": "Erro ao carregar a conta. Por favor, recarregue a página.",
+    "lastAdminCannotBeRevoked": "Não é possível remover o último administrador. Promova outro colaborador primeiro.",
+    "fileUrlNotFound": "URL do arquivo não encontrada.",
+    "avatarUrlNotFound": "URL do avatar não encontrada."
   }
 }

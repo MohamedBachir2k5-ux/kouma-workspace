@@ -273,7 +273,7 @@ export const UserService = {
   ): Promise<{ error: string | null }> {
     const adminCount = await this.getAdminCount(organizationId)
     if (adminCount <= 1) {
-      return { error: "Impossible de retirer le dernier administrateur. Promouvez d'abord un autre collaborateur." }
+      return { error: i18n.t('errors.lastAdminCannotBeRevoked') }
     }
 
     const { data: profile } = await supabase
@@ -341,7 +341,7 @@ export const UserService = {
     const { data: signed, error: signErr } = await supabase.storage
       .from('attachments')
       .createSignedUrl(path, 60 * 60 * 24 * 365)
-    if (signErr || !signed) return { avatarUrl: null, error: signErr?.message ?? 'URL avatar introuvable.' }
+    if (signErr || !signed) return { avatarUrl: null, error: signErr?.message ?? i18n.t('errors.avatarUrlNotFound') }
     const avatarUrl = signed.signedUrl
     const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId)
     if (dbErr) return { avatarUrl: null, error: dbErr.message }

@@ -86,13 +86,14 @@ export const EventService = {
     const others = data.participants.filter(id => id !== data.createdById)
     if (others.length > 0) {
       const start = new Date(data.startAt)
-      const dateStr = start.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
-      const timeStr = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      const locale = i18n.language || 'fr'
+      const dateStr = start.toLocaleDateString(locale, { day: 'numeric', month: 'long' })
+      const timeStr = start.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
       await supabase.rpc('notify_users', {
         p_user_ids: others,
         p_type: 'meeting_invite',
         p_payload: {
-          text: `Vous avez été invité à la réunion "${data.title}" le ${dateStr} à ${timeStr}.`,
+          text: i18n.t('notifications.meetingInvite', { title: data.title, date: dateStr, time: timeStr }),
           eventId: (row as unknown as EventRow).id,
         },
       })
@@ -135,7 +136,7 @@ export const EventService = {
         await supabase.rpc('notify_users', {
           p_user_ids: others,
           p_type: 'meeting_invite',
-          p_payload: { text: `La réunion "${title}" a été modifiée.`, eventId: id },
+          p_payload: { text: i18n.t('notifications.meetingModified', { title }), eventId: id },
         })
       }
     }
@@ -162,7 +163,12 @@ export const EventService = {
         await supabase.rpc('notify_users', {
           p_user_ids: others,
           p_type: 'meeting_invite',
-          p_payload: { text: `La réunion "${current.title}" a été annulée.${reason ? ` Raison : ${reason}` : ''}`, eventId: id },
+          p_payload: {
+            text: reason
+              ? i18n.t('notifications.meetingCancelledWithReason', { title: current.title, reason })
+              : i18n.t('notifications.meetingCancelled', { title: current.title }),
+            eventId: id,
+          },
         })
       }
     }

@@ -397,7 +397,7 @@ export const MessageService = {
       const { data: signed, error: signErr } = await supabase.storage
         .from('attachments')
         .createSignedUrl(storagePath, 300)
-      if (signErr || !signed) return { error: signErr?.message ?? 'URL introuvable.' }
+      if (signErr || !signed) return { error: signErr?.message ?? i18n.t('errors.fileUrlNotFound') }
 
       const response = await fetch(signed.signedUrl)
       if (!response.ok) return { error: i18n.t('errors.downloadFailed') }

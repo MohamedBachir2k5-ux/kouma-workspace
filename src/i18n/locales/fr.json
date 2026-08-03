@@ -416,8 +416,13 @@
     "newMessage": "Nouveau message",
     "meetingInvite": "Invitation réunion",
     "teamMemberAdded": "Ajout à une équipe",
+    "teamMemberAddedFull": "Vous avez été ajouté à l'équipe \"{{name}}\".",
     "promotedToAdmin": "Vous avez été promu administrateur de l'organisation.",
-    "adminRightsRevoked": "Vos droits d'administration ont été révoqués."
+    "adminRightsRevoked": "Vos droits d'administration ont été révoqués.",
+    "meetingInvite": "Vous avez été invité à la réunion \"{{title}}\" le {{date}} à {{time}}.",
+    "meetingModified": "La réunion \"{{title}}\" a été modifiée.",
+    "meetingCancelled": "La réunion \"{{title}}\" a été annulée.",
+    "meetingCancelledWithReason": "La réunion \"{{title}}\" a été annulée. Raison : {{reason}}"
   },
   "documents": {
     "title": "Documents",
@@ -1330,6 +1335,9 @@
     "minutesCreationError": "Erreur lors de la création du compte rendu.",
     "pinUpdatedRewrapFailed": "Code PIN mis à jour, mais la clé n'a pas pu être re-chiffrée. Reconnectez-vous.",
     "orgNotFound": "Aucune organisation trouvée pour ce compte. Veuillez compléter l'inscription.",
-    "accountLoadError": "Erreur de chargement du compte. Veuillez recharger la page."
+    "accountLoadError": "Erreur de chargement du compte. Veuillez recharger la page.",
+    "lastAdminCannotBeRevoked": "Impossible de retirer le dernier administrateur. Promouvez d'abord un autre collaborateur.",
+    "fileUrlNotFound": "URL du fichier introuvable.",
+    "avatarUrlNotFound": "URL de l'avatar introuvable."
   }
 }

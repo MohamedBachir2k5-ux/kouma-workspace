@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { serviceError, friendlyError } from '../lib/errors'
+import i18n from '../i18n'
 import type { TeamRow, TeamMemberRow, TeamPermissionRow } from '../lib/database.types'
 import type { Team } from '../lib/types'
 
@@ -181,7 +182,7 @@ export const TeamService = {
         await supabase.rpc('notify_users', {
           p_user_ids: [userId],
           p_type: 'team_member_added',
-          p_payload: { text: `Vous avez été ajouté à l'équipe "${team.name}".`, teamId },
+          p_payload: { text: i18n.t('notifications.teamMemberAddedFull', { name: team.name }), teamId },
         })
       }
     }

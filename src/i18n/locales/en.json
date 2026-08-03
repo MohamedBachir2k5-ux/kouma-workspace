@@ -415,8 +415,13 @@
     "newMessage": "New message",
     "meetingInvite": "Meeting invitation",
     "teamMemberAdded": "Added to a team",
+    "teamMemberAddedFull": "You have been added to the team \"{{name}}\".",
     "promotedToAdmin": "You have been promoted to organization administrator.",
-    "adminRightsRevoked": "Your administration rights have been revoked."
+    "adminRightsRevoked": "Your administration rights have been revoked.",
+    "meetingInvite": "You have been invited to the meeting \"{{title}}\" on {{date}} at {{time}}.",
+    "meetingModified": "The meeting \"{{title}}\" has been modified.",
+    "meetingCancelled": "The meeting \"{{title}}\" has been cancelled.",
+    "meetingCancelledWithReason": "The meeting \"{{title}}\" has been cancelled. Reason: {{reason}}"
   },
   "documents": {
     "title": "Documents",
@@ -1329,6 +1334,9 @@
     "minutesCreationError": "Error creating meeting minutes.",
     "pinUpdatedRewrapFailed": "PIN updated, but the key could not be re-encrypted. Please sign in again.",
     "orgNotFound": "No organisation found for this account. Please complete registration.",
-    "accountLoadError": "Account loading error. Please reload the page."
+    "accountLoadError": "Account loading error. Please reload the page.",
+    "lastAdminCannotBeRevoked": "Cannot remove the last administrator. Promote another member first.",
+    "fileUrlNotFound": "File URL not found.",
+    "avatarUrlNotFound": "Avatar URL not found."
   }
 }
