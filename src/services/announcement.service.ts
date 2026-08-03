@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { serviceError, friendlyError } from '../lib/errors'
+import i18n from '../i18n'
 
 export interface Announcement {
   id: string
@@ -68,7 +69,7 @@ export const AnnouncementService = {
       .insert({ organization_id: orgId, author_id: authorId, title, body, pinned })
       .select()
       .single()
-    if (error || !data) return { announcement: null, error: friendlyError(error?.message) ?? 'Erreur création.' }
+    if (error || !data) return { announcement: null, error: friendlyError(error?.message) ?? i18n.t('errors.creationError') }
 
     // Notify all org members
     const { data: members } = await supabase

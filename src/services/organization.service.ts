@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { serviceError, friendlyError } from '../lib/errors'
+import i18n from '../i18n'
 import type { OrganizationRow, OrganizationMemberRow } from '../lib/database.types'
 import { TRIAL_DAYS, PRICING } from '../config/pricing'
 import type { SupportedCurrency } from '../config/pricing'
@@ -115,10 +116,10 @@ export const OrganizationService = {
     const path = `${orgId}/${orgId}.${ext}`
     const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return { logoUrl: null, error: 'Format d\'image non autorisé (PNG, JPG, GIF, WebP, SVG).' }
+      return { logoUrl: null, error: i18n.t('errors.logoFormatNotAllowed') }
     }
     if (file.size > 5 * 1024 * 1024) {
-      return { logoUrl: null, error: 'Image trop volumineuse (max 5 Mo).' }
+      return { logoUrl: null, error: i18n.t('errors.logoTooLarge') }
     }
     const { error: uploadErr } = await supabase.storage
       .from('logos')

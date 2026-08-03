@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { serviceError, friendlyError } from '../lib/errors'
+import i18n from '../i18n'
 import { CryptoService } from './crypto.service'
 import { KeyService } from './key.service'
 import { cryptoSession } from '../lib/crypto-session'
@@ -21,7 +22,7 @@ export const RecoveryService = {
 
   async verifyOtp(email: string, token: string): Promise<{ userId: string | null; error: string | null }> {
     const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
-    if (error || !data.user) return { userId: null, error: friendlyError(error?.message) ?? 'Code invalide ou expiré.' }
+    if (error || !data.user) return { userId: null, error: friendlyError(error?.message) ?? i18n.t('errors.invalidOrExpiredCode') }
     return { userId: data.user.id, error: null }
   },
 
@@ -45,7 +46,7 @@ export const RecoveryService = {
         action: 'recovery_initiated',
         target_id: userId,
         target_type: 'user',
-        detail: 'Identité vérifiée — accès breakglass demandé',
+        detail: i18n.t('audit.recoveryInitiated'),
       })
     } catch { /* non-blocking */ }
   },
@@ -65,7 +66,7 @@ export const RecoveryService = {
       action: 'breakglass_used',
       target_id: userId,
       target_type: 'user',
-      detail: deviceInfo ? `Clé breakglass utilisée · ${deviceInfo}` : 'Clé breakglass utilisée',
+      detail: deviceInfo ? i18n.t('audit.breakglassUsedWith', { device: deviceInfo }) : i18n.t('audit.breakglassUsed'),
     })
 
     try {
@@ -79,7 +80,7 @@ export const RecoveryService = {
         .single()
 
       if (bgErr || !bgRow?.bg_encrypted_key || !bgRow.bg_kdf_salt || !bgRow.bg_iv) {
-        return { error: 'Clé breakglass introuvable pour cette organisation.' }
+        return { error: i18n.t('errors.breakglassKeyNotFound') }
       }
 
       // 2. Unwrap org_recovery_priv using breakglass phrase
@@ -92,7 +93,7 @@ export const RecoveryService = {
       if (keyErr) return { error: keyErr }
 
       const newAdminPub = cryptoSession.userPub
-      if (!newAdminPub) return { error: 'Erreur de session cryptographique.' }
+      if (!newAdminPub) return { error: i18n.t('errors.cryptoSessionError') }
 
       // 4. Re-encrypt conversation keys for admin — team conversations only.
       // Direct messages and private group conversations are intentionally excluded:
@@ -164,14 +165,14 @@ export const RecoveryService = {
         target_id: userId,
         target_type: 'user',
         detail: deviceInfo
-          ? `Récupération administrateur via clé breakglass · ${deviceInfo}`
-          : 'Récupération administrateur via clé breakglass',
+          ? i18n.t('audit.adminRecoveryCompletedWith', { device: deviceInfo })
+          : i18n.t('audit.adminRecoveryCompleted'),
       })
 
       return { error: null }
     } catch (e) {
       if ((e as Error).message?.includes('unwrap') || (e as Error).name === 'OperationError') {
-        return { error: 'Phrase de récupération incorrecte.' }
+        return { error: i18n.t('errors.wrongRecoveryPhrase') }
       }
       return { error: (e as Error).message }
     }
@@ -205,7 +206,7 @@ export const RecoveryService = {
           action: 'recovery_completed',
           target_id: userId,
           target_type: 'user',
-          detail: 'Réinitialisation PIN collaborateur',
+          detail: i18n.t('audit.pinReset'),
         })
       } catch { /* non-blocking */ }
 

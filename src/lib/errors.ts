@@ -1,39 +1,42 @@
-// Converts raw Supabase/PostgreSQL error messages to user-friendly strings.
+import i18n from '../i18n'
+
+// Converts raw Supabase/PostgreSQL error messages to user-friendly translated strings.
 // Never exposes internal DB error details to the end user.
 export function friendlyError(raw: string | null | undefined): string | null {
   if (!raw) return null
 
   const r = raw.toLowerCase()
+  const t = i18n.t.bind(i18n)
 
   if (r.includes('row-level security') || r.includes('rls') || r.includes('violates row')) {
-    return "Vous n'avez pas les droits nécessaires pour cette action."
+    return t('errors.noPermission')
   }
   if (r.includes('permission denied')) {
-    return 'Accès refusé.'
+    return t('errors.accessDenied')
   }
   if (r.includes('duplicate key') || r.includes('already exists') || r.includes('unique constraint')) {
-    return 'Cet élément existe déjà.'
+    return t('errors.alreadyExists')
   }
   if (r.includes('foreign key') || r.includes('violates foreign')) {
-    return 'Suppression impossible : des éléments associés existent encore.'
+    return t('errors.deleteBlocked')
   }
   if (r.includes('null value in column') || r.includes('not-null constraint')) {
-    return 'Données incomplètes. Veuillez remplir tous les champs requis.'
+    return t('errors.incompleteData')
   }
   if (r.includes('invalid input syntax for type uuid') || r.includes('invalid uuid')) {
-    return 'Identifiant invalide.'
+    return t('errors.invalidId')
   }
   if (r.includes('failed to fetch') || r.includes('networkerror') || r.includes('network request failed')) {
-    return 'Erreur de connexion. Vérifiez votre réseau.'
+    return t('errors.networkError')
   }
   if (r.includes('jwt') || r.includes('token') || r.includes('session')) {
-    return 'Votre session a expiré. Veuillez vous reconnecter.'
+    return t('errors.sessionExpired')
   }
   if (r.includes('too large') || r.includes('file size') || r.includes('payload too large')) {
-    return 'Fichier trop volumineux.'
+    return t('errors.fileTooLarge')
   }
 
-  // Return as-is if it's already a friendly French message (doesn't start with DB keywords)
+  // Return as-is if it's already a friendly message (doesn't start with DB keywords)
   return raw
 }
 

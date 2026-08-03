@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { friendlyError } from '../lib/errors'
+import i18n from '../i18n'
 import type { Event, EventStatus } from '../lib/types'
 
 type EventRow = {
@@ -79,7 +80,7 @@ export const EventService = {
       .select()
       .single()
 
-    if (error || !row) throw new Error(friendlyError(error?.message) ?? 'Erreur lors de la création.')
+    if (error || !row) throw new Error(friendlyError(error?.message) ?? i18n.t('errors.creationError'))
 
     // Notify all participants (except the creator) via SECURITY DEFINER RPC
     const others = data.participants.filter(id => id !== data.createdById)
@@ -130,7 +131,7 @@ export const EventService = {
     if (updates.participants?.length && actorId) {
       const others = updates.participants.filter(uid => uid !== actorId)
       if (others.length > 0) {
-        const title = updates.title ?? 'Réunion'
+        const title = updates.title ?? i18n.t('agenda.defaultTitle')
         await supabase.rpc('notify_users', {
           p_user_ids: others,
           p_type: 'meeting_invite',

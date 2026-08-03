@@ -9,8 +9,8 @@ import { formatDate, formatFileSize } from '../../lib/utils'
 import { Avatar } from '../../components/ui/Avatar'
 import type { Document, Folder, User, Team } from '../../lib/types'
 
-const ACCEPTED_FORMATS = 'PDF, Word, Excel, PowerPoint, images (PNG, JPG, GIF, WebP), texte, CSV, ZIP'
-const MAX_SIZE_LABEL = '50 Mo maximum'
+const ACCEPTED_FORMATS = 'PDF, Word, Excel, PowerPoint, images (PNG, JPG, GIF, WebP), text, CSV, ZIP'
+const MAX_SIZE_LABEL = '50 MB max'
 
 const FOLDER_COLORS = [
   'bg-amber/10 text-amber',
@@ -403,7 +403,7 @@ export function Documents() {
 
         {/* Upload helper text */}
         {!uploadDisabledReason && (
-          <p className="text-[11px] text-faint mb-2">{ACCEPTED_FORMATS} · {MAX_SIZE_LABEL}</p>
+          <p className="text-[11px] text-faint mb-2">{t('documents.acceptedFormats')} · {t('documents.maxSize')}</p>
         )}
 
         {uploadError && <p className="text-xs text-danger mb-2">{uploadError}</p>}
@@ -490,7 +490,7 @@ export function Documents() {
             </div>
             <div>
               <div className="text-sm font-semibold text-ink">{selectedTeam.name}</div>
-              <div className="text-xs text-muted">{spaceDocs.length} document(s)</div>
+              <div className="text-xs text-muted">{t('documents.docCount', { count: String(spaceDocs.length) })}</div>
             </div>
           </div>
         )}

@@ -207,7 +207,7 @@ export function AdminUsers() {
     if (userLimit !== null) {
       const activeSeatCount = users.filter(u => u.status === 'active' || u.status === 'suspended' || u.status === 'invited').length
       if (activeSeatCount >= userLimit) {
-        setInviteError(`Limite du plan ${currentSubscription.plan === 'free' ? 'Free' : 'Business'} atteinte (${userLimit} utilisateurs). Passez au plan supérieur pour inviter davantage de collaborateurs.`)
+        setInviteError(t('admin.inviteLimitReached', { plan: currentSubscription.plan === 'free' ? 'Free' : 'Business', limit: String(userLimit) }))
         return
       }
     }

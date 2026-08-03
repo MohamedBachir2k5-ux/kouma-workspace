@@ -263,7 +263,7 @@ export function Profile() {
       setPhotoPreview(avatarUrl)
     } else {
       setPhotoPreview(currentUser.avatarUrl ?? null)
-      setPhotoError(error ?? 'Échec du téléversement de la photo.')
+      setPhotoError(error ?? t('profile.photoUploadError'))
     }
   }
 

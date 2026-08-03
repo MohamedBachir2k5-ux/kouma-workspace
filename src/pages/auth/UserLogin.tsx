@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { ArrowLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AuthService } from '../../services/auth.service'
 import { KeyService } from '../../services/key.service'
 import { OrganizationService } from '../../services/organization.service'
 
 export function UserLogin() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [pin, setPin] = useState('')
   const [step, setStep] = useState<'email' | 'pin'>('email')
@@ -30,7 +32,7 @@ export function UserLogin() {
 
     if (lockedUntil && Date.now() < lockedUntil) {
       const remaining = Math.ceil((lockedUntil - Date.now()) / 60000)
-      setError(`Trop de tentatives. Réessayez dans ${remaining} minute${remaining > 1 ? 's' : ''}.`)
+      setError(t('auth.tooManyAttempts', { minutes: remaining }))
       return
     }
 
@@ -43,9 +45,9 @@ export function UserLogin() {
       setFailCount(next)
       if (next >= MAX_ATTEMPTS) {
         setLockedUntil(Date.now() + LOCKOUT_MS)
-        setError(`Trop de tentatives incorrectes. Compte bloqué pendant 15 minutes.`)
+        setError(t('auth.accountLocked'))
       } else {
-        setError(`Code PIN ou email incorrect. (${next}/${MAX_ATTEMPTS} tentatives)`)
+        setError(t('auth.wrongPin', { count: String(next), max: String(MAX_ATTEMPTS) }))
       }
       setLoading(false)
       return
@@ -75,18 +77,18 @@ export function UserLogin() {
           className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors"
         >
           <ArrowLeft size={15} />
-          Retour
+          {t('common.back')}
         </Link>
 
         {step === 'email' ? (
           <form onSubmit={handleEmailNext}>
-            <h1 className="text-2xl font-bold text-navy mb-1">Connexion</h1>
-            <p className="text-muted text-sm mb-8">Entrez votre email professionnel.</p>
+            <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.loginTitle')}</h1>
+            <p className="text-muted text-sm mb-8">{t('auth.loginSubtitle')}</p>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                  Email professionnel
+                  {t('auth.professionalEmail')}
                 </label>
                 <input
                   type="email"
@@ -103,7 +105,7 @@ export function UserLogin() {
                 type="submit"
                 className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors"
               >
-                Continuer
+                {t('auth.continue')}
               </button>
             </div>
           </form>
@@ -115,7 +117,7 @@ export function UserLogin() {
               className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors"
             >
               <ArrowLeft size={15} />
-              Changer d'email
+              {t('auth.changeEmail')}
             </button>
 
             <div className="mb-6">
@@ -123,14 +125,14 @@ export function UserLogin() {
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo" />
                 <span className="text-indigo text-xs font-medium truncate max-w-[220px]">{email}</span>
               </div>
-              <h1 className="text-2xl font-bold text-navy mb-1">Code PIN</h1>
-              <p className="text-muted text-sm">Entrez votre code PIN à 6 chiffres.</p>
+              <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.pinTitle')}</h1>
+              <p className="text-muted text-sm">{t('auth.pinSubtitle')}</p>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                  Code PIN
+                  {t('auth.pinLabel')}
                 </label>
                 <input
                   type="tel"
@@ -155,10 +157,10 @@ export function UserLogin() {
                 disabled={pin.length !== 6 || loading}
                 className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {loading ? 'Connexion…' : 'Se connecter'}
+                {loading ? t('auth.connecting') : t('auth.login')}
               </button>
               <p className="text-center text-xs text-faint">
-                <Link to="/recuperation/utilisateur" className="text-indigo hover:underline">Code PIN oublié ?</Link>
+                <Link to="/recuperation/utilisateur" className="text-indigo hover:underline">{t('auth.forgotPin')}</Link>
               </p>
             </div>
           </form>

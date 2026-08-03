@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { serviceError, friendlyError } from '../lib/errors'
+import i18n from '../i18n'
 import type { Channel, Message, ChannelType } from '../lib/types'
 import { CryptoService } from './crypto.service'
 import { KeyService } from './key.service'
@@ -42,7 +43,7 @@ async function decryptRow(row: MessageRow, orgId: string): Promise<Message> {
     const plaintext = await CryptoService.decryptMessage(row.content, convKey)
     return rowToMessage({ ...row, content: plaintext })
   } catch {
-    return rowToMessage({ ...row, content: '[Impossible de déchiffrer]' })
+    return rowToMessage({ ...row, content: i18n.t('messages.decryptFailed') })
   }
 }
 
@@ -147,16 +148,16 @@ export const MessageService = {
       if (c.type === 'direct') {
         const otherId = members.find(id => id !== userId) ?? ''
         const p = profileMap[otherId]
-        name = p ? `${p.firstname ?? ''} ${p.lastname ?? ''}`.trim() || p.email : 'Direct'
+        name = p ? `${p.firstname ?? ''} ${p.lastname ?? ''}`.trim() || p.email : i18n.t('messages.defaultDirect')
       } else if (c.type === 'team' && c.reference_id) {
-        name = teamNameMap[c.reference_id] ?? 'Équipe'
+        name = teamNameMap[c.reference_id] ?? i18n.t('messages.defaultTeam')
       } else {
         name = members
           .filter(id => id !== userId)
           .slice(0, 2)
           .map(id => profileMap[id]?.firstname ?? '')
           .filter(Boolean)
-          .join(', ') || 'Groupe'
+          .join(', ') || i18n.t('messages.defaultGroup')
       }
 
       return {
@@ -223,7 +224,7 @@ export const MessageService = {
     if (cryptoSession.isLoaded) {
       const convKey = await ensureConvKey(conversationId, orgId)
       if (!convKey) {
-        return { message: null, error: 'Clé de chiffrement indisponible pour cette conversation. Rechargez la page.' }
+        return { message: null, error: i18n.t('errors.messageEncryptionKeyUnavailable') }
       }
       try {
         finalContent = await CryptoService.encryptMessage(content, convKey)
@@ -232,7 +233,7 @@ export const MessageService = {
         // Fire-and-forget: non-fatal if it fails; next send will retry.
         KeyService.distributeKeyToMissingMembers(conversationId, orgId, convKey).catch(() => {})
       } catch {
-        return { message: null, error: 'Erreur de chiffrement. Le message n\'a pas été envoyé.' }
+        return { message: null, error: i18n.t('errors.messageEncryptionFailed') }
       }
     }
 
@@ -339,11 +340,11 @@ export const MessageService = {
       'application/zip', 'application/x-zip-compressed',
     ]
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return { path: null, url: null, error: 'Type de fichier non autorisé.' }
+      return { path: null, url: null, error: i18n.t('errors.fileTypeNotAllowed') }
     }
     const MAX_SIZE = 50 * 1024 * 1024
     if (file.size > MAX_SIZE) {
-      return { path: null, url: null, error: 'Fichier trop volumineux (max 50 Mo).' }
+      return { path: null, url: null, error: i18n.t('errors.fileTooLarge50MB') }
     }
 
     let uploadBlob: Blob = file
@@ -351,7 +352,7 @@ export const MessageService = {
     if (cryptoSession.isLoaded) {
       const convKey = await ensureConvKey(conversationId, orgId)
       if (!convKey) {
-        return { path: null, url: null, error: 'Clé de chiffrement indisponible. Rechargez la page.' }
+        return { path: null, url: null, error: i18n.t('errors.encryptionKeyUnavailable') }
       }
       try {
         const buf = await file.arrayBuffer()
@@ -362,7 +363,7 @@ export const MessageService = {
         out.set(new Uint8Array(cipherBuf), 12)
         uploadBlob = new Blob([out], { type: 'application/octet-stream' })
       } catch {
-        return { path: null, url: null, error: 'Erreur de chiffrement du fichier. L\'envoi a été annulé.' }
+        return { path: null, url: null, error: i18n.t('errors.fileEncryptionFailed') }
       }
     }
 
@@ -396,7 +397,7 @@ export const MessageService = {
       if (signErr || !signed) return { error: signErr?.message ?? 'URL introuvable.' }
 
       const response = await fetch(signed.signedUrl)
-      if (!response.ok) return { error: 'Téléchargement échoué.' }
+      if (!response.ok) return { error: i18n.t('errors.downloadFailed') }
       const encBuf = await response.arrayBuffer()
 
       let plainBuf: ArrayBuffer = encBuf

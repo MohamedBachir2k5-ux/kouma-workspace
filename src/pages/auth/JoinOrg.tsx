@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, ChevronDown, Check, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { AuthService } from '../../services/auth.service'
-import { UserService } from '../../services/user.service'
+import { AuthService, ERR_EMAIL_ALREADY_USED } from '../../services/auth.service'
+import { UserService, ERR_ALREADY_MEMBER } from '../../services/user.service'
 import { DepartmentService } from '../../services/department.service'
 import { KeyService } from '../../services/key.service'
 import { useAuth } from '../../contexts/AuthContext'
@@ -115,7 +115,7 @@ export function JoinOrg() {
       phone: form.phone.trim() || undefined,
     })
 
-    if (signUpError === 'Cette adresse email est déjà utilisée.') {
+    if (signUpError === ERR_EMAIL_ALREADY_USED) {
       const { userId: existingId, error: signInError } = await AuthService.signIn({
         email: form.email.trim(),
         password: form.pin,
@@ -149,7 +149,7 @@ export function JoinOrg() {
       jobTitle: form.jobTitle.trim() || undefined,
     })
 
-    if (joinError && joinError !== 'Vous êtes déjà membre de cette organisation.') {
+    if (joinError && joinError !== ERR_ALREADY_MEMBER) {
       setError(joinError)
       setLoading(false)
       return

@@ -42,7 +42,7 @@ function renderInline(text: string): React.ReactNode[] {
 }
 
 // Local structured summary — no AI
-function buildSummary(messages: Message[], _currentUserId: string, nameMap: Record<string, string>, t: (key: string) => string): string {
+function buildSummary(messages: Message[], _currentUserId: string, nameMap: Record<string, string>, t: (key: string) => string, locale: string): string {
   if (messages.length === 0) return t('assistant.summaryNoMessages')
 
   const senderIds = [...new Set(messages.map(m => m.senderId))]
@@ -50,8 +50,8 @@ function buildSummary(messages: Message[], _currentUserId: string, nameMap: Reco
 
   const first = new Date(messages[0].createdAt)
   const last = new Date(messages[messages.length - 1].createdAt)
-  const fmt = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-  const fmtTime = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const fmt = (d: Date) => d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
+  const fmtTime = (d: Date) => d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 
   const dateRange = first.toDateString() === last.toDateString()
     ? `${fmt(first)} · ${fmtTime(first)} → ${fmtTime(last)}`
@@ -124,7 +124,7 @@ const ACTION_LINK_KEYS: Record<string, string> = {
 }
 
 export function Assistant() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { currentUser, currentOrg } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('chat')
@@ -156,8 +156,8 @@ export function Assistant() {
         .select('id, firstname, lastname')
         .in('id', [...new Set(messages.map(m => m.senderId))])
       const nameMap: Record<string, string> = {}
-      ;(profiles ?? []).forEach(p => { nameMap[p.id] = `${p.firstname ?? ''} ${p.lastname ?? ''}`.trim() || 'Membre' })
-      setSummaryText(buildSummary(messages, currentUser.id, nameMap, t))
+      ;(profiles ?? []).forEach(p => { nameMap[p.id] = `${p.firstname ?? ''} ${p.lastname ?? ''}`.trim() || t('assistant.summaryMember') })
+      setSummaryText(buildSummary(messages, currentUser.id, nameMap, t, i18n.language))
     } catch {
       setSummaryText(t('assistant.summaryLoadError'))
     } finally {

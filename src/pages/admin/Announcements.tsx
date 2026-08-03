@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pin, PinOff, Pencil, Trash2, Megaphone, Loader2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AnnouncementService, type Announcement } from '../../services/announcement.service'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/utils'
@@ -13,6 +14,7 @@ function AnnouncementModal({
   onClose: () => void
   onSaved: (a: Announcement) => void
 }) {
+  const { t } = useTranslation()
   const { currentOrg, currentUser } = useAuth()
   const [title, setTitle] = useState(existing?.title ?? '')
   const [body, setBody] = useState(existing?.body ?? '')
@@ -43,7 +45,7 @@ function AnnouncementModal({
         pinned,
       )
       setSaving(false)
-      if (err || !announcement) { setError(err ?? 'Erreur.'); return }
+      if (err || !announcement) { setError(err ?? t('announcements.creationError')); return }
       onSaved(announcement)
     }
     onClose()
@@ -60,7 +62,7 @@ function AnnouncementModal({
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-bold text-navy text-lg">
-            {existing ? 'Modifier l\'annonce' : 'Nouvelle annonce'}
+            {existing ? t('admin.editAnnouncement') : t('announcements.newAnnouncement')}
           </h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg">
             <X size={16} />
@@ -69,22 +71,22 @@ function AnnouncementModal({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Titre *</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('announcements.announcementTitleLabel')} *</label>
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
               autoFocus
-              placeholder="Titre de l'annonce"
+              placeholder={t('announcements.announcementTitlePlaceholder')}
               className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Contenu *</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('announcements.announcementContentLabel')} *</label>
             <textarea
               value={body}
               onChange={e => setBody(e.target.value)}
               rows={6}
-              placeholder="Rédigez votre annonce…"
+              placeholder={t('announcements.announcementContentPlaceholder')}
               className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo"
             />
           </div>
@@ -95,7 +97,7 @@ function AnnouncementModal({
               onChange={e => setPinned(e.target.checked)}
               className="w-4 h-4 rounded accent-indigo"
             />
-            <span className="text-sm text-ink">Épingler cette annonce (visible en tête de liste)</span>
+            <span className="text-sm text-ink">{t('announcements.pinThis')}</span>
           </label>
         </div>
 
@@ -108,7 +110,7 @@ function AnnouncementModal({
             onClick={onClose}
             className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors"
           >
-            Annuler
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -116,7 +118,7 @@ function AnnouncementModal({
             className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2 transition-opacity"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
-            {existing ? 'Enregistrer' : 'Publier'}
+            {existing ? t('common.save') : t('announcements.publish')}
           </button>
         </div>
       </div>
@@ -125,6 +127,7 @@ function AnnouncementModal({
 }
 
 export function AdminAnnouncements() {
+  const { t } = useTranslation()
   const { currentOrg, currentUser } = useAuth()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,7 +155,7 @@ export function AdminAnnouncements() {
   }
 
   async function handleDelete(ann: Announcement) {
-    if (!window.confirm(`Supprimer l'annonce « ${ann.title} » ? Cette action est irréversible.`)) return
+    if (!window.confirm(t('admin.announcementDeleteConfirm', { title: ann.title }))) return
     setDeletingId(ann.id)
     await AnnouncementService.delete(ann.id)
     setAnnouncements(prev => prev.filter(a => a.id !== ann.id))
@@ -166,9 +169,11 @@ export function AdminAnnouncements() {
     <div className="p-4 md:p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-ink">Annonces</h1>
+          <h1 className="text-xl font-bold text-ink">{t('admin.announcementsTitle')}</h1>
           <p className="text-sm text-muted mt-0.5">
-            {announcements.length} annonce{announcements.length !== 1 ? 's' : ''} · {pinned.length} épinglée{pinned.length !== 1 ? 's' : ''}
+            {t(announcements.length !== 1 ? 'admin.announcementsCountPlural' : 'admin.announcementsCount', { count: String(announcements.length) })}
+            {' · '}
+            {t(pinned.length !== 1 ? 'admin.pinnedCountPlural' : 'admin.pinnedCount', { count: String(pinned.length) })}
           </p>
         </div>
         <button
@@ -176,7 +181,7 @@ export function AdminAnnouncements() {
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
         >
           <Plus size={16} />
-          <span className="hidden sm:inline">Nouvelle annonce</span>
+          <span className="hidden sm:inline">{t('announcements.newAnnouncement')}</span>
         </button>
       </div>
 
@@ -189,12 +194,12 @@ export function AdminAnnouncements() {
       {!loading && announcements.length === 0 && (
         <div className="py-20 text-center">
           <Megaphone size={36} className="text-faint mx-auto mb-3" />
-          <p className="text-sm text-muted mb-4">Aucune annonce publiée.</p>
+          <p className="text-sm text-muted mb-4">{t('announcements.noAnnouncements')}</p>
           <button
             onClick={() => { setEditing(null); setShowModal(true) }}
             className="px-4 py-2.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
           >
-            Publier la première annonce
+            {t('announcements.publishFirst')}
           </button>
         </div>
       )}
@@ -218,7 +223,7 @@ export function AdminAnnouncements() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-semibold text-ink">{ann.title}</h3>
                       {ann.pinned && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-amber/10 text-amber-600 rounded-full">Épinglée</span>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-amber/10 text-amber-600 rounded-full">{t('admin.announcementPinned')}</span>
                       )}
                     </div>
                     <p className="text-[11px] text-faint mt-0.5">{formatDate(ann.createdAt)}</p>
@@ -229,14 +234,14 @@ export function AdminAnnouncements() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => togglePin(ann)}
-                    title={ann.pinned ? 'Désépingler' : 'Épingler'}
+                    title={ann.pinned ? t('admin.unpin') : t('admin.pin')}
                     className="p-2 rounded-lg text-muted hover:text-amber-500 hover:bg-amber/10 transition-colors"
                   >
                     {ann.pinned ? <PinOff size={15} /> : <Pin size={15} />}
                   </button>
                   <button
                     onClick={() => { setEditing(ann); setShowModal(true) }}
-                    title="Modifier"
+                    title={t('common.edit')}
                     className="p-2 rounded-lg text-muted hover:text-indigo hover:bg-indigo/10 transition-colors"
                   >
                     <Pencil size={15} />
@@ -244,7 +249,7 @@ export function AdminAnnouncements() {
                   <button
                     onClick={() => handleDelete(ann)}
                     disabled={deletingId === ann.id}
-                    title="Supprimer"
+                    title={t('common.delete')}
                     className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-40"
                   >
                     {deletingId === ann.id

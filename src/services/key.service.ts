@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { serviceError, friendlyError } from '../lib/errors'
 import { CryptoService } from './crypto.service'
 import { cryptoSession } from '../lib/crypto-session'
+import i18n from '../i18n'
 
 export interface OrgRecoverySetup {
   breakglassPhrase: string  // 4 groups of 8 hex chars — admin must write this down
@@ -20,7 +21,7 @@ export const KeyService = {
   // from secret, stores in user_key_pairs.
   async generateAndStoreUserKeys(userId: string, secret: string): Promise<{ error: string | null }> {
     if (!crypto?.subtle) {
-      return { error: 'Web Crypto API indisponible. Accédez à l\'application via HTTPS ou localhost.' }
+      return { error: i18n.t('errors.cryptoApiUnavailable') }
     }
     try {
       const pair = await CryptoService.generateUserKeyPair()
@@ -60,7 +61,7 @@ export const KeyService = {
         .eq('user_id', userId)
         .single()
 
-      if (error || !data) return { ok: false, error: 'Clés introuvables.' }
+      if (error || !data) return { ok: false, error: i18n.t('errors.keysNotFound') }
 
       const kwk = await CryptoService.deriveKWK(secret, data.kdf_salt)
       const priv = await CryptoService.unwrapPrivateKey(data.encrypted_private_key, data.kdf_iv, kwk)
@@ -70,7 +71,7 @@ export const KeyService = {
       return { ok: true, error: null }
     } catch {
       // Decryption failure = wrong PIN/password
-      return { ok: false, error: 'Code PIN ou mot de passe incorrect.' }
+      return { ok: false, error: i18n.t('errors.wrongPinOrPassword') }
     }
   },
 
@@ -78,7 +79,7 @@ export const KeyService = {
   // Does NOT change the key pair — only re-encrypts with the new KWK.
   async rewrapPrivateKey(userId: string, newSecret: string): Promise<{ error: string | null }> {
     const priv = cryptoSession.userPriv
-    if (!priv) return { error: 'Session non chargée.' }
+    if (!priv) return { error: i18n.t('errors.sessionNotLoaded') }
     try {
       const salt = CryptoService.generateSalt()
       const kwk = await CryptoService.deriveKWK(newSecret, salt)
@@ -119,7 +120,7 @@ export const KeyService = {
   ): Promise<{ breakglassPhrase: string; error: string | null }> {
     const priv = cryptoSession.userPriv
     const pub = cryptoSession.userPub
-    if (!priv || !pub) return { breakglassPhrase: '', error: 'Session non chargée.' }
+    if (!priv || !pub) return { breakglassPhrase: '', error: i18n.t('errors.sessionNotLoaded') }
 
     try {
       // 1. Generate org recovery key pair
@@ -160,11 +161,11 @@ export const KeyService = {
     newAdminUserId: string,
   ): Promise<{ error: string | null }> {
     const actorPriv = cryptoSession.userPriv
-    if (!actorPriv) return { error: 'Session non chargée.' }
+    if (!actorPriv) return { error: i18n.t('errors.sessionNotLoaded') }
 
     try {
       const actorId = (await supabase.auth.getUser()).data.user?.id
-      if (!actorId) return { error: 'Utilisateur non authentifié.' }
+      if (!actorId) return { error: i18n.t('errors.userNotAuthenticated') }
 
       // Load actor's encrypted recovery key
       const { data: row, error: fetchError } = await supabase
@@ -174,7 +175,7 @@ export const KeyService = {
         .eq('admin_user_id', actorId)
         .single()
 
-      if (fetchError || !row) return { error: 'Clés de récupération introuvables.' }
+      if (fetchError || !row) return { error: i18n.t('errors.recoveryKeysNotFound') }
 
       // Decrypt org_recovery_priv
       const recoveryPriv = await CryptoService.eciesUnwrapPrivateKey(
@@ -183,7 +184,7 @@ export const KeyService = {
 
       // Load new admin's public key
       const newAdminPub = await this.getUserPublicKey(newAdminUserId)
-      if (!newAdminPub) return { error: 'Clé publique du nouvel administrateur introuvable.' }
+      if (!newAdminPub) return { error: i18n.t('errors.newAdminPublicKeyNotFound') }
 
       // ECIES-wrap for new admin
       const newWrap = await CryptoService.eciesWrapKey(recoveryPriv, newAdminPub, orgId, 'pkcs8')
@@ -362,11 +363,11 @@ export const KeyService = {
     orgId: string,
   ): Promise<{ key: CryptoKey | null; error: string | null }> {
     const pub = cryptoSession.userPub
-    if (!pub) return { key: null, error: 'Session non chargée.' }
+    if (!pub) return { key: null, error: i18n.t('errors.sessionNotLoaded') }
 
     try {
       const userId = (await supabase.auth.getUser()).data.user?.id
-      if (!userId) return { key: null, error: 'Non authentifié.' }
+      if (!userId) return { key: null, error: i18n.t('errors.notAuthenticated') }
 
       const fileKey = await CryptoService.generateSymmetricKey()
 

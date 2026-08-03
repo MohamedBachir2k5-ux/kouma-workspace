@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { RecoveryService } from '../../services/recovery.service'
 
 type Step = 'email' | 'otp' | 'credentials' | 'done'
@@ -13,6 +14,7 @@ function getDeviceInfo(): string {
 }
 
 export function AdminRecovery() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('email')
   const [loading, setLoading] = useState(false)
@@ -49,7 +51,7 @@ export function AdminRecovery() {
 
     if (otpLockedUntil && Date.now() < otpLockedUntil) {
       const remaining = Math.ceil((otpLockedUntil - Date.now()) / 60000)
-      setError(`Trop de tentatives. Réessayez dans ${remaining} minute${remaining > 1 ? 's' : ''}.`)
+      setError(t('auth.tooManyAttempts', { minutes: remaining }))
       return
     }
 
@@ -61,16 +63,16 @@ export function AdminRecovery() {
       setOtpAttempts(next)
       if (next >= OTP_MAX) {
         setOtpLockedUntil(Date.now() + OTP_LOCKOUT_MS)
-        setError('Trop de tentatives. Attendez 2 minutes avant de réessayer.')
+        setError(t('auth.otpLocked'))
       } else {
-        setError(err ?? `Code invalide. (${next}/${OTP_MAX} tentatives)`)
+        setError(err ?? t('auth.invalidCode', { count: String(next), max: String(OTP_MAX) }))
       }
       setLoading(false)
       return
     }
 
     const oid = await RecoveryService.getOrgIdForUser(uid)
-    if (!oid) { setError('Organisation introuvable pour ce compte.'); setLoading(false); return }
+    if (!oid) { setError(t('auth.orgNotFound')); setLoading(false); return }
 
     setUserId(uid)
     setOrgId(oid)
@@ -100,7 +102,7 @@ export function AdminRecovery() {
 
       <div className="w-full max-w-sm">
         <Link to="/connexion/admin" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors">
-          <ArrowLeft size={15} /> Retour à la connexion
+          <ArrowLeft size={15} /> {t('auth.backToLogin')}
         </Link>
 
         <div className="bg-surface rounded-2xl border border-border p-6">
@@ -113,12 +115,12 @@ export function AdminRecovery() {
                   <ShieldCheck size={18} className="text-amber" />
                 </div>
                 <div>
-                  <h1 className="text-base font-bold text-navy">Récupération admin</h1>
-                  <p className="text-xs text-muted">Via la phrase de récupération d'urgence</p>
+                  <h1 className="text-base font-bold text-navy">{t('auth.adminRecoveryTitle')}</h1>
+                  <p className="text-xs text-muted">{t('auth.adminRecoverySubtitle')}</p>
                 </div>
               </div>
               <p className="text-xs text-muted leading-relaxed mb-5">
-                Un code de vérification sera envoyé à votre adresse email. Vous aurez besoin de votre <strong className="text-ink">phrase de récupération breakglass</strong>.
+                {t('auth.adminRecoveryDesc')}
               </p>
               <div className="space-y-3">
                 <input
@@ -135,7 +137,7 @@ export function AdminRecovery() {
                   disabled={!email.trim() || loading}
                   className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
-                  {loading ? 'Envoi…' : 'Recevoir le code'}
+                  {loading ? t('auth.sending') : t('auth.sendCode')}
                 </button>
               </div>
             </>
@@ -144,8 +146,8 @@ export function AdminRecovery() {
           {/* Step: OTP */}
           {step === 'otp' && (
             <>
-              <h1 className="text-base font-bold text-navy mb-1">Code de vérification</h1>
-              <p className="text-sm text-muted mb-5">Entrez le code à 6 chiffres envoyé à <strong className="text-ink">{email}</strong>.</p>
+              <h1 className="text-base font-bold text-navy mb-1">{t('auth.otpTitle')}</h1>
+              <p className="text-sm text-muted mb-5">{t('auth.otpDesc', { email })}</p>
               <div className="space-y-3">
                 <input
                   type="tel"
@@ -163,10 +165,10 @@ export function AdminRecovery() {
                   disabled={otp.length !== 6 || loading}
                   className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
-                  {loading ? 'Vérification…' : 'Vérifier le code'}
+                  {loading ? t('auth.verifying') : t('auth.verifyCode')}
                 </button>
                 <button onClick={() => { setStep('email'); setOtp(''); setError(null) }} className="w-full text-xs text-muted hover:text-ink transition-colors">
-                  Renvoyer le code
+                  {t('auth.resendCode')}
                 </button>
               </div>
             </>
@@ -175,14 +177,14 @@ export function AdminRecovery() {
           {/* Step: phrase + new password */}
           {step === 'credentials' && (
             <>
-              <h1 className="text-base font-bold text-navy mb-1">Phrase & nouveau mot de passe</h1>
+              <h1 className="text-base font-bold text-navy mb-1">{t('auth.phraseAndPassword')}</h1>
               <p className="text-xs text-muted leading-relaxed mb-5">
-                Entrez votre phrase de récupération breakglass et choisissez un nouveau mot de passe.
+                {t('auth.phraseAndPasswordDesc')}
               </p>
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                    Phrase de récupération
+                    {t('auth.recoveryPhrase')}
                   </label>
                   <input
                     type="text"
@@ -195,7 +197,7 @@ export function AdminRecovery() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                    Nouveau mot de passe
+                    {t('auth.newPassword')}
                   </label>
                   <div className="relative">
                     <input
@@ -213,7 +215,7 @@ export function AdminRecovery() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">
-                    Confirmer le mot de passe
+                    {t('auth.confirmPassword')}
                   </label>
                   <input
                     type="password"
@@ -229,7 +231,7 @@ export function AdminRecovery() {
                   disabled={!phrase.trim() || password.length < 6 || password !== confirmPassword || loading}
                   className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
-                  {loading ? 'Récupération en cours…' : 'Récupérer mon accès'}
+                  {loading ? t('auth.recovering') : t('auth.recoverAccess')}
                 </button>
               </div>
             </>
@@ -241,15 +243,15 @@ export function AdminRecovery() {
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-success/10 mx-auto mb-4">
                 <ShieldCheck size={22} className="text-success" />
               </div>
-              <h1 className="text-base font-bold text-navy mb-2">Accès récupéré</h1>
+              <h1 className="text-base font-bold text-navy mb-2">{t('auth.accessRecovered')}</h1>
               <p className="text-sm text-muted mb-6 leading-relaxed">
-                Votre compte a été restauré. Connectez-vous avec votre nouveau mot de passe.
+                {t('auth.accessRecoveredDesc')}
               </p>
               <button
                 onClick={() => navigate('/connexion/admin', { replace: true })}
                 className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
               >
-                Se connecter
+                {t('auth.login')}
               </button>
             </div>
           )}

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { AuditLog, AuditAction } from '../lib/types'
 import type { Tables } from '../lib/database.types'
+import i18n from '../i18n'
 
 type AuditLogRow = Tables<'audit_logs'>
 
@@ -54,20 +55,21 @@ export const AuditService = {
 
   describe(log: AuditLog): string {
     const name = log.targetName ?? ''
+    const t = i18n.t.bind(i18n)
     const descriptions: Partial<Record<AuditAction, string>> = {
-      organization_created: "a créé l'organisation",
-      user_joined:          'a rejoint le workspace',
-      user_suspended:       'a été suspendu',
-      user_revoked:         'a été révoqué',
-      user_activated:       'a été réactivé',
-      invite_generated:     "a généré un lien d'invitation",
-      team_created:         `a créé l'équipe ${name}`,
-      team_updated:         `a modifié l'équipe ${name}`,
-      team_deleted:         `a supprimé l'équipe ${name}`,
-      document_added:       `a importé ${name}`,
-      document_deleted:     `a supprimé ${name}`,
-      subscription_changed: "a modifié l'abonnement",
-      permission_changed:   `a modifié les permissions de ${name}`,
+      organization_created: t('audit.organizationCreated'),
+      user_joined:          t('audit.userJoined'),
+      user_suspended:       t('audit.userSuspended'),
+      user_revoked:         t('audit.userRevoked'),
+      user_activated:       t('audit.userActivated'),
+      invite_generated:     t('audit.inviteGenerated'),
+      team_created:         t('audit.teamCreated', { name }),
+      team_updated:         t('audit.teamUpdated', { name }),
+      team_deleted:         t('audit.teamDeleted', { name }),
+      document_added:       t('audit.documentAdded', { name }),
+      document_deleted:     t('audit.documentDeleted', { name }),
+      subscription_changed: t('audit.subscriptionChanged'),
+      permission_changed:   t('audit.permissionChanged', { name }),
     }
     return descriptions[log.action] ?? log.action
   },

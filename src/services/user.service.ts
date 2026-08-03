@@ -2,6 +2,10 @@ import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
 import type { User } from '../lib/types'
 import { serviceError, friendlyError } from '../lib/errors'
+import i18n from '../i18n'
+
+// Internal sentinel for "user is already a member" — swallowed by callers as a no-op success
+export const ERR_ALREADY_MEMBER = 'ALREADY_MEMBER'
 
 export const UserService = {
   async getById(id: string): Promise<ProfileRow | null> {
@@ -135,7 +139,14 @@ export const UserService = {
     })
     if (error) return { error: friendlyError(error.message) }
     const result = data as { error: string | null } | null
-    return { error: result?.error ?? null }
+    const rpcError = result?.error ?? null
+    if (rpcError) {
+      if (/déjà membre/i.test(rpcError)) return { error: ERR_ALREADY_MEMBER }
+      if (/invitation invalide|expiré/i.test(rpcError)) return { error: i18n.t('joinOrg.expiredLink') }
+      if (/non autorisée/i.test(rpcError)) return { error: i18n.t('errors.accessDenied') }
+      return { error: rpcError }
+    }
+    return { error: null }
   },
 
   async getByOrganizationWithRole(organizationId: string): Promise<User[]> {
@@ -249,7 +260,7 @@ export const UserService = {
     await supabase.rpc('notify_users', {
       p_user_ids: [targetUserId],
       p_type: 'role_changed',
-      p_payload: { text: "Vous avez été promu administrateur de l'organisation." },
+      p_payload: { text: i18n.t('notifications.promotedToAdmin') },
     })
 
     return { error: null }
@@ -305,7 +316,7 @@ export const UserService = {
     await supabase.rpc('notify_users', {
       p_user_ids: [targetUserId],
       p_type: 'role_changed',
-      p_payload: { text: "Vos droits d'administration ont été révoqués." },
+      p_payload: { text: i18n.t('notifications.adminRightsRevoked') },
     })
 
     return { error: null }
@@ -317,10 +328,10 @@ export const UserService = {
     const path = `${orgId}/avatars/${userId}.${ext}`
     const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return { avatarUrl: null, error: 'Format d\'image non autorisé (PNG, JPG, GIF, WebP).' }
+      return { avatarUrl: null, error: i18n.t('errors.avatarFormatNotAllowed') }
     }
     if (file.size > 5 * 1024 * 1024) {
-      return { avatarUrl: null, error: 'Image trop volumineuse (max 5 Mo).' }
+      return { avatarUrl: null, error: i18n.t('errors.avatarTooLarge') }
     }
     const { error: uploadErr } = await supabase.storage
       .from('attachments')

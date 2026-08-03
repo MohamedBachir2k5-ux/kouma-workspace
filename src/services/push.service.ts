@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import i18n from '../i18n'
 
 export const PushService = {
   isSupported(): boolean {
@@ -12,10 +13,10 @@ export const PushService = {
   },
 
   async subscribe(userId: string): Promise<{ error: string | null }> {
-    if (!this.isSupported()) return { error: 'Notifications push non supportées sur ce navigateur.' }
+    if (!this.isSupported()) return { error: i18n.t('errors.pushNotSupported') }
 
     const permission = await this.getPermission()
-    if (permission !== 'granted') return { error: 'Permission de notification refusée.' }
+    if (permission !== 'granted') return { error: i18n.t('errors.pushPermissionDenied') }
 
     try {
       const registration = await navigator.serviceWorker.ready

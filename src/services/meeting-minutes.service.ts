@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { serviceError, friendlyError } from '../lib/errors'
+import i18n from '../i18n'
 import type { MeetingMinutes, MeetingAction } from '../lib/types'
 
 function toMinutes(row: Record<string, unknown>, actions: MeetingAction[] = []): MeetingMinutes {
@@ -66,7 +67,7 @@ export const MeetingMinutesService = {
       .select()
       .single()
 
-    if (error || !row) return { minutes: null, error: friendlyError(error?.message) ?? 'Erreur création compte rendu' }
+    if (error || !row) return { minutes: null, error: friendlyError(error?.message) ?? i18n.t('errors.minutesCreationError') }
 
     const minutesId = (row as Record<string, unknown>).id as string
     let savedActions: MeetingAction[] = []

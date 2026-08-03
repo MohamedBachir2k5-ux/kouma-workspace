@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AuthService } from '../../services/auth.service'
 import { KeyService } from '../../services/key.service'
 import { OrganizationService } from '../../services/organization.service'
 
 export function AdminLogin() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -24,7 +26,7 @@ export function AdminLogin() {
 
     if (lockedUntil && Date.now() < lockedUntil) {
       const remaining = Math.ceil((lockedUntil - Date.now()) / 60000)
-      setError(`Trop de tentatives. Réessayez dans ${remaining} minute${remaining > 1 ? 's' : ''}.`)
+      setError(t('auth.tooManyAttempts', { minutes: remaining }))
       return
     }
 
@@ -37,9 +39,9 @@ export function AdminLogin() {
       setFailCount(next)
       if (next >= MAX_ATTEMPTS) {
         setLockedUntil(Date.now() + LOCKOUT_MS)
-        setError('Trop de tentatives incorrectes. Compte bloqué pendant 15 minutes.')
+        setError(t('auth.accountLocked'))
       } else {
-        setError(`Identifiants incorrects. (${next}/${MAX_ATTEMPTS} tentatives)`)
+        setError(t('auth.wrongCredentials', { count: String(next), max: String(MAX_ATTEMPTS) }))
       }
       setLoading(false)
       return
@@ -66,22 +68,22 @@ export function AdminLogin() {
       <div className="w-full max-w-sm">
         <Link to="/connexion" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors">
           <ArrowLeft size={15} />
-          Retour
+          {t('common.back')}
         </Link>
 
         <div className="mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-navy/5 rounded-lg mb-5">
             <div className="w-1.5 h-1.5 rounded-full bg-navy" />
-            <span className="text-navy text-xs font-semibold uppercase tracking-wide">Espace administrateur</span>
+            <span className="text-navy text-xs font-semibold uppercase tracking-wide">{t('auth.adminBadge')}</span>
           </div>
-          <h1 className="text-2xl font-bold text-navy mb-1">Console d'administration</h1>
-          <p className="text-muted text-sm">Connectez-vous avec les identifiants de votre organisation.</p>
+          <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.adminTitle')}</h1>
+          <p className="text-muted text-sm">{t('auth.adminSubtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-              Email de l'organisation
+              {t('auth.orgEmail')}
             </label>
             <input
               type="email"
@@ -96,7 +98,7 @@ export function AdminLogin() {
 
           <div>
             <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-              Mot de passe
+              {t('auth.password')}
             </label>
             <div className="relative">
               <input
@@ -127,12 +129,12 @@ export function AdminLogin() {
             disabled={loading}
             className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-50"
           >
-            {loading ? 'Connexion…' : 'Accéder à la console'}
+            {loading ? t('auth.connecting') : t('auth.accessConsole')}
           </button>
         </form>
 
         <p className="mt-5 text-center text-xs text-faint">
-          <Link to="/recuperation/admin" className="text-indigo hover:underline">Mot de passe oublié ?</Link>
+          <Link to="/recuperation/admin" className="text-indigo hover:underline">{t('auth.forgotPassword')}</Link>
         </p>
       </div>
     </div>

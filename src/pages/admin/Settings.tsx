@@ -92,7 +92,7 @@ export function AdminSettings() {
       updateCurrentOrg({ logoUrl })
     } else {
       setLogoPreview(currentOrg.logoUrl)
-      setLogoError(error ?? 'Échec du téléversement du logo.')
+      setLogoError(error ?? t('settings.logoUploadError'))
     }
   }
 
@@ -104,7 +104,7 @@ export function AdminSettings() {
     setUpgrading(false)
     if (error) { setUpgradeError(error); return }
     if (redirectUrl) { window.location.href = redirectUrl; return }
-    setUpgradeError('Le service de paiement est temporairement indisponible. Réessayez dans quelques instants.')
+    setUpgradeError(t('settings.paymentUnavailable'))
   }
 
   async function save() {
@@ -194,11 +194,11 @@ export function AdminSettings() {
           </div>
 
           {[
-            { field: 'name',    label: "Nom de l'organisation", placeholder: "Nom de votre organisation" },
-            { field: 'email',   label: 'Email administrateur',  placeholder: 'admin@organisation.com' },
-            { field: 'phone',   label: 'Téléphone',             placeholder: '+XX XXXX XXXX' },
-            { field: 'website', label: 'Site web',              placeholder: 'https://www.organisation.com' },
-            { field: 'city',    label: 'Ville',                 placeholder: 'Votre ville' },
+            { field: 'name',    label: t('settings.orgName'),    placeholder: t('settings.orgNamePlaceholder') },
+            { field: 'email',   label: t('settings.adminEmail'), placeholder: 'admin@organisation.com' },
+            { field: 'phone',   label: t('settings.phone'),      placeholder: '+XX XXXX XXXX' },
+            { field: 'website', label: t('settings.website'),    placeholder: 'https://www.organisation.com' },
+            { field: 'city',    label: t('settings.city'),       placeholder: t('settings.cityPlaceholder') },
           ].map(({ field, label, placeholder }) => (
             <div key={field}>
               <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{label}</label>
@@ -209,11 +209,16 @@ export function AdminSettings() {
           ))}
 
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Secteur</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('settings.sector')}</label>
             <select value={orgForm.type} onChange={e => update('type', e.target.value)}
               className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy appearance-none">
-              <option value="">-- Choisir un secteur --</option>
-              {['Secteur privé', 'Secteur public', 'Organisation à but non lucratif', 'Autre'].map(t => <option key={t}>{t}</option>)}
+              <option value="">{t('settings.sectorPlaceholder')}</option>
+              {([
+                { value: 'Secteur privé',                    label: t('settings.sectorPrivate') },
+                { value: 'Secteur public',                    label: t('settings.sectorPublic') },
+                { value: 'Organisation à but non lucratif',   label: t('settings.sectorNpo') },
+                { value: 'Autre',                             label: t('settings.sectorOther') },
+              ]).map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
             </select>
           </div>
 
@@ -230,7 +235,7 @@ export function AdminSettings() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">Taille</label>
+            <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('settings.size')}</label>
             <div className="flex items-center justify-between w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink">
               <span>{memberCount} {memberCount > 1 ? t('common.collaborators') : t('common.collaborator')}</span>
               <span className="text-xs text-faint">{t('settings.sizeAuto')}</span>
@@ -265,12 +270,12 @@ export function AdminSettings() {
               </div>
               <div className="text-right">
                 {planPrices.monthly === 0 ? (
-                  <div className="text-white font-bold">Gratuit</div>
+                  <div className="text-white font-bold">{t('settings.priceFree')}</div>
                 ) : (
                   <>
                     <div className="text-indigo-light text-xs line-through">{formatPrice(planPrices.monthly, currency)}</div>
                     <div className="text-white font-bold">{formatPrice(discounted, currency)}</div>
-                    <div className="text-indigo-light text-xs">par mois · −{planPrices.discountPercent}% lancement</div>
+                    <div className="text-indigo-light text-xs">{t('settings.perMonthDiscount', { percent: String(planPrices.discountPercent) })}</div>
                   </>
                 )}
               </div>
@@ -304,25 +309,25 @@ export function AdminSettings() {
           {nextPlan && otherPrices && (
             <div className="bg-surface rounded-xl border border-border p-6">
               <h2 className="text-sm font-bold text-ink mb-3">
-                Passer au plan {nextPlan === 'business' ? 'Business' : 'Enterprise'}
+                {t(nextPlan === 'business' ? 'settings.upgradeBusiness' : 'settings.upgradeEnterprise')}
               </h2>
               <p className="text-sm text-muted mb-4 leading-relaxed">
                 {nextPlan === 'business'
-                  ? `Plus de ${userLimit} collaborateurs ou besoin de ${STORAGE.business} ? Le plan Business offre plus de capacité avec les mêmes fonctionnalités. Essai de ${TRIAL_DAYS} jours inclus.`
-                  : `Plus de ${PLAN_USER_LIMITS.business} collaborateurs ou besoin de ${STORAGE.enterprise} ? Le plan Enterprise offre une capacité illimitée avec les mêmes fonctionnalités.`
+                  ? t('settings.upgradeDesc', { storage: STORAGE.business, trial: String(TRIAL_DAYS) })
+                  : t('settings.upgradeDescEnterprise', { count: String(PLAN_USER_LIMITS.business), storage: STORAGE.enterprise })
                 }
               </p>
               <div className="flex items-center justify-between p-4 bg-bg rounded-xl mb-4">
                 <div>
                   <div className="font-bold text-navy capitalize">{nextPlan}</div>
                   <div className="text-xs text-muted">
-                    {PLAN_USER_LIMITS[nextPlan] ? `Jusqu'à ${PLAN_USER_LIMITS[nextPlan]} utilisateurs` : 'Utilisateurs illimités'} · {STORAGE[nextPlan]}
+                    {PLAN_USER_LIMITS[nextPlan] ? t('settings.upToUsers', { count: String(PLAN_USER_LIMITS[nextPlan]) }) : t('settings.unlimitedUsers')} · {STORAGE[nextPlan]}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-faint line-through">{formatPrice(otherPrices.monthly, currency)}/mois</div>
-                  <div className="font-bold text-navy">{formatPrice(otherDiscounted, currency)}/mois</div>
-                  <div className="text-xs text-indigo">−{otherPrices.discountPercent}% première année</div>
+                  <div className="text-xs text-faint line-through">{formatPrice(otherPrices.monthly, currency)}{t('pricing.monthly')}</div>
+                  <div className="font-bold text-navy">{formatPrice(otherDiscounted, currency)}{t('pricing.monthly')}</div>
+                  <div className="text-xs text-indigo">{t('settings.firstYearDiscount', { percent: String(otherPrices.discountPercent) })}</div>
                 </div>
               </div>
               {upgradeError && (
@@ -331,7 +336,7 @@ export function AdminSettings() {
               <button onClick={handleUpgrade} disabled={upgrading}
                 className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2">
                 {upgrading && <Loader2 size={15} className="animate-spin" />}
-                {upgrading ? 'Redirection...' : `Passer au plan ${nextPlan === 'business' ? 'Business' : 'Enterprise'}`}
+                {upgrading ? t('settings.redirecting') : t(nextPlan === 'business' ? 'settings.upgradeBusiness' : 'settings.upgradeEnterprise')}
               </button>
             </div>
           )}
@@ -340,13 +345,13 @@ export function AdminSettings() {
 
       {section === 'notifs' && (
         <div>
-        {notifSaved && <p className="text-xs text-success mb-3 px-1">Préférences enregistrées.</p>}
+        {notifSaved && <p className="text-xs text-success mb-3 px-1">{t('settings.notifsSaved')}</p>}
         <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
           {([
-            { key: 'invites',  label: 'Nouveaux membres invités',     desc: "Notifier lorsqu'un membre accepte une invitation" },
-            { key: 'storage',  label: 'Alertes de stockage',          desc: "Notifier à 80 % et 95 % de l'espace utilisé" },
-            { key: 'failures', label: 'Connexions échouées',          desc: 'Alerter après 5 tentatives consécutives' },
-            { key: 'upgrade',  label: 'Passage automatique Business', desc: `Notifier si l'équipe dépasse ${userLimit ?? 100} utilisateurs` },
+            { key: 'invites',  label: t('settings.newMembersNotif'), desc: t('settings.newMembersDesc') },
+            { key: 'storage',  label: t('settings.storageAlerts'),   desc: t('settings.storageAlertsDesc') },
+            { key: 'failures', label: t('settings.failedLogins'),    desc: t('settings.failedLoginsDesc') },
+            { key: 'upgrade',  label: t('settings.autoUpgrade'),     desc: t('settings.autoUpgradeDesc', { count: String(userLimit ?? 100) }) },
           ] as const).map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between px-5 py-4">
               <div>
@@ -384,7 +389,7 @@ export function AdminSettings() {
                 <option key={code} value={code}>{label} ({code})</option>
               ))}
             </select>
-            <p className="text-xs text-faint mt-1">Utilisée pour les prix et l'abonnement.</p>
+            <p className="text-xs text-faint mt-1">{t('settings.currencyHint')}</p>
           </div>
 
           {/* Primary color */}
@@ -430,7 +435,7 @@ export function AdminSettings() {
               <div className="ml-auto">
                 <div className="px-4 py-2 rounded-lg text-white text-xs font-semibold"
                   style={{ backgroundColor: orgForm.primaryColor }}>
-                  Bouton
+                  {t('settings.colorPreviewButton')}
                 </div>
               </div>
             </div>
@@ -446,7 +451,7 @@ export function AdminSettings() {
       )}
       {/* Guide & Support */}
       <div className="mt-6 bg-surface rounded-xl border border-border p-5">
-        <h2 className="text-sm font-bold text-ink mb-4">Guide &amp; Support</h2>
+        <h2 className="text-sm font-bold text-ink mb-4">{t('settings.guideTitle')}</h2>
         <div className="space-y-3">
           <a href={SUPPORT_GUIDE_URL} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-bg transition-colors group">
@@ -454,8 +459,8 @@ export function AdminSettings() {
               <BookOpen size={15} className="text-indigo" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-ink">Guide d'utilisation</div>
-              <div className="text-xs text-muted">Documentation complète de la plateforme</div>
+              <div className="text-sm font-medium text-ink">{t('settings.guideUserTitle')}</div>
+              <div className="text-xs text-muted">{t('settings.guideUserDesc')}</div>
             </div>
             <ExternalLink size={13} className="text-faint group-hover:text-muted transition-colors shrink-0" />
           </a>
@@ -466,7 +471,7 @@ export function AdminSettings() {
               <Mail size={15} className="text-success" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-ink">Email de support</div>
+              <div className="text-sm font-medium text-ink">{t('settings.supportEmailLabel')}</div>
               <div className="text-xs text-muted">{SUPPORT_EMAIL}</div>
             </div>
             <ExternalLink size={13} className="text-faint group-hover:text-muted transition-colors shrink-0" />

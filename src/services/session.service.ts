@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import i18n from '../i18n'
 
 export interface SessionRecord {
   id: string
@@ -25,9 +26,9 @@ function getOrCreateFingerprint(): string {
 
 function parseUserAgent(): { deviceName: string; browser: string; platform: string } {
   const ua = navigator.userAgent
-  let browser = 'Navigateur inconnu'
-  let platform = 'Inconnu'
-  let deviceName = 'Appareil inconnu'
+  let browser = i18n.t('errors.unknownBrowser')
+  let platform = i18n.t('errors.unknownPlatform')
+  let deviceName = i18n.t('errors.unknownDevice')
 
   if (/Edg\//i.test(ua)) browser = 'Microsoft Edge'
   else if (/Firefox/i.test(ua)) browser = 'Firefox'
@@ -37,10 +38,10 @@ function parseUserAgent(): { deviceName: string; browser: string; platform: stri
 
   if (/iPhone/i.test(ua)) { platform = 'iOS'; deviceName = 'iPhone' }
   else if (/iPad/i.test(ua)) { platform = 'iPadOS'; deviceName = 'iPad' }
-  else if (/Android/i.test(ua)) { platform = 'Android'; deviceName = 'Appareil Android' }
+  else if (/Android/i.test(ua)) { platform = 'Android'; deviceName = i18n.t('errors.androidDevice') }
   else if (/Mac/i.test(ua)) { platform = 'macOS'; deviceName = 'Mac' }
-  else if (/Win/i.test(ua)) { platform = 'Windows'; deviceName = 'PC Windows' }
-  else if (/Linux/i.test(ua)) { platform = 'Linux'; deviceName = 'PC Linux' }
+  else if (/Win/i.test(ua)) { platform = 'Windows'; deviceName = i18n.t('errors.windowsPC') }
+  else if (/Linux/i.test(ua)) { platform = 'Linux'; deviceName = i18n.t('errors.linuxPC') }
 
   return { deviceName, browser, platform }
 }

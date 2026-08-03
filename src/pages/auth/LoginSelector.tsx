@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
 import { User } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export function LoginSelector() {
+  const { t } = useTranslation()
+
   return (
     <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
       <Link to="/" className="flex items-center gap-2 mb-12">
@@ -15,8 +18,8 @@ export function LoginSelector() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-navy text-center mb-1.5">Accéder à mon espace</h1>
-        <p className="text-muted text-sm text-center mb-10">Entrez vos identifiants pour continuer.</p>
+        <h1 className="text-2xl font-bold text-navy text-center mb-1.5">{t('auth.selectorTitle')}</h1>
+        <p className="text-muted text-sm text-center mb-10">{t('auth.selectorSubtitle')}</p>
 
         <Link
           to="/connexion/utilisateur"
@@ -26,20 +29,20 @@ export function LoginSelector() {
             <User size={22} className="text-indigo group-hover:text-white transition-colors" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-ink mb-0.5">Collaborateur</div>
-            <div className="text-sm text-muted">Email et code PIN à 6 chiffres</div>
+            <div className="font-semibold text-ink mb-0.5">{t('auth.collaboratorLabel')}</div>
+            <div className="text-sm text-muted">{t('auth.collaboratorDesc')}</div>
           </div>
           <svg className="text-faint group-hover:text-indigo transition-colors shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </Link>
 
         <p className="mt-10 text-center text-xs text-faint">
-          Administrateur ?{' '}
-          <Link to="/connexion/admin" className="text-muted font-medium hover:text-ink">Accéder à la console</Link>
+          {t('auth.adminQuestion')}{' '}
+          <Link to="/connexion/admin" className="text-muted font-medium hover:text-ink">{t('auth.accessConsole')}</Link>
         </p>
 
         <p className="mt-4 text-center text-xs text-faint">
-          Pas encore de workspace ?{' '}
-          <Link to="/creer" className="text-indigo font-medium hover:underline">En créer un</Link>
+          {t('auth.noWorkspace')}{' '}
+          <Link to="/creer" className="text-indigo font-medium hover:underline">{t('auth.createWorkspace')}</Link>
         </p>
       </div>
     </div>

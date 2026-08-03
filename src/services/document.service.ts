@@ -4,6 +4,7 @@ import { cryptoSession } from '../lib/crypto-session'
 import { KeyService } from './key.service'
 import { serviceError, friendlyError } from '../lib/errors'
 import { downloadBlob } from '../lib/utils'
+import i18n from '../i18n'
 
 type DocumentWithFile = {
   id: string
@@ -103,7 +104,7 @@ export const DocumentService = {
       .insert({ organization_id: orgId, name, parent_id: null, team_id: null, visibility, created_by: user?.id ?? null })
       .select('id, organization_id, parent_id, team_id, name, created_at, created_by, visibility')
       .single()
-    if (error || !data) return { folder: null, error: friendlyError(error?.message) ?? 'Erreur création dossier.' }
+    if (error || !data) return { folder: null, error: friendlyError(error?.message) ?? i18n.t('errors.folderCreationError') }
     return {
       folder: {
         id: data.id,
@@ -158,10 +159,10 @@ export const DocumentService = {
       'application/zip', 'application/x-zip-compressed',
     ]
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return { document: null, error: 'Type de fichier non autorisé.' }
+      return { document: null, error: i18n.t('errors.fileTypeNotAllowed') }
     }
     if (file.size > 50 * 1024 * 1024) {
-      return { document: null, error: 'Fichier trop volumineux (max 50 Mo).' }
+      return { document: null, error: i18n.t('errors.fileTooLarge50MB') }
     }
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -179,7 +180,7 @@ export const DocumentService = {
         const buf = await file.arrayBuffer()
         const fileKey = await KeyService.initFileKey(storagePath, orgId)
         if (!fileKey.key) {
-          return { document: null, error: 'Clé de chiffrement indisponible. Rechargez la page.' }
+          return { document: null, error: i18n.t('errors.encryptionKeyUnavailable') }
         }
         const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
         const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey.key, buf)
@@ -188,7 +189,7 @@ export const DocumentService = {
         out.set(new Uint8Array(cipherBuf), 12)
         uploadBlob = new Blob([out], { type: 'application/octet-stream' })
       } catch {
-        return { document: null, error: 'Erreur de chiffrement. Le document n\'a pas été envoyé.' }
+        return { document: null, error: i18n.t('errors.encryptionFailed') }
       }
     }
 
@@ -196,7 +197,7 @@ export const DocumentService = {
       .from('attachments')
       .upload(storagePath, uploadBlob, { contentType: uploadBlob.type })
 
-    if (uploadErr) return { document: null, error: friendlyError(uploadErr.message) ?? 'Erreur upload.' }
+    if (uploadErr) return { document: null, error: friendlyError(uploadErr.message) ?? i18n.t('errors.uploadError') }
 
     const { data: fileRecord, error: fileErr } = await supabase
       .from('files')
@@ -212,7 +213,7 @@ export const DocumentService = {
       .select()
       .single()
 
-    if (fileErr || !fileRecord) return { document: null, error: friendlyError(fileErr?.message) ?? 'Erreur fichier.' }
+    if (fileErr || !fileRecord) return { document: null, error: friendlyError(fileErr?.message) ?? i18n.t('errors.fileError') }
 
     const { data: docRecord, error: docErr } = await supabase
       .from('documents')
@@ -229,7 +230,7 @@ export const DocumentService = {
       .select('*, files(name, type, size, storage_path)')
       .single()
 
-    if (docErr || !docRecord) return { document: null, error: friendlyError(docErr?.message) ?? 'Erreur document.' }
+    if (docErr || !docRecord) return { document: null, error: friendlyError(docErr?.message) ?? i18n.t('errors.documentError') }
 
     return { document: rowToDocument(docRecord as unknown as DocumentWithFile), error: null }
   },
@@ -258,7 +259,7 @@ export const DocumentService = {
       .select()
       .single()
 
-    if (fileErr || !fileRecord) return { document: null, error: friendlyError(fileErr?.message) ?? 'Erreur fichier.' }
+    if (fileErr || !fileRecord) return { document: null, error: friendlyError(fileErr?.message) ?? i18n.t('errors.fileError') }
 
     const { data: docRecord, error: docErr } = await supabase
       .from('documents')
@@ -273,7 +274,7 @@ export const DocumentService = {
       .select('*, files(name, type, size, storage_path)')
       .single()
 
-    if (docErr || !docRecord) return { document: null, error: friendlyError(docErr?.message) ?? 'Erreur document.' }
+    if (docErr || !docRecord) return { document: null, error: friendlyError(docErr?.message) ?? i18n.t('errors.documentError') }
 
     await supabase.from('audit_logs').insert({
       organization_id: orgId,
@@ -327,19 +328,19 @@ export const DocumentService = {
       .eq('id', documentId)
       .single()
 
-    if (!doc) return { error: 'Document introuvable.' }
+    if (!doc) return { error: i18n.t('errors.documentNotFound') }
 
     const fileInfo = doc.files as { storage_path: string; name: string } | null
-    if (!fileInfo?.storage_path) return { error: 'Fichier introuvable.' }
+    if (!fileInfo?.storage_path) return { error: i18n.t('errors.fileNotFound') }
 
     const { data: signed, error: signErr } = await supabase.storage
       .from('attachments')
       .createSignedUrl(fileInfo.storage_path, 300)
 
-    if (signErr || !signed) return { error: signErr?.message ?? 'Lien de téléchargement indisponible.' }
+    if (signErr || !signed) return { error: signErr?.message ?? i18n.t('errors.downloadUnavailable') }
 
     const response = await fetch(signed.signedUrl)
-    if (!response.ok) return { error: 'Téléchargement échoué.' }
+    if (!response.ok) return { error: i18n.t('errors.downloadFailed') }
 
     // Log document access (fire-and-forget)
     supabase.from('document_access_logs').insert({
@@ -375,17 +376,17 @@ export const DocumentService = {
       .eq('id', documentId)
       .single()
 
-    if (!doc) return { url: null, mimeType: '', name: '', error: 'Document introuvable.' }
+    if (!doc) return { url: null, mimeType: '', name: '', error: i18n.t('errors.documentNotFound') }
     const fileInfo = doc.files as { storage_path: string; name: string } | null
-    if (!fileInfo?.storage_path) return { url: null, mimeType: '', name: doc.title ?? '', error: 'Fichier introuvable.' }
+    if (!fileInfo?.storage_path) return { url: null, mimeType: '', name: doc.title ?? '', error: i18n.t('errors.fileNotFound') }
 
     const { data: signed, error: signErr } = await supabase.storage
       .from('attachments')
       .createSignedUrl(fileInfo.storage_path, 300)
-    if (signErr || !signed) return { url: null, mimeType: '', name: fileInfo.name, error: 'Lien indisponible.' }
+    if (signErr || !signed) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.downloadUnavailable') }
 
     const response = await fetch(signed.signedUrl)
-    if (!response.ok) return { url: null, mimeType: '', name: fileInfo.name, error: 'Chargement échoué.' }
+    if (!response.ok) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.loadFailed') }
 
     const rawBuf = await response.arrayBuffer()
     let plainBuf: ArrayBuffer = rawBuf

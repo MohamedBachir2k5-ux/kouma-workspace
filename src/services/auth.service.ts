@@ -1,6 +1,10 @@
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../lib/database.types'
 import { friendlyError } from '../lib/errors'
+import i18n from '../i18n'
+
+// Internal sentinel — never displayed directly; callers compare against this constant
+export const ERR_EMAIL_ALREADY_USED = 'EMAIL_ALREADY_EXISTS'
 
 export interface SignUpParams {
   email: string
@@ -43,17 +47,17 @@ export const AuthService = {
 
     if (error) {
       const msg = /already registered|already been registered/i.test(error.message)
-        ? 'Cette adresse email est déjà utilisée.'
+        ? ERR_EMAIL_ALREADY_USED
         : friendlyError(error.message) ?? error.message
       return { userId: null, error: msg }
     }
-    if (!data.user) return { userId: null, error: 'Création du compte échouée.' }
+    if (!data.user) return { userId: null, error: i18n.t('errors.accountCreationFailed') }
 
     // If email confirmation is required in Supabase, session is null here.
     // All subsequent DB operations (key generation, org creation) require a session —
     // they will fail. Supabase Cloud must have "Confirm email" disabled for this flow to work.
     if (!data.session) {
-      return { userId: null, error: 'La confirmation par email est activée sur ce projet Supabase. Désactivez-la dans Authentication → Configuration → Email → Confirm email.' }
+      return { userId: null, error: 'EMAIL_CONFIRMATION_ENABLED' }
     }
 
     return { userId: data.user.id, error: null }
@@ -67,9 +71,9 @@ export const AuthService = {
 
     if (error) {
       const msg = error.message
-      const normalized = /invalid.*credentials/i.test(msg) ? 'Email ou mot de passe incorrect.'
-        : /email.*confirmed/i.test(msg) ? 'Votre email n\'est pas encore confirmé.'
-        : /too many requests/i.test(msg) ? 'Trop de tentatives. Veuillez réessayer dans quelques minutes.'
+      const normalized = /invalid.*credentials/i.test(msg) ? i18n.t('errors.wrongEmailOrPassword')
+        : /email.*confirmed/i.test(msg) ? i18n.t('errors.emailNotConfirmed')
+        : /too many requests/i.test(msg) ? i18n.t('errors.tooManyRequests')
         : friendlyError(msg) ?? msg
       return { userId: null, error: normalized }
     }

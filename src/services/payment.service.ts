@@ -3,6 +3,7 @@
 
 import { supabase } from '../lib/supabase'
 import type { PaymentRow } from '../lib/database.types'
+import i18n from '../i18n'
 import type { SupportedCurrency } from '../config/pricing'
 import { PRICING, discountedPrice } from '../config/pricing'
 
@@ -91,7 +92,7 @@ export const PaymentService = {
       return {
         paymentId: record.id,
         redirectUrl: null,
-        error: 'Le service de paiement est temporairement indisponible.',
+        error: i18n.t('errors.paymentUnavailable'),
       }
     }
 
