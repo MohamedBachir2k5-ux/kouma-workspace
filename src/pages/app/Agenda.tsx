@@ -208,9 +208,11 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
   myTeams: Team[]
   myGroups: Channel[]
   onClose: () => void
-  onSave: (form: EventForm) => void
+  onSave: (form: EventForm) => Promise<void>
 }) {
   const { t } = useTranslation()
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [form, setForm] = useState<EventForm>(() => {
     if (!event) return { ...emptyForm(), ...prefill }
     const start = new Date(event.startAt)
@@ -310,12 +312,25 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
           </div>
         </div>
 
+        {saveError && <p className="px-5 pb-2 text-xs text-danger">{saveError}</p>}
         <div className="flex gap-3 p-5 border-t border-border">
-          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} disabled={saving} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
           <button
-            disabled={!form.title.trim() || !form.date}
-            onClick={() => { onSave(form); onClose() }}
-            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
+            disabled={!form.title.trim() || !form.date || saving}
+            onClick={async () => {
+              setSaveError(null)
+              setSaving(true)
+              try {
+                await onSave(form)
+                onClose()
+              } catch (e) {
+                setSaveError(e instanceof Error ? e.message : t('errors.creationError'))
+              } finally {
+                setSaving(false)
+              }
+            }}
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
+            {saving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {event ? t('agenda.save') : t('agenda.newMeeting')}
           </button>
         </div>
@@ -618,7 +633,7 @@ export function Agenda() {
                               return <Avatar key={pid} firstName={p.firstName} lastName={p.lastName} id={p.id} size="sm" src={p.avatarUrl} />
                             })}
                           </div>
-                          <span>{pCount} {pCount > 1 ? t('agenda.participants') : t('agenda.participants')}</span>
+                          <span>{pCount} {t('agenda.participants')}</span>
                         </div>
                       </div>
 
@@ -721,7 +736,7 @@ export function Agenda() {
           myTeams={myTeams}
           myGroups={myGroups}
           onClose={() => { setShowCreate(false); setEditEvent(null) }}
-          onSave={form => editEvent ? updateEvent(editEvent.id, form) : createEvent(form)}
+          onSave={form => (editEvent ? updateEvent(editEvent.id, form) : createEvent(form))}
         />
       )}
 
