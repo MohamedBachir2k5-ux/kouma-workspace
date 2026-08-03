@@ -93,7 +93,7 @@ export const EventService = {
         p_user_ids: others,
         p_type: 'meeting_invite',
         p_payload: {
-          text: i18n.t('notifications.meetingInvite', { title: data.title, date: dateStr, time: timeStr }),
+          text: i18n.t('notifications.meetingInviteFull', { title: data.title, date: dateStr, time: timeStr }),
           eventId: (row as unknown as EventRow).id,
         },
       })

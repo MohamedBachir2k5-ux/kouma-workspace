@@ -418,7 +418,7 @@
     "teamMemberAddedFull": "Você foi adicionado à equipa \"{{name}}\".",
     "promotedToAdmin": "Você foi promovido a administrador da organização.",
     "adminRightsRevoked": "Seus direitos de administração foram revogados.",
-    "meetingInvite": "Você foi convidado para a reunião \"{{title}}\" em {{date}} às {{time}}.",
+    "meetingInviteFull": "Você foi convidado para a reunião \"{{title}}\" em {{date}} às {{time}}.",
     "meetingModified": "A reunião \"{{title}}\" foi modificada.",
     "meetingCancelled": "A reunião \"{{title}}\" foi cancelada.",
     "meetingCancelledWithReason": "A reunião \"{{title}}\" foi cancelada. Motivo: {{reason}}"
