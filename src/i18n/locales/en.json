@@ -1326,6 +1326,7 @@
     "wrongPinOrPassword": "Incorrect PIN or password.",
     "pushNotSupported": "Push notifications are not supported on this browser.",
     "pushPermissionDenied": "Notification permission denied.",
-    "minutesCreationError": "Error creating meeting minutes."
+    "minutesCreationError": "Error creating meeting minutes.",
+    "pinUpdatedRewrapFailed": "PIN updated, but the key could not be re-encrypted. Please sign in again."
   }
 }

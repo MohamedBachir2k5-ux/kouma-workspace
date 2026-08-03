@@ -1328,6 +1328,7 @@
     "wrongPinOrPassword": "PIN ou senha incorretos.",
     "pushNotSupported": "Notificações push não são suportadas neste navegador.",
     "pushPermissionDenied": "Permissão de notificação negada.",
-    "minutesCreationError": "Erro ao criar a ata da reunião."
+    "minutesCreationError": "Erro ao criar a ata da reunião.",
+    "pinUpdatedRewrapFailed": "PIN atualizado, mas a chave não pôde ser re-cifrada. Faça login novamente."
   }
 }

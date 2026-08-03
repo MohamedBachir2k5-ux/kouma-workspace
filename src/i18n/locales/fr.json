@@ -1327,6 +1327,7 @@
     "wrongPinOrPassword": "Code PIN ou mot de passe incorrect.",
     "pushNotSupported": "Les notifications push ne sont pas supportées sur ce navigateur.",
     "pushPermissionDenied": "Permission de notification refusée.",
-    "minutesCreationError": "Erreur lors de la création du compte rendu."
+    "minutesCreationError": "Erreur lors de la création du compte rendu.",
+    "pinUpdatedRewrapFailed": "Code PIN mis à jour, mais la clé n'a pas pu être re-chiffrée. Reconnectez-vous."
   }
 }

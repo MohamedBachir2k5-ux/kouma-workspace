@@ -288,7 +288,7 @@ export function Profile() {
     const { error } = await AuthService.updatePassword(pwForm.next)
     if (error) { setPwError(error); return }
     const { error: keyError } = await KeyService.rewrapPrivateKey(currentUser.id, pwForm.next)
-    if (keyError) { setPwError("Code PIN mis à jour, mais la clé n'a pas pu être re-chiffrée. Reconnectez-vous."); return }
+    if (keyError) { setPwError(t('errors.pinUpdatedRewrapFailed')); return }
     setPwForm({ current: '', next: '', confirm: '' })
     setChangingPin(false)
     setPwSaved(true)
