@@ -431,16 +431,17 @@ export const MessageService = {
   },
 
   async getFileSize(storagePath: string): Promise<number> {
-    const { data: signed } = await supabase.storage
+    // content-length is often not exposed by the CDN's CORS headers, so we
+    // use the Storage list API (authenticated, same-origin) to get file metadata.
+    const lastSlash = storagePath.lastIndexOf('/')
+    const folder = lastSlash >= 0 ? storagePath.slice(0, lastSlash) : ''
+    const fileName = storagePath.slice(lastSlash + 1)
+    const { data } = await supabase.storage
       .from('attachments')
-      .createSignedUrl(storagePath, 60)
-    if (!signed) return 0
-    try {
-      const resp = await fetch(signed.signedUrl, { method: 'HEAD' })
-      return parseInt(resp.headers.get('content-length') ?? '0', 10)
-    } catch {
-      return 0
-    }
+      .list(folder, { search: fileName, limit: 1 })
+    const entry = data?.find(f => f.name === fileName)
+    if (entry?.metadata?.size) return entry.metadata.size as number
+    return 0
   },
 
   // Download, decrypt, return raw Blob — used for forwarding files to another conversation.

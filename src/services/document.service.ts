@@ -371,15 +371,18 @@ export const DocumentService = {
           return { error: i18n.t('errors.decryptionFailed') }
         }
       }
-    } else if (convId && cryptoSession.isLoaded) {
-      // Promoted message attachment — try conv-key decryption, fall back to raw if not encrypted
+    } else if (convId) {
+      // Promoted message attachment — encrypted with conversation key
+      if (!cryptoSession.isLoaded) return { error: i18n.t('errors.sessionNotLoaded') }
       const convKey = await KeyService.getOrLoadConversationKey(convId, orgId)
       if (convKey && rawBuf.byteLength > 12) {
         try {
           const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
           const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
           plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
-        } catch { /* file was stored unencrypted — serve as-is */ }
+        } catch {
+          return { error: i18n.t('errors.decryptionFailed') }
+        }
       }
     }
 
@@ -413,24 +416,30 @@ export const DocumentService = {
     const isEncDoc = fileInfo.storage_path.endsWith('.enc')
     const convId = (doc as unknown as { conversation_id: string | null }).conversation_id
 
-    if (isEncDoc && cryptoSession.isLoaded) {
+    if (isEncDoc) {
+      if (!cryptoSession.isLoaded) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.sessionNotLoaded') }
       const fileKey = await KeyService.getOrLoadFileKey(fileInfo.storage_path, orgId)
       if (fileKey && rawBuf.byteLength > 12) {
         try {
           const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
           const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
           plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey, cipher)
-        } catch { /* serve raw */ }
+        } catch {
+          return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.decryptionFailed') }
+        }
       }
-    } else if (!isEncDoc && convId && cryptoSession.isLoaded) {
-      // Promoted message attachment — try conv-key decryption, fall back to raw if not encrypted
+    } else if (convId) {
+      // Promoted message attachment — encrypted with conversation key
+      if (!cryptoSession.isLoaded) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.sessionNotLoaded') }
       const convKey = await KeyService.getOrLoadConversationKey(convId, orgId)
       if (convKey && rawBuf.byteLength > 12) {
         try {
           const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
           const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
           plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
-        } catch { /* file was stored unencrypted — serve as-is */ }
+        } catch {
+          return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.decryptionFailed') }
+        }
       }
     }
 

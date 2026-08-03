@@ -277,11 +277,7 @@ export function Documents() {
       ? t('documents.uploadDisabledNoTeam')
       : null
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-
+  async function uploadFile(file: File) {
     const currentUsed = docs.reduce((sum, d) => sum + d.size, 0)
     if (storageQuotaBytes > 0 && currentUsed + file.size > storageQuotaBytes) {
       setUploadError(t('documents.quotaExceeded'))
@@ -296,7 +292,7 @@ export function Documents() {
       currentOrg.id,
       currentUser.id,
       file,
-      undefined,
+      activeFolder ?? undefined,
       uploadVisibility,
       space === 'team' ? (selectedTeamId ?? undefined) : undefined,
     )
@@ -304,6 +300,13 @@ export function Documents() {
     setUploading(false)
     if (error) { setUploadError(friendlyUploadError(error, t)); return }
     if (newDoc) setDocs(prev => [newDoc, ...prev])
+  }
+
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    uploadFile(file)
   }
 
   async function handleDownload(doc: Document) {
@@ -520,7 +523,7 @@ export function Documents() {
             )}
           </div>
 
-          {/* Drop zone when inside a folder — drag files here to move them in */}
+          {/* Drop zone when inside a folder — move existing docs in, or upload new files from OS */}
           {activeFolder && (
             <div
               onDragOver={e => { e.preventDefault(); setDragOverFolder(activeFolder) }}
@@ -528,6 +531,12 @@ export function Documents() {
               onDrop={e => {
                 e.preventDefault()
                 setDragOverFolder(null)
+                // OS file drop → upload into current folder
+                if (e.dataTransfer.files.length > 0) {
+                  uploadFile(e.dataTransfer.files[0])
+                  return
+                }
+                // In-app drag → move to folder
                 const docId = e.dataTransfer.getData('docId')
                 if (docId) handleMoveToFolder(docId, activeFolder)
               }}
