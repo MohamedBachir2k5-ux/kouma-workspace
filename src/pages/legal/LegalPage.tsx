@@ -110,113 +110,128 @@ export function MentionsLegales() {
 /* ─────────────────────────────────────────
    POLITIQUE DE CONFIDENTIALITÉ
 ───────────────────────────────────────── */
+const RIGHTS_REGIONS = [
+  'eu_eea', 'uk', 'ch',
+  'africa_west_uemoa', 'guinea',
+  'africa_west_en', 'africa_north', 'africa_sub',
+  'canada', 'brazil', 'americas_other',
+  'russia', 'middleeast_au', 'other',
+] as const
+
 export function Confidentialite() {
+  const { t } = useTranslation()
   return (
-    <LegalPage title="Politique de confidentialité">
+    <LegalPage title={t('confid.title')}>
 
-      <div className="p-4 bg-amber/5 border border-amber/20 rounded-xl text-xs text-amber leading-relaxed">
-        <strong>Note :</strong> Ce document doit faire l'objet d'une relecture par un juriste qualifié avant toute publication officielle, notamment pour sa conformité au droit guinéen et au RGPD européen.
-      </div>
+      <P>
+        <strong>{t('confid.effectivePre')}</strong>
+        {' — '}
+        {t('confid.responsablePre')}{' '}
+        <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>
+      </P>
 
-      <P>Dernière mise à jour : juillet 2026. Responsable du traitement : <strong>Gundo</strong> — <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a></P>
-
-      {/* Bloc E2E mis en avant */}
       <div className="p-5 bg-indigo-pale border border-indigo/20 rounded-2xl space-y-2">
-        <p className="text-sm font-bold text-navy">Ce que Gundo ne peut pas lire — et c'est une garantie, pas une promesse</p>
-        <p className="text-sm text-ink leading-relaxed">
-          Le contenu de vos messages et de vos documents échangés sur Kouma est <strong>chiffré de bout en bout</strong>. Cela signifie concrètement qu'il est rendu illisible avant même de quitter votre appareil, et qu'il ne peut être déchiffré que par les destinataires légitimes. <strong>Gundo, en tant qu'opérateur de la plateforme, ne dispose d'aucune clé permettant de lire ce contenu</strong> — même en cas de demande judiciaire ou administrative, nous ne pouvons pas fournir le contenu des messages, parce que nous ne l'avons techniquement pas.
-        </p>
+        <p className="text-sm font-bold text-navy">{t('confid.e2eTitle')}</p>
+        <p className="text-sm text-ink leading-relaxed">{t('confid.e2eText')}</p>
       </div>
 
-      <Section title="1. Qui sommes-nous ?">
-        <P>
-          Gundo est l'entreprise qui développe et opère Kouma Workspace. Nous agissons en tant que responsable du traitement de vos données personnelles, dans le respect des réglementations applicables.
-        </P>
+      <Section title={t('confid.s1Title')}>
+        <P>{t('confid.s1p1')}</P>
       </Section>
 
-      <Section title="2. Quelles données collectons-nous ?">
-        <P>Nous collectons uniquement les données nécessaires au fonctionnement du service :</P>
+      <Section title={t('confid.s2Title')}>
+        <P>{t('confid.s2intro')}</P>
 
-        <p className="text-sm font-semibold text-ink">Données de compte :</p>
+        <p className="text-sm font-semibold text-ink">{t('confid.s2account')}</p>
         <UL>
-          <li>Nom, prénom</li>
-          <li>Adresse e-mail professionnelle</li>
-          <li>Numéro de téléphone (optionnel)</li>
-          <li>Photo de profil (optionnelle)</li>
-          <li>Poste / intitulé de fonction</li>
-          <li>Département au sein de l'organisation</li>
+          <li>{t('confid.s2a1')}</li>
+          <li>{t('confid.s2a2')}</li>
+          <li>{t('confid.s2a3')}</li>
+          <li>{t('confid.s2a4')}</li>
+          <li>{t('confid.s2a5')}</li>
+          <li>{t('confid.s2a6')}</li>
         </UL>
 
-        <p className="text-sm font-semibold text-ink mt-3">Données d'organisation :</p>
+        <p className="text-sm font-semibold text-ink mt-3">{t('confid.s2org')}</p>
         <UL>
-          <li>Nom de l'organisation, secteur d'activité, pays, ville</li>
-          <li>Logo (optionnel)</li>
-          <li>Paramètres de sécurité et de configuration</li>
+          <li>{t('confid.s2o1')}</li>
+          <li>{t('confid.s2o2')}</li>
+          <li>{t('confid.s2o3')}</li>
         </UL>
 
-        <p className="text-sm font-semibold text-ink mt-3">Métadonnées techniques :</p>
+        <p className="text-sm font-semibold text-ink mt-3">{t('confid.s2meta')}</p>
         <UL>
-          <li>Date et heure des connexions</li>
-          <li>Type d'appareil et navigateur utilisé</li>
-          <li>Journal des actions administratives (audit log)</li>
-          <li>Métadonnées de messagerie : qui a envoyé un message à qui, à quelle heure — mais <strong>pas le contenu</strong></li>
+          <li>{t('confid.s2m1')}</li>
+          <li>{t('confid.s2m2')}</li>
+          <li>{t('confid.s2m3')}</li>
+          <li>{t('confid.s2m4')}</li>
         </UL>
 
         <div className="p-3 bg-success/5 border border-success/20 rounded-xl">
-          <p className="text-xs text-success font-medium">Ce que nous ne collectons <em>pas</em> : le contenu de vos messages, le contenu de vos documents. Ces données sont chiffrées de bout en bout et nous sont techniquement inaccessibles.</p>
+          <p className="text-xs text-success font-medium">{t('confid.s2notCollected')}</p>
         </div>
       </Section>
 
-      <Section title="3. Comment vos données sont-elles stockées ?">
-        <P>
-          Vos données sont stockées sur les serveurs <strong>Supabase</strong>, dans la région <strong>Europe (Irlande)</strong>. Cette région est soumise au Règlement Général sur la Protection des Données (RGPD) de l'Union européenne, qui est l'un des cadres légaux les plus stricts au monde en matière de protection des données personnelles.
-        </P>
-        <P>
-          Vos données sont protégées par des mesures de sécurité techniques (chiffrement au repos, connexions HTTPS, contrôles d'accès stricts) et organisationnelles.
-        </P>
+      <Section title={t('confid.s3Title')}>
+        <P>{t('confid.s3p1')}</P>
+        <P>{t('confid.s3p2')}</P>
       </Section>
 
-      <Section title="4. Pourquoi utilisons-nous vos données ?">
+      <Section title={t('confid.s4Title')}>
         <UL>
-          <li>Créer et gérer votre compte et celui de votre organisation</li>
-          <li>Vous permettre de communiquer avec vos collègues via la messagerie</li>
-          <li>Assurer la sécurité du service (détection de fraude, blocage d'accès non autorisés)</li>
-          <li>Améliorer le service (statistiques d'usage anonymisées)</li>
-          <li>Respecter nos obligations légales</li>
+          <li>{t('confid.s4l1')}</li>
+          <li>{t('confid.s4l2')}</li>
+          <li>{t('confid.s4l3')}</li>
+          <li>{t('confid.s4l4')}</li>
+          <li>{t('confid.s4l5')}</li>
         </UL>
-        <P>Nous n'utilisons pas vos données à des fins publicitaires. Nous ne les vendons jamais à des tiers.</P>
+        <P>{t('confid.s4footer')}</P>
       </Section>
 
-      <Section title="5. Combien de temps conservons-nous vos données ?">
+      <Section title={t('confid.s5Title')}>
         <UL>
-          <li>Données de compte actif : pendant toute la durée d'utilisation du service</li>
-          <li>Après fermeture de compte : 30 jours (période permettant la réactivation), puis suppression définitive</li>
-          <li>Journaux d'audit : 12 mois maximum</li>
-          <li>Données de facturation : <Placeholder label="durée légale applicable (ex. 5 ans)" /></li>
+          <li>{t('confid.s5l1')}</li>
+          <li>{t('confid.s5l2')}</li>
+          <li>{t('confid.s5l3')}</li>
+          <li>{t('confid.s5l4')}</li>
         </UL>
       </Section>
 
-      <Section title="6. Vos droits">
-        <P>Conformément aux réglementations applicables, vous disposez des droits suivants sur vos données personnelles :</P>
-        <UL>
-          <li><strong>Droit d'accès</strong> — obtenir une copie de vos données</li>
-          <li><strong>Droit de rectification</strong> — corriger des données inexactes (possible directement dans votre profil)</li>
-          <li><strong>Droit à l'effacement</strong> — demander la suppression de votre compte et de vos données</li>
-          <li><strong>Droit à la portabilité</strong> — recevoir vos données dans un format lisible par machine</li>
-          <li><strong>Droit d'opposition</strong> — vous opposer à certains traitements</li>
-        </UL>
+      <Section title={t('confid.s6Title')}>
+        <P>{t('confid.s6intro')}</P>
+        <div className="space-y-3">
+          {RIGHTS_REGIONS.map(key => (
+            <div key={key} className="rounded-xl border border-border p-4">
+              <p className="text-sm text-muted leading-relaxed">{t(`confid.r_${key}`)}</p>
+            </div>
+          ))}
+        </div>
         <P>
-          Pour exercer ces droits, contactez-nous à <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>. Nous répondons dans un délai maximum de 30 jours.
+          {t('confid.s6contactPre')}{' '}
+          <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>
+          {'. '}{t('confid.s6contactPost')}
         </P>
       </Section>
 
-      <Section title="7. Partage des données avec des tiers">
-        <P>Nous ne vendons pas vos données. Nous les partageons uniquement avec :</P>
+      <Section title={t('confid.s7Title')}>
+        <P>{t('confid.s7intro')}</P>
         <UL>
-          <li><strong>Supabase</strong> — hébergement et infrastructure de données (sous-traitant)</li>
-          <li><strong>Vercel</strong> — distribution de l'application (pas accès aux données personnelles)</li>
-          <li>Autorités légales, uniquement si nous y sommes légalement contraints — et uniquement des métadonnées, le contenu des messages étant chiffré et inaccessible pour nous</li>
+          <li>{t('confid.s7l1')}</li>
+          <li>{t('confid.s7l2')}</li>
+          <li>{t('confid.s7l3')}</li>
         </UL>
+      </Section>
+
+      <Section title={t('confid.s8Title')}>
+        <P>{t('confid.s8p1')}</P>
+        <P>{t('confid.s8p2')}</P>
+      </Section>
+
+      <Section title={t('confid.s9Title')}>
+        <P>
+          {t('confid.s9pre')}{' '}
+          <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>
+        </P>
       </Section>
 
     </LegalPage>
