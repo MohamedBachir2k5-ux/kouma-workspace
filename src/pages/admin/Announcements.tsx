@@ -134,6 +134,7 @@ export function AdminAnnouncements() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Announcement | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     AnnouncementService.list(currentOrg.id, currentUser.id)
@@ -157,9 +158,11 @@ export function AdminAnnouncements() {
   async function handleDelete(ann: Announcement) {
     if (!window.confirm(t('admin.announcementDeleteConfirm', { title: ann.title }))) return
     setDeletingId(ann.id)
-    await AnnouncementService.delete(ann.id)
-    setAnnouncements(prev => prev.filter(a => a.id !== ann.id))
+    setDeleteError(null)
+    const { error } = await AnnouncementService.delete(ann.id)
     setDeletingId(null)
+    if (error) { setDeleteError(error); return }
+    setAnnouncements(prev => prev.filter(a => a.id !== ann.id))
   }
 
   const pinned = announcements.filter(a => a.pinned)
@@ -167,6 +170,9 @@ export function AdminAnnouncements() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
+      {deleteError && (
+        <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2 mb-4">{deleteError}</p>
+      )}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-ink">{t('admin.announcementsTitle')}</h1>
