@@ -154,11 +154,15 @@ export const DocumentService = {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-powerpoint',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+      'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
       'text/plain', 'text/csv',
       'application/zip', 'application/x-zip-compressed',
     ]
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const ALLOWED_EXTS = ['pdf','doc','docx','xls','xlsx','ppt','pptx','png','jpg','jpeg','gif','webp','heic','heif','txt','csv','zip']
+    const fileExt = file.name.split('.').pop()?.toLowerCase() ?? ''
+    // iOS PWA may report an empty MIME type — fall back to extension check
+    const mimeOk = file.type ? ALLOWED_TYPES.includes(file.type) : ALLOWED_EXTS.includes(fileExt)
+    if (!mimeOk) {
       return { document: null, error: i18n.t('errors.fileTypeNotAllowed') }
     }
     if (file.size > 50 * 1024 * 1024) {

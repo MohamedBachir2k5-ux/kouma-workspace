@@ -323,7 +323,10 @@ export function Documents() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
-    uploadFile(file)
+    uploadFile(file).catch(err => {
+      setUploading(false)
+      setUploadError((err as Error).message || t('errors.uploadError'))
+    })
   }
 
   async function handleDownload(doc: Document) {
@@ -363,7 +366,7 @@ export function Documents() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected} />
+      <input ref={fileInputRef} type="file" className="absolute w-px h-px opacity-0 overflow-hidden pointer-events-none" tabIndex={-1} aria-hidden onChange={handleFileSelected} />
 
       {/* Header */}
       <div className="sticky top-0 z-10 bg-bg px-4 pt-4 pb-3 border-b border-border">
