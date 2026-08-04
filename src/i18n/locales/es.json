@@ -370,6 +370,7 @@
     "newDirectMsg": "Mensaje directo",
     "newGroupBtn": "Nuevo grupo",
     "filesPrivate": "Archivos privados de esta conversación",
+    "saving2": "Guardando…",
     "leaveGroupConfirm": "¿Salir de este grupo? Ya no podrás acceder a los mensajes.",
     "directDesc": "Conversaciones privadas 1:1",
     "groupDesc": "Discusiones privadas entre colegas",
@@ -1345,5 +1346,29 @@
     "fileKeyNotFound": "Clave de cifrado no encontrada para este archivo.",
     "decryptionFailed": "Error al descifrar el archivo.",
     "fileKeyStoreFailed": "No se puede almacenar la clave de cifrado. Por favor, inténtalo de nuevo."
+  },
+  "footer": {
+    "tagline": "Espacio de trabajo profesional privado para organizaciones.",
+    "byGoundo": "by Goundo",
+    "solutionsTitle": "Soluciones",
+    "comm": "Comunicación",
+    "documents": "Documentos",
+    "agenda": "Calendario",
+    "resourcesTitle": "Recursos",
+    "docs": "Documentación",
+    "guides": "Guías de usuario",
+    "security": "Seguridad",
+    "support": "Soporte",
+    "pricing": "Precios",
+    "legalTitle": "Legal",
+    "mentions": "Aviso legal",
+    "cgu": "Condiciones de uso",
+    "privacy": "Política de privacidad",
+    "cookies": "Política de cookies",
+    "copyright": "© 2026 Kouma Workspace · by Goundo. Todos los derechos reservados.",
+    "tagline2": "Hecho para las organizaciones que avanzan."
+  },
+  "legal": {
+    "back": "← Volver al inicio"
   }
 }

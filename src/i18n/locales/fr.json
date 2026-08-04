@@ -1344,5 +1344,29 @@
     "fileKeyNotFound": "Clé de chiffrement introuvable pour ce fichier.",
     "decryptionFailed": "Échec du déchiffrement du fichier.",
     "fileKeyStoreFailed": "Impossible de stocker la clé de chiffrement. Réessayez."
+  },
+  "footer": {
+    "tagline": "Workspace professionnel privé pour les organisations.",
+    "byGoundo": "by Goundo",
+    "solutionsTitle": "Solutions",
+    "comm": "Communication",
+    "documents": "Documents",
+    "agenda": "Agenda",
+    "resourcesTitle": "Ressources",
+    "docs": "Documentation",
+    "guides": "Guides utilisateurs",
+    "security": "Sécurité",
+    "support": "Support",
+    "pricing": "Tarifs",
+    "legalTitle": "Légal",
+    "mentions": "Mentions légales",
+    "cgu": "Conditions générales",
+    "privacy": "Politique de confidentialité",
+    "cookies": "Politique de cookies",
+    "copyright": "© 2026 Kouma Workspace · by Goundo. Tous droits réservés.",
+    "tagline2": "Fait pour les organisations qui avancent."
+  },
+  "legal": {
+    "back": "← Retour à l'accueil"
   }
 }

@@ -370,6 +370,7 @@
     "newDirectMsg": "Direct message",
     "newGroupBtn": "New group",
     "filesPrivate": "Files private to this conversation",
+    "saving2": "Saving…",
     "leaveGroupConfirm": "Leave this group? You will no longer be able to access messages.",
     "directDesc": "Private 1:1 conversations",
     "groupDesc": "Private discussions between colleagues",
@@ -1343,5 +1344,29 @@
     "fileKeyNotFound": "Encryption key not found for this file.",
     "decryptionFailed": "File decryption failed.",
     "fileKeyStoreFailed": "Unable to store encryption key. Please try again."
+  },
+  "footer": {
+    "tagline": "Private professional workspace for organisations.",
+    "byGoundo": "by Goundo",
+    "solutionsTitle": "Solutions",
+    "comm": "Communication",
+    "documents": "Documents",
+    "agenda": "Calendar",
+    "resourcesTitle": "Resources",
+    "docs": "Documentation",
+    "guides": "User guides",
+    "security": "Security",
+    "support": "Support",
+    "pricing": "Pricing",
+    "legalTitle": "Legal",
+    "mentions": "Legal notice",
+    "cgu": "Terms of use",
+    "privacy": "Privacy policy",
+    "cookies": "Cookie policy",
+    "copyright": "© 2026 Kouma Workspace · by Goundo. All rights reserved.",
+    "tagline2": "Built for organisations that move forward."
+  },
+  "legal": {
+    "back": "← Back to home"
   }
 }

@@ -16,8 +16,14 @@ export const LOCALE_LABELS: Record<SupportedLocale, string> = {
 }
 
 const SUPPORTED: SupportedLocale[] = ['fr', 'en', 'es', 'pt']
-const saved = localStorage.getItem('kouma_lang') ?? 'fr'
-const initialLang: SupportedLocale = (SUPPORTED as string[]).includes(saved) ? (saved as SupportedLocale) : 'fr'
+const saved = localStorage.getItem('kouma_lang')
+let initialLang: SupportedLocale
+if (saved && (SUPPORTED as string[]).includes(saved)) {
+  initialLang = saved as SupportedLocale
+} else {
+  const browserLang = navigator.language.split('-')[0]
+  initialLang = (SUPPORTED as string[]).includes(browserLang) ? (browserLang as SupportedLocale) : 'fr'
+}
 
 i18n
   .use(initReactI18next)

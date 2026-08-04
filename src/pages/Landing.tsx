@@ -5,6 +5,7 @@ import {
   LayoutDashboard, ShieldCheck, Building2, Landmark,
   ArrowRight, Check, Sparkles,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { PublicNav } from '../components/layout/PublicNav'
 
 /* ── Scroll reveal ── */
@@ -559,6 +560,7 @@ export function Landing() {
 
 /* ── Site Footer — shared across all public pages ── */
 export function SiteFooter() {
+  const { t } = useTranslation()
   return (
     <footer className="bg-navy text-indigo-light">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -570,18 +572,18 @@ export function SiteFooter() {
             <span className="font-bold text-white text-base tracking-tight">Kouma</span>
           </div>
           <p className="text-sm leading-relaxed text-indigo-light/70 max-w-xs">
-            Workspace professionnel privé pour les organisations.
+            {t('footer.tagline')}
           </p>
-          <p className="text-xs text-indigo-light/40 mt-2">by Goundo</p>
+          <p className="text-xs text-indigo-light/40 mt-2">{t('footer.byGoundo')}</p>
         </div>
 
         <div>
-          <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-4">Solutions</h4>
+          <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-4">{t('footer.solutionsTitle')}</h4>
           <ul className="space-y-2.5">
             {[
-              { to: '/solutions/communication', label: 'Communication' },
-              { to: '/solutions/documents', label: 'Documents' },
-              { to: '/solutions/agenda', label: 'Agenda' },
+              { to: '/solutions/communication', label: t('footer.comm') },
+              { to: '/solutions/documents', label: t('footer.documents') },
+              { to: '/solutions/agenda', label: t('footer.agenda') },
             ].map(l => (
               <li key={l.to}><Link to={l.to} className="text-sm hover:text-white transition-colors">{l.label}</Link></li>
             ))}
@@ -589,14 +591,14 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-4">Ressources</h4>
+          <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-4">{t('footer.resourcesTitle')}</h4>
           <ul className="space-y-2.5">
             {[
-              { to: '/resources', label: 'Documentation' },
-              { to: '/resources/guides', label: 'Guides utilisateurs' },
-              { to: '/security', label: 'Sécurité' },
-              { to: '/resources/support', label: 'Support' },
-              { to: '/tarifs', label: 'Tarifs' },
+              { to: '/resources', label: t('footer.docs') },
+              { to: '/resources/guides', label: t('footer.guides') },
+              { to: '/security', label: t('footer.security') },
+              { to: '/resources/support', label: t('footer.support') },
+              { to: '/tarifs', label: t('footer.pricing') },
             ].map(l => (
               <li key={l.to}><Link to={l.to} className="text-sm hover:text-white transition-colors">{l.label}</Link></li>
             ))}
@@ -604,13 +606,13 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-4">Légal</h4>
+          <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-4">{t('footer.legalTitle')}</h4>
           <ul className="space-y-2.5">
             {[
-              { to: '/legal/mentions', label: 'Mentions légales' },
-              { to: '/legal/cgu', label: 'Conditions générales' },
-              { to: '/legal/confidentialite', label: 'Politique de confidentialité' },
-              { to: '/legal/cookies', label: 'Politique de cookies' },
+              { to: '/legal/mentions', label: t('footer.mentions') },
+              { to: '/legal/cgu', label: t('footer.cgu') },
+              { to: '/legal/confidentialite', label: t('footer.privacy') },
+              { to: '/legal/cookies', label: t('footer.cookies') },
             ].map(l => (
               <li key={l.to}><Link to={l.to} className="text-sm hover:text-white transition-colors">{l.label}</Link></li>
             ))}
@@ -620,8 +622,8 @@ export function SiteFooter() {
 
       <div className="border-t border-navy-muted">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-indigo-light/50">© 2026 Kouma Workspace · by Goundo. Tous droits réservés.</p>
-          <p className="text-xs text-indigo-light/50">Fait pour les organisations qui avancent.</p>
+          <p className="text-xs text-indigo-light/50">{t('footer.copyright')}</p>
+          <p className="text-xs text-indigo-light/50">{t('footer.tagline2')}</p>
         </div>
       </div>
     </footer>

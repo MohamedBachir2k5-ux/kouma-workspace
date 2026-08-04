@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { PublicNav } from '../../components/layout/PublicNav'
 import { SiteFooter } from '../Landing'
 
@@ -8,12 +9,13 @@ interface LegalPageProps {
 }
 
 export function LegalPage({ title, children }: LegalPageProps) {
+  const { t } = useTranslation()
   return (
     <div className="min-h-dvh flex flex-col">
       <PublicNav />
       <section className="flex-1 py-16 px-4 bg-bg">
         <div className="max-w-3xl mx-auto">
-          <Link to="/" className="text-xs text-muted hover:text-ink transition-colors mb-8 inline-block">← Retour à l'accueil</Link>
+          <Link to="/" className="text-xs text-muted hover:text-ink transition-colors mb-8 inline-block">{t('legal.back')}</Link>
           <h1 className="text-3xl font-bold text-navy mb-8">{title}</h1>
           <div className="prose-sm text-muted leading-relaxed space-y-6">{children}</div>
         </div>
