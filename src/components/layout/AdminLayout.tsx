@@ -31,7 +31,7 @@ export function AdminLayout() {
   const { checking } = useRequireAuth('/connexion/admin')
 
   if (checking || loading) return (
-    <div className="min-h-dvh bg-bg flex items-center justify-center">
+    <div className="min-h-screen bg-bg flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-navy border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -39,7 +39,7 @@ export function AdminLayout() {
   if (currentUser.role === 'member') return <Navigate to="/app/messages" replace />
 
   return (
-    <div className="flex h-dvh bg-bg overflow-hidden">
+    <div className="flex h-screen bg-bg overflow-hidden">
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-64 bg-navy flex flex-col transition-transform duration-200 md:static md:translate-x-0 ${

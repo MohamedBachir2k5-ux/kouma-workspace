@@ -169,7 +169,7 @@ export function JoinOrg() {
 
   if (loadError) {
     return (
-      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
         <div className="w-full max-w-sm text-center">
           <p className="text-sm text-danger mb-4">{loadError}</p>
           <Link to="/" className="flex items-center justify-center min-h-[44px] text-sm text-indigo hover:underline">{t('joinOrg.backToHome')}</Link>
@@ -180,7 +180,7 @@ export function JoinOrg() {
 
   if (success) {
     return (
-      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
         <div className="w-full max-w-sm text-center">
           <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-5">
             <Check size={28} className="text-success" />
@@ -195,7 +195,7 @@ export function JoinOrg() {
   const ready = !!invite
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-10">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>

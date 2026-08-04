@@ -61,13 +61,14 @@ html.dark {
   }
 
   /* iOS zoome automatiquement sur les inputs dont la font-size < 16px.
-     max() préserve la taille définie dans les composants si elle est > 16px. */
+     !important nécessaire : les utilities Tailwind (text-sm = 14px) ont priorité
+     sur @layer base et écrasent la règle sans !important. */
   input, textarea, select {
-    font-size: max(16px, 1em);
+    font-size: max(16px, 1em) !important;
   }
 
   #root {
-    min-height: 100dvh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
   }

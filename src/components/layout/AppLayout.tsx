@@ -60,7 +60,7 @@ const NAV_ITEMS_MOBILE_MORE = NAV_ITEMS.filter(i =>
 
 function FullPageSpinner() {
   return (
-    <div className="min-h-dvh bg-bg flex items-center justify-center">
+    <div className="min-h-screen bg-bg flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-navy border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -129,7 +129,7 @@ export function AppLayout() {
   if (!isOrgReady && currentUser.id !== 'u1') return <Navigate to="/creer" replace />
 
   return (
-    <div className="flex flex-col h-dvh bg-bg overflow-hidden">
+    <div className="flex flex-col h-screen bg-bg overflow-hidden">
       {!cryptoLoaded && isOrgReady && (
         <PinUnlockModal
           userId={currentUser.id}
