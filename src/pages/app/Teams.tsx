@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Hash, Users, ChevronRight, ArrowLeft, FileText, MessageSquare, Crown, File, Table, ShieldCheck, Search, UserPlus, X, Settings } from 'lucide-react'
+import { Hash, Users, ChevronRight, ArrowLeft, FileText, MessageSquare, Crown, File, Table, ShieldCheck, Search, UserPlus, X, Settings, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { TeamService } from '../../services/team.service'
@@ -59,8 +59,8 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   const [memberPermError, setMemberPermError] = useState<string | null>(null)
   const [memberIds, setMemberIds] = useState<string[]>(team.members)
   const [memberQuery, setMemberQuery] = useState('')
-  const [memberSaved, setMemberSaved] = useState(false)
   const [memberError, setMemberError] = useState<string | null>(null)
+  const [memberSaving, setMemberSaving] = useState(false)
   const [settings, setSettings] = useState({ name: team.name, description: team.description ?? '', color: team.color })
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
@@ -94,34 +94,27 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
       )
     : []
 
-  function removeMember(id: string) {
-    setMemberIds(prev => prev.filter(m => m !== id))
-    setMemberSaved(false)
-  }
-
-  function addMember(id: string) {
-    setMemberIds(prev => [...prev, id])
-    setMemberQuery('')
-    setMemberSaved(false)
-  }
-
-  async function saveMembers() {
+  async function removeMember(id: string) {
     setMemberError(null)
-    const original = team.members
-    const added = memberIds.filter(id => !original.includes(id))
-    const removed = original.filter(id => !memberIds.includes(id))
-    const results = await Promise.all([
-      ...added.map(id => TeamService.addMember(team.id, id)),
-      ...removed.map(id => TeamService.removeMember(team.id, id)),
-    ])
-    const firstError = results.find(r => r.error)
-    if (firstError?.error) {
-      setMemberError(firstError.error)
-      return
-    }
-    onTeamUpdated({ ...team, members: memberIds })
-    setMemberSaved(true)
-    setTimeout(() => setMemberSaved(false), 2000)
+    setMemberSaving(true)
+    const { error } = await TeamService.removeMember(team.id, id)
+    setMemberSaving(false)
+    if (error) { setMemberError(error); return }
+    const newIds = memberIds.filter(m => m !== id)
+    setMemberIds(newIds)
+    onTeamUpdated({ ...team, members: newIds })
+  }
+
+  async function addMember(id: string) {
+    setMemberError(null)
+    setMemberQuery('')
+    setMemberSaving(true)
+    const { error } = await TeamService.addMember(team.id, id)
+    setMemberSaving(false)
+    if (error) { setMemberError(error); return }
+    const newIds = [...memberIds, id]
+    setMemberIds(newIds)
+    onTeamUpdated({ ...team, members: newIds })
   }
 
   function togglePerm(key: string) {
@@ -214,8 +207,10 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   </div>
                   {isResponsable && m.id !== team.responsableId ? (
                     <button onClick={() => removeMember(m.id)}
-                      className="p-2.5 rounded-lg text-faint hover:text-danger hover:bg-danger/5 transition-colors">
-                      <X size={15} />
+                      disabled={memberSaving}
+                      aria-label={t('common.delete')}
+                      className="p-2.5 rounded-lg text-faint hover:text-danger hover:bg-danger/5 transition-colors disabled:opacity-40">
+                      {memberSaving ? <Loader2 size={15} className="animate-spin" /> : <X size={15} />}
                     </button>
                   ) : (
                     <div className={`w-2 h-2 rounded-full ${m.status === 'active' ? 'bg-success' : 'bg-amber'}`} />
@@ -225,14 +220,15 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
             </div>
 
             {isResponsable && (
-              <div>
+              <div className="mt-2">
                 <div className="relative mb-2">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                   <input
                     value={memberQuery}
                     onChange={e => setMemberQuery(e.target.value)}
                     placeholder={t('teams.addMember')}
-                    className="w-full pl-9 pr-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo"
+                    disabled={memberSaving}
+                    className="w-full pl-9 pr-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo disabled:opacity-50"
                   />
                 </div>
 
@@ -240,13 +236,14 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   <div className="bg-surface border border-border rounded-xl overflow-hidden mb-3 divide-y divide-border">
                     {memberSearchResults.map(u => (
                       <button key={u.id} type="button" onClick={() => addMember(u.id)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-bg transition-colors text-left">
+                        disabled={memberSaving}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-bg transition-colors text-left disabled:opacity-50">
                         <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
                           <div className="text-xs text-muted">{u.jobTitle ?? t('common.collaborator')}</div>
                         </div>
-                        <UserPlus size={14} className="text-indigo shrink-0" />
+                        {memberSaving ? <Loader2 size={14} className="text-indigo shrink-0 animate-spin" /> : <UserPlus size={14} className="text-indigo shrink-0" />}
                       </button>
                     ))}
                   </div>
@@ -255,12 +252,6 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                 {memberError && (
                   <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{memberError}</p>
                 )}
-                <button onClick={saveMembers}
-                  className={`px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
-                    memberSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
-                  }`}>
-                  {memberSaved ? t('common.saved') : t('teams.inviteMembers')}
-                </button>
               </div>
             )}
           </div>
@@ -510,10 +501,12 @@ export function Teams() {
   const [orgUsers, setOrgUsers] = useState<User[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const loadTeams = useCallback(() => {
     TeamService.getByOrganizationWithMembers(currentOrg.id).then(all => {
       setMyTeams(all.filter(t => t.members.includes(currentUser.id)))
+      setLoading(false)
     })
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
     MessageService.getConversations(currentOrg.id, currentUser.id).then(setChannels)
@@ -595,7 +588,12 @@ export function Teams() {
             )
           })}
 
-          {myTeams.length === 0 && (
+          {loading && (
+            <div className="py-16 flex justify-center">
+              <Loader2 size={24} className="text-indigo animate-spin" />
+            </div>
+          )}
+          {!loading && myTeams.length === 0 && (
             <div className="py-16 text-center">
               <Users size={28} className="text-faint mx-auto mb-3" />
               <p className="text-sm text-muted">{t('teams.noTeams')}</p>

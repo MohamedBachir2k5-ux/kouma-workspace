@@ -1697,6 +1697,8 @@ export function Messages() {
         MessageService.getConversations(currentOrg.id, currentUser.id),
       ])
       setTeams(allTeams)
+      // Affiche les conversations immédiatement sans attendre la vérification des canaux manquants
+      setChannels(convs)
 
       const myTeams = allTeams.filter(t => t.members.includes(currentUser.id))
       const channelTeamIds = new Set(convs.filter(c => c.type === 'team').map(c => c.teamId))
@@ -1708,8 +1710,6 @@ export function Messages() {
         ))
         const updated = await MessageService.getConversations(currentOrg.id, currentUser.id)
         setChannels(updated)
-      } else {
-        setChannels(convs)
       }
     }
 
