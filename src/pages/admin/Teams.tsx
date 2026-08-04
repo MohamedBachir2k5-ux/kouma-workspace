@@ -178,6 +178,7 @@ export function AdminTeams() {
   const [showModal, setShowModal] = useState(false)
   const [editTeam, setEditTeam] = useState<Team | null>(null)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     TeamService.getByOrganizationWithMembers(currentOrg.id).then(setTeams)
@@ -214,7 +215,9 @@ export function AdminTeams() {
   async function deleteTeam(id: string) {
     const team = teams.find(te => te.id === id)
     if (!window.confirm(t('admin.teamsDeleteConfirm', { name: team?.name ?? '' }))) return
-    await TeamService.delete(id, currentOrg.id, currentUser.id)
+    setDeleteError(null)
+    const { error } = await TeamService.delete(id, currentOrg.id, currentUser.id)
+    if (error) { setDeleteError(error); setMenuOpen(null); return }
     setTeams(prev => prev.filter(te => te.id !== id))
     setMenuOpen(null)
   }
@@ -234,6 +237,9 @@ export function AdminTeams() {
         </button>
       </div>
 
+      {deleteError && (
+        <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2 mb-4">{deleteError}</p>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {teams.map(team => {
           const responsable = getUser(team.responsableId)

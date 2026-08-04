@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Hash, Users, ChevronRight, ArrowLeft, FileText, MessageSquare, Crown, File, Table, ShieldCheck, Search, UserPlus, X, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
@@ -11,6 +11,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { formatFileSize } from '../../lib/utils'
 import { useNavigate } from 'react-router-dom'
 import type { Team, User, Document, Channel } from '../../lib/types'
+import { supabase } from '../../lib/supabase'
 
 function FileIcon({ type, size = 16 }: { type: string; size?: number }) {
   if (type === 'pdf')  return <FileText size={size} className="text-danger" />
@@ -510,13 +511,29 @@ export function Teams() {
   const [channels, setChannels] = useState<Channel[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadTeams = useCallback(() => {
     TeamService.getByOrganizationWithMembers(currentOrg.id).then(all => {
       setMyTeams(all.filter(t => t.members.includes(currentUser.id)))
     })
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
     MessageService.getConversations(currentOrg.id, currentUser.id).then(setChannels)
   }, [currentUser.id, currentOrg.id])
+
+  useEffect(() => { loadTeams() }, [loadTeams])
+
+  useEffect(() => {
+    const key = `rt-teams-${currentOrg.id}-${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(key)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'teams',
+        filter: `organization_id=eq.${currentOrg.id}`,
+      }, loadTeams)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'team_members',
+      }, loadTeams)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [currentOrg.id, loadTeams])
 
   const selectedTeam = myTeams.find(t => t.id === selectedTeamId) ?? null
 
