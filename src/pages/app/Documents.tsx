@@ -209,6 +209,7 @@ export function Documents() {
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null)
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
 
   const loadDocs = useCallback(() => {
@@ -338,23 +339,24 @@ export function Documents() {
     const { error } = await DocumentService.deleteDocument(docId)
     setDeletingId(null)
     setConfirmDeleteId(null)
-    if (!error) setDocs(prev => prev.filter(d => d.id !== docId))
+    if (error) { setActionError(error); return }
+    setDocs(prev => prev.filter(d => d.id !== docId))
   }
 
   async function handleMoveToFolder(docId: string, folderId: string | null) {
     const { error } = await DocumentService.moveToFolder(docId, folderId)
-    if (!error) setDocs(prev => prev.map(d => d.id === docId ? { ...d, folderId: folderId ?? undefined } : d))
+    if (error) { setActionError(error); return }
+    setDocs(prev => prev.map(d => d.id === docId ? { ...d, folderId: folderId ?? undefined } : d))
   }
 
   async function handleDeleteFolder(folderId: string) {
     setDeletingFolderId(folderId)
     const { error } = await DocumentService.deleteFolder(folderId)
     setDeletingFolderId(null)
-    if (!error) {
-      setFolders(prev => prev.filter(f => f.id !== folderId))
-      setDocs(prev => prev.map(d => d.folderId === folderId ? { ...d, folderId: undefined } : d))
-      if (activeFolder === folderId) setActiveFolder(null)
-    }
+    if (error) { setActionError(error); return }
+    setFolders(prev => prev.filter(f => f.id !== folderId))
+    setDocs(prev => prev.map(d => d.folderId === folderId ? { ...d, folderId: undefined } : d))
+    if (activeFolder === folderId) setActiveFolder(null)
   }
 
   const selectedTeam = myTeams.find(t => t.id === selectedTeamId)
@@ -427,6 +429,7 @@ export function Documents() {
 
         {uploadError && <p className="text-xs text-danger mb-2">{uploadError}</p>}
         {downloadError && <p className="text-xs text-danger mb-2">{downloadError}</p>}
+        {actionError && <p className="text-xs text-danger mb-2">{actionError}</p>}
 
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />

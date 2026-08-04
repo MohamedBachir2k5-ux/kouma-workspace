@@ -19,12 +19,13 @@ type InviteStep = 'idle' | 'link' | 'copied'
 type FilterValue = 'all' | 'active' | 'invited' | 'suspended' | 'deleted'
 type ConfirmAction = { userId: string; action: 'suspend' | 'reactivate' | 'revoke' }
 
-function UserDetail({ user, orgUsers: _orgUsers, currentOrg, onBack, onAction, statusLabel, inGracePeriod }: {
+function UserDetail({ user, orgUsers: _orgUsers, currentOrg, onBack, onAction, onResendInvite, statusLabel, inGracePeriod }: {
   user: User
   orgUsers: User[]
   currentOrg: ReturnType<typeof useAuth>['currentOrg']
   onBack: () => void
   onAction: (userId: string, action: ConfirmAction['action']) => void
+  onResendInvite: () => void
   statusLabel: Record<User['status'], string>
   inGracePeriod: (u: User) => boolean
 }) {
@@ -106,7 +107,7 @@ function UserDetail({ user, orgUsers: _orgUsers, currentOrg, onBack, onAction, s
               </button>
             )}
             {user.status === 'invited' && (
-              <button
+              <button onClick={onResendInvite}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-indigo/20 text-indigo hover:bg-indigo/5 text-sm font-medium transition-colors text-left">
                 <Send size={16} /> {t('admin.actionResendInvite')}
               </button>
@@ -254,6 +255,7 @@ export function AdminUsers() {
           currentOrg={currentOrg}
           onBack={() => setSelectedUserId(null)}
           onAction={openConfirm}
+          onResendInvite={() => { setSelectedUserId(null); setShowInviteModal(true) }}
           statusLabel={statusLabel}
           inGracePeriod={inGracePeriod}
         />
