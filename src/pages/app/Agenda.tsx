@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Clock, Users, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Calendar, Search, X, MapPin, Link as LinkIcon, ThumbsUp, ThumbsDown, ClipboardList } from 'lucide-react'
@@ -12,6 +12,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { MeetingMinutesModal } from '../../components/ui/MeetingMinutesModal'
 import { MeetingMinutesService } from '../../services/meeting-minutes.service'
 import type { EventStatus, Event, User, Team, Channel, MeetingMinutes } from '../../lib/types'
+import { supabase } from '../../lib/supabase'
 
 const LANG_TO_LOCALE: Record<string, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', pt: 'pt-BR' }
 function calLocale() {
@@ -374,7 +375,7 @@ export function Agenda() {
   const [myTeams, setMyTeams] = useState<Team[]>([])
   const [myGroups, setMyGroups] = useState<Channel[]>([])
 
-  useEffect(() => {
+  const loadEvents = useCallback(() => {
     EventService.list(currentOrg.id).then(evts => {
       setEvents(evts)
       const doneIds = evts.filter(e => e.status === 'done').map(e => e.id)
@@ -386,6 +387,10 @@ export function Agenda() {
         })
       }
     })
+  }, [currentOrg.id])
+
+  useEffect(() => {
+    loadEvents()
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
     TeamService.getByOrganizationWithMembers(currentOrg.id).then(all => {
       setMyTeams(all.filter(t => t.members.includes(currentUser.id)))
@@ -393,7 +398,18 @@ export function Agenda() {
     MessageService.getConversations(currentOrg.id, currentUser.id).then(convs => {
       setMyGroups(convs.filter(c => c.type === 'group'))
     })
-  }, [currentOrg.id, currentUser.id])
+  }, [currentOrg.id, currentUser.id, loadEvents])
+
+  useEffect(() => {
+    const key = `rt-events-${currentOrg.id}-${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(key)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'events',
+        filter: `organization_id=eq.${currentOrg.id}`,
+      }, loadEvents)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [currentOrg.id, loadEvents])
 
   const { year, month } = viewDate
   const daysInMonth = getDaysInMonth(year, month)

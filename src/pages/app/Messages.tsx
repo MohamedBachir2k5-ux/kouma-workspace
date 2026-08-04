@@ -13,6 +13,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { formatTime, formatFileSize } from '../../lib/utils'
 import type { Channel, Message, User as AppUser, Team, Folder } from '../../lib/types'
+import { supabase } from '../../lib/supabase'
 
 /* ── Types ── */
 type ConvType = 'direct' | 'group' | 'team'
@@ -1715,6 +1716,17 @@ export function Messages() {
     init()
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
   }, [currentOrg.id, currentUser.id])
+
+  useEffect(() => {
+    const key = `rt-convmembers-${currentUser.id}-${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(key)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'conversation_members',
+        filter: `user_id=eq.${currentUser.id}`,
+      }, () => { loadChannels() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [currentUser.id])
 
   const selectedChannel = channels.find(c => c.id === selected) ?? null
 

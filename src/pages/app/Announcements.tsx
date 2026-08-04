@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Megaphone, Pin, Plus, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AnnouncementService, type Announcement } from '../../services/announcement.service'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/utils'
+import { supabase } from '../../lib/supabase'
 
 function AnnouncementCard({ ann, onRead }: { ann: Announcement; onRead: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false)
@@ -119,11 +120,24 @@ export function Announcements() {
   const [showCreate, setShowCreate] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     AnnouncementService.list(currentOrg.id, currentUser.id)
       .then(setAnnouncements)
       .finally(() => setLoading(false))
   }, [currentOrg.id, currentUser.id])
+
+  useEffect(() => { reload() }, [reload])
+
+  useEffect(() => {
+    const key = `rt-ann-${currentOrg.id}-${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(key)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'announcements',
+        filter: `organization_id=eq.${currentOrg.id}`,
+      }, reload)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [currentOrg.id, reload])
 
   function handleRead(id: string) {
     AnnouncementService.markRead(id, currentUser.id)

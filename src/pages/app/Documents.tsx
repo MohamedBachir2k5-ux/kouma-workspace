@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, Upload, FileText, File, Table, Plus, FolderOpen, Loader2, Download, X, Users, BookOpen, Trash2, ChevronRight, Folder as FolderIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DocumentService } from '../../services/document.service'
@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatDate, formatFileSize } from '../../lib/utils'
 import { Avatar } from '../../components/ui/Avatar'
 import type { Document, Folder, User, Team } from '../../lib/types'
+import { supabase } from '../../lib/supabase'
 
 const ACCEPTED_FORMATS = 'PDF, Word, Excel, PowerPoint, images (PNG, JPG, GIF, WebP), text, CSV, ZIP'
 const MAX_SIZE_LABEL = '50 MB max'
@@ -210,9 +211,13 @@ export function Documents() {
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
 
-  useEffect(() => {
+  const loadDocs = useCallback(() => {
     DocumentService.list(currentOrg.id).then(setDocs)
     DocumentService.listFolders(currentOrg.id).then(setFolders)
+  }, [currentOrg.id])
+
+  useEffect(() => {
+    loadDocs()
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
     TeamService.getByOrganizationWithMembers(currentOrg.id).then(teams => {
       const mine = isAdmin
@@ -221,7 +226,18 @@ export function Documents() {
       setMyTeams(mine)
       if (mine.length > 0 && !selectedTeamId) setSelectedTeamId(mine[0].id)
     })
-  }, [currentOrg.id])
+  }, [currentOrg.id, loadDocs])
+
+  useEffect(() => {
+    const key = `rt-docs-${currentOrg.id}-${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(key)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'documents',
+        filter: `organization_id=eq.${currentOrg.id}`,
+      }, loadDocs)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [currentOrg.id, loadDocs])
 
   const spaceDocs = docs.filter(d => {
     if (space === 'personal') return d.visibility === 'personal' && d.ownerId === currentUser.id
