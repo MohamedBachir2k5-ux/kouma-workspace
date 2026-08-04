@@ -90,12 +90,16 @@ export const MessageService = {
   },
 
   async getConversations(orgId: string, userId: string): Promise<Channel[]> {
-    // Single server-side JOIN via RPC — avoids the .in(convIds) anti-pattern
-    // that generated >32 KB URLs and silently returned [] for large conv lists.
-    const [{ data: rows }, { data: unreadRows }] = await Promise.all([
+    const [{ data: rows, error: rpcError }, { data: unreadRows }] = await Promise.all([
       supabase.rpc('get_user_conversations', { p_org_id: orgId, p_user_id: userId }),
       supabase.rpc('get_unread_counts', { p_user_id: userId, p_org_id: orgId }),
     ])
+
+    if (rpcError) {
+      // RPC missing in production (migration 068 not applied) — fail loudly.
+      console.error('[getConversations] RPC error — apply migration 068 to production:', rpcError.message)
+      return []
+    }
 
     if (!rows?.length) return []
 
