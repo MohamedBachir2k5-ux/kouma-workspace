@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, ChevronDown, HelpCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronDown, HelpCircle, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { COUNTRIES } from '../../config/countries'
 import { CURRENCY_LABELS } from '../../config/pricing'
@@ -156,7 +156,7 @@ export function CreateOrg() {
   )
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center px-4 py-12">
+    <div className="min-h-dvh bg-bg flex flex-col items-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-10">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -224,7 +224,7 @@ export function CreateOrg() {
                         key={ot.value}
                         type="button"
                         onClick={() => update('orgType', ot.value)}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-medium border transition-colors text-left ${
+                        className={`py-3 px-3 rounded-xl text-xs font-medium border transition-colors text-left ${
                           form.orgType === ot.value
                             ? 'border-navy bg-navy text-white'
                             : 'border-border bg-bg text-muted hover:border-navy/30'
@@ -272,7 +272,7 @@ export function CreateOrg() {
                                 setCountryQuery('')
                                 setCountryOpen(false)
                               }}
-                              className={`w-full text-left px-3 py-2.5 text-sm transition-colors hover:bg-bg ${
+                              className={`w-full text-left px-3 py-3 text-sm transition-colors hover:bg-bg ${
                                 form.country === c.name ? 'text-navy font-semibold bg-navy/5' : 'text-ink'
                               }`}
                             >
@@ -304,7 +304,7 @@ export function CreateOrg() {
                           key={l.value}
                           type="button"
                           onClick={() => update('language', l.value)}
-                          className={`py-2 px-2 rounded-xl text-xs font-medium border transition-colors ${
+                          className={`py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
                             form.language === l.value
                               ? 'border-navy bg-navy text-white'
                               : 'border-border bg-bg text-muted hover:border-navy/30'
@@ -517,7 +517,7 @@ export function CreateOrg() {
             <button
               type="button"
               onClick={() => step > 0 && step < 3 ? setStep(step - 1) : null}
-              className={`inline-flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors ${step === 0 || step === 3 ? 'invisible' : ''}`}
+              className={`inline-flex items-center gap-2 min-h-[44px] text-sm text-muted hover:text-ink transition-colors ${step === 0 || step === 3 ? 'invisible' : ''}`}
             >
               <ArrowLeft size={15} />
               {t('common.previous')}
@@ -528,7 +528,7 @@ export function CreateOrg() {
                 type="button"
                 onClick={() => navigate('/admin/tableau-de-bord')}
                 disabled={!confirmed}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-success text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-success text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t('createOrg.accessSpace')} <ArrowRight size={15} />
               </button>
@@ -540,7 +540,7 @@ export function CreateOrg() {
                   setShowValidation(false)
                   setStep(step + 1)
                 }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy-light transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy-light transition-colors"
               >
                 {t('common.next')} <ArrowRight size={15} />
               </button>
@@ -549,10 +549,9 @@ export function CreateOrg() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-success text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-success text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {loading ? t('createOrg.creating') : t('createOrg.createSpace')}
-                {!loading && <Check size={15} />}
+                {loading ? <><Loader2 size={15} className="animate-spin" />{t('createOrg.creating')}</> : <>{t('createOrg.createSpace')}<Check size={15} /></>}
               </button>
             )}
           </div>
@@ -560,7 +559,7 @@ export function CreateOrg() {
 
         <p className="mt-6 text-center text-xs text-faint">
           {t('auth.alreadyHaveAccount')}{' '}
-          <Link to="/connexion" className="text-indigo font-medium hover:underline">{t('auth.login')}</Link>
+          <Link to="/connexion" className="text-indigo font-medium hover:underline inline-flex items-center min-h-[44px]">{t('auth.login')}</Link>
         </p>
       </div>
     </div>

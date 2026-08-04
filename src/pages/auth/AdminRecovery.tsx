@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { RecoveryService } from '../../services/recovery.service'
 
@@ -92,7 +92,7 @@ export function AdminRecovery() {
   }
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-12">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -101,7 +101,7 @@ export function AdminRecovery() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <Link to="/connexion/admin" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors">
+        <Link to="/connexion/admin" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[44px]">
           <ArrowLeft size={15} /> {t('auth.backToLogin')}
         </Link>
 
@@ -135,8 +135,9 @@ export function AdminRecovery() {
                 <button
                   onClick={sendOtp}
                   disabled={!email.trim() || loading}
-                  className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="w-full py-3.5 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 size={15} className="animate-spin" />}
                   {loading ? t('auth.sending') : t('auth.sendCode')}
                 </button>
               </div>
@@ -163,11 +164,12 @@ export function AdminRecovery() {
                 <button
                   onClick={verifyOtp}
                   disabled={otp.length !== 6 || loading}
-                  className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="w-full py-3.5 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 size={15} className="animate-spin" />}
                   {loading ? t('auth.verifying') : t('auth.verifyCode')}
                 </button>
-                <button onClick={() => { setStep('email'); setOtp(''); setError(null) }} className="w-full text-xs text-muted hover:text-ink transition-colors">
+                <button onClick={() => { setStep('email'); setOtp(''); setError(null) }} className="w-full min-h-[44px] text-xs text-muted hover:text-ink transition-colors">
                   {t('auth.resendCode')}
                 </button>
               </div>
@@ -208,7 +210,7 @@ export function AdminRecovery() {
                       minLength={6}
                       className="w-full px-4 py-3 pr-11 bg-bg border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy"
                     />
-                    <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
+                    <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted hover:text-ink rounded-lg">
                       {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
@@ -229,8 +231,9 @@ export function AdminRecovery() {
                 <button
                   onClick={runRecovery}
                   disabled={!phrase.trim() || password.length < 6 || password !== confirmPassword || loading}
-                  className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="w-full py-3.5 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 size={15} className="animate-spin" />}
                   {loading ? t('auth.recovering') : t('auth.recoverAccess')}
                 </button>
               </div>

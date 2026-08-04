@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, KeyRound } from 'lucide-react'
+import { ArrowLeft, KeyRound, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { RecoveryService } from '../../services/recovery.service'
 
@@ -108,7 +108,7 @@ export function CollaboratorRecovery() {
   }
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-12">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -117,7 +117,7 @@ export function CollaboratorRecovery() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <Link to="/connexion/utilisateur" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors">
+        <Link to="/connexion/utilisateur" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[44px]">
           <ArrowLeft size={15} /> {t('auth.backToLogin')}
         </Link>
 
@@ -150,8 +150,9 @@ export function CollaboratorRecovery() {
                 <button
                   onClick={sendOtp}
                   disabled={!email.trim() || loading}
-                  className="w-full py-3 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="w-full py-3.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 size={15} className="animate-spin" />}
                   {loading ? t('auth.sending') : t('auth.sendCode')}
                 </button>
               </div>
@@ -179,11 +180,12 @@ export function CollaboratorRecovery() {
                 <button
                   onClick={verifyOtp}
                   disabled={otp.length !== 6 || loading}
-                  className="w-full py-3 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="w-full py-3.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 size={15} className="animate-spin" />}
                   {loading ? t('auth.verifying') : t('auth.verifyCode')}
                 </button>
-                <button onClick={() => { setStep('email'); setOtp(''); setError(null) }} className="w-full text-xs text-muted hover:text-ink transition-colors">
+                <button onClick={() => { setStep('email'); setOtp(''); setError(null) }} className="w-full min-h-[44px] text-xs text-muted hover:text-ink transition-colors">
                   {t('auth.resendCode')}
                 </button>
               </div>
@@ -221,8 +223,9 @@ export function CollaboratorRecovery() {
                 <button
                   onClick={resetPin}
                   disabled={pin.length !== 6 || pin !== confirmPin || loading}
-                  className="w-full py-3 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="w-full py-3.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 size={15} className="animate-spin" />}
                   {loading ? t('auth.resetting') : t('auth.resetPin')}
                 </button>
               </div>

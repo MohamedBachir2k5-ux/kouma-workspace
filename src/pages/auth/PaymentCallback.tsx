@@ -29,7 +29,7 @@ export function PaymentCallback() {
   }, [paymentId])
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-bg flex items-center justify-center p-4 safe-area-bottom">
       <div className="text-center max-w-sm w-full">
 
         {status === 'loading' && (

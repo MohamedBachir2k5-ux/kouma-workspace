@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, ChevronDown, Check, AlertTriangle } from 'lucide-react'
+import { ArrowRight, ChevronDown, Check, AlertTriangle, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AuthService, ERR_EMAIL_ALREADY_USED } from '../../services/auth.service'
 import { UserService, ERR_ALREADY_MEMBER } from '../../services/user.service'
@@ -169,10 +169,10 @@ export function JoinOrg() {
 
   if (loadError) {
     return (
-      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
         <div className="w-full max-w-sm text-center">
           <p className="text-sm text-danger mb-4">{loadError}</p>
-          <Link to="/" className="text-sm text-indigo hover:underline">{t('joinOrg.backToHome')}</Link>
+          <Link to="/" className="flex items-center justify-center min-h-[44px] text-sm text-indigo hover:underline">{t('joinOrg.backToHome')}</Link>
         </div>
       </div>
     )
@@ -180,7 +180,7 @@ export function JoinOrg() {
 
   if (success) {
     return (
-      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
         <div className="w-full max-w-sm text-center">
           <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-5">
             <Check size={28} className="text-success" />
@@ -195,7 +195,7 @@ export function JoinOrg() {
   const ready = !!invite
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-10">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -230,7 +230,7 @@ export function JoinOrg() {
                 placeholder={t('joinOrg.emailPlaceholder')}
                 autoFocus
                 disabled={!ready}
-                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
               />
             </div>
 
@@ -243,7 +243,7 @@ export function JoinOrg() {
                   onChange={e => update('firstName', e.target.value)}
                   placeholder={t('joinOrg.firstNamePlaceholder')}
                   disabled={!ready}
-                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                  className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                 />
               </div>
               <div>
@@ -253,7 +253,7 @@ export function JoinOrg() {
                   onChange={e => update('lastName', e.target.value)}
                   placeholder={t('joinOrg.lastNamePlaceholder')}
                   disabled={!ready}
-                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                  className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                 />
               </div>
             </div>
@@ -269,7 +269,7 @@ export function JoinOrg() {
                 onChange={e => update('phone', e.target.value)}
                 placeholder="+XX XXXX XXXX"
                 disabled={!ready}
-                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
               />
             </div>
 
@@ -284,7 +284,7 @@ export function JoinOrg() {
                     value={form.departmentId}
                     onChange={e => update('departmentId', e.target.value)}
                     disabled={!ready}
-                    className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                    className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
                   >
                     <option value="">{t('joinOrg.selectDepartment')}</option>
                     {departments.map(d => (
@@ -304,7 +304,7 @@ export function JoinOrg() {
                 onChange={e => update('jobTitle', e.target.value)}
                 placeholder={t('joinOrg.jobTitlePlaceholder')}
                 disabled={!ready}
-                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
               />
             </div>
 
@@ -346,9 +346,9 @@ export function JoinOrg() {
           <button
             onClick={handleSubmit}
             disabled={!valid || loading || !ready}
-            className="mt-6 w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+            className="mt-6 w-full py-3.5 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
           >
-            {loading ? t('joinOrg.creating') : <><span>{t('joinOrg.createAccount')}</span><ArrowRight size={15} /></>}
+            {loading ? <><Loader2 size={15} className="animate-spin" />{t('joinOrg.creating')}</> : <><span>{t('joinOrg.createAccount')}</span><ArrowRight size={15} /></>}
           </button>
 
           <p className="mt-4 text-center text-xs text-faint leading-relaxed">

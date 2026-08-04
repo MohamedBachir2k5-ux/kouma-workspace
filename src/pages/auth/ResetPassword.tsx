@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Check, AlertTriangle } from 'lucide-react'
+import { Eye, EyeOff, Check, AlertTriangle, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { AuthService } from '../../services/auth.service'
@@ -49,7 +49,7 @@ export function ResetPassword() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-bg flex items-center justify-center p-4 safe-area-bottom">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-indigo border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-muted">{t('resetPassword.verifying')}</p>
@@ -60,7 +60,7 @@ export function ResetPassword() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-bg flex items-center justify-center p-4 safe-area-bottom">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
             <Check size={24} className="text-success" />
@@ -107,7 +107,7 @@ export function ResetPassword() {
                 />
                 {field === 'next' && (
                   <button type="button" onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-faint hover:text-muted">
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-faint hover:text-muted rounded-lg">
                     {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 )}
@@ -123,7 +123,9 @@ export function ResetPassword() {
           <button
             type="submit"
             disabled={!valid || loading}
-            className="w-full py-3 bg-navy text-white font-semibold rounded-xl hover:opacity-90 disabled:opacity-40 transition-opacity">
+            className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl hover:opacity-90 disabled:opacity-40 transition-opacity flex items-center justify-center gap-2"
+          >
+            {loading && <Loader2 size={15} className="animate-spin" />}
             {loading ? t('resetPassword.updating') : t('resetPassword.submit')}
           </button>
         </form>
