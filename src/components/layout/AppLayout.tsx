@@ -129,7 +129,7 @@ export function AppLayout() {
   if (!isOrgReady && currentUser.id !== 'u1') return <Navigate to="/creer" replace />
 
   return (
-    <div className="flex flex-col h-full bg-bg overflow-hidden">
+    <div className="flex flex-col h-screen bg-bg overflow-hidden">
       {!cryptoLoaded && isOrgReady && (
         <PinUnlockModal
           userId={currentUser.id}
