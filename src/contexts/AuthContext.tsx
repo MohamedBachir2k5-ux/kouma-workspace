@@ -10,6 +10,7 @@ import { OrganizationService } from '../services/organization.service'
 import { UserService } from '../services/user.service'
 import { SessionService } from '../services/session.service'
 import { PushService } from '../services/push.service'
+import { cryptoSession } from '../lib/crypto-session'
 import type { ProfileRow, OrganizationRow, SubscriptionRow } from '../lib/database.types'
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
@@ -301,6 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     tracerSetContext(undefined, undefined)
+    cryptoSession.clear()
     if (isSupabaseConfigured()) {
       // Clean up push subscription before session is invalidated
       if (currentUser?.id) await PushService.unsubscribe(currentUser.id).catch(() => {})
