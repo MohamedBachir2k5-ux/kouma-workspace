@@ -90,59 +90,37 @@ export const MessageService = {
   },
 
   async getConversations(orgId: string, userId: string): Promise<Channel[]> {
-    const { data: memberships } = await supabase
-      .from('conversation_members')
-      .select('conversation_id')
-      .eq('user_id', userId)
+    // Single server-side JOIN via RPC — avoids the .in(convIds) anti-pattern
+    // that generated >32 KB URLs and silently returned [] for large conv lists.
+    const [{ data: rows }, { data: unreadRows }] = await Promise.all([
+      supabase.rpc('get_user_conversations', { p_org_id: orgId, p_user_id: userId }),
+      supabase.rpc('get_unread_counts', { p_user_id: userId, p_org_id: orgId }),
+    ])
 
-    if (!memberships?.length) return []
-    const convIds = memberships.map(m => m.conversation_id)
+    if (!rows?.length) return []
 
-    const { data: convs } = await supabase
-      .from('conversations')
-      .select('*, conversation_members(user_id)')
-      .eq('organization_id', orgId)
-      .in('id', convIds)
+    const allMemberIds = [...new Set(rows.flatMap((r: { member_ids: string[] }) => r.member_ids))]
 
-    if (!convs?.length) return []
+    const teamRefIds = rows
+      .filter((r: { type: string; reference_id: string | null }) => r.type === 'team' && r.reference_id != null)
+      .map((r: { type: string; reference_id: string | null }) => r.reference_id as string)
 
-    const allMemberIds = [...new Set(
-      convs.flatMap(c => (c as unknown as { conversation_members: { user_id: string }[] }).conversation_members.map(m => m.user_id))
-    )]
-
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, firstname, lastname, email')
-      .in('id', allMemberIds)
+    const [{ data: profiles }, { data: teams }] = await Promise.all([
+      supabase.from('profiles').select('id, firstname, lastname, email').in('id', allMemberIds),
+      teamRefIds.length > 0
+        ? supabase.from('teams').select('id, name').in('id', teamRefIds)
+        : Promise.resolve({ data: [] }),
+    ])
 
     const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
-
-    const teamRefIds = convs
-      .filter(c => c.type === 'team' && c.reference_id)
-      .map(c => c.reference_id!)
-
-    const teamNameMap: Record<string, string> = {}
-    if (teamRefIds.length > 0) {
-      const { data: teams } = await supabase
-        .from('teams')
-        .select('id, name')
-        .in('id', teamRefIds)
-      ;(teams ?? []).forEach(t => { teamNameMap[t.id] = t.name })
-    }
-
-    // Unread counts via RPC (single query, uses last_read_at from conversation_members)
-    const { data: unreadRows } = await supabase.rpc('get_unread_counts', {
-      p_user_id: userId,
-      p_org_id: orgId,
-    })
+    const teamNameMap = Object.fromEntries(((teams ?? []) as { id: string; name: string }[]).map(t => [t.id, t.name]))
     const unreadMap: Record<string, number> = {}
     ;(unreadRows ?? []).forEach((r: { conversation_id: string; unread_count: number }) => {
       unreadMap[r.conversation_id] = Number(r.unread_count)
     })
 
-    return convs.map(c => {
-      const members = (c as unknown as { conversation_members: { user_id: string }[] })
-        .conversation_members.map(m => m.user_id)
+    return rows.map((c: { id: string; type: string; organization_id: string; reference_id: string | null; created_at: string; name: string | null; member_ids: string[] }) => {
+      const members = c.member_ids
 
       let name = ''
       if (c.type === 'direct') {
@@ -152,7 +130,7 @@ export const MessageService = {
       } else if (c.type === 'team' && c.reference_id) {
         name = teamNameMap[c.reference_id] ?? i18n.t('messages.defaultTeam')
       } else {
-        name = (c as unknown as { name?: string | null }).name ?? (
+        name = c.name ?? (
           members
             .filter(id => id !== userId)
             .slice(0, 2)

@@ -1999,6 +1999,18 @@ export type Database = {
           unread_count: number
         }[]
       }
+      get_user_conversations: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: {
+          id: string
+          type: string
+          organization_id: string
+          reference_id: string | null
+          created_at: string
+          name: string | null
+          member_ids: string[]
+        }[]
+      }
       init_conversation_keys: {
         Args: { p_conversation_id: string; p_key_rows: Json }
         Returns: undefined
