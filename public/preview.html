@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kouma — Preview mobile</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f1628;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      gap: 24px;
+      padding: 40px 20px;
+    }
+
+    .label {
+      color: #64748b;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: #1e2d4a;
+      color: #818cf8;
+      border: 1px solid #2d3f60;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      text-decoration: none;
+    }
+    .btn:hover { background: #2d3f60; }
+    .btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+
+    /* Phone shell */
+    .phone-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .phone {
+      position: relative;
+      width: 393px;
+      height: 852px;
+      background: #000;
+      border-radius: 54px;
+      box-shadow:
+        0 0 0 2px #3a3a3c,
+        0 0 0 4px #1c1c1e,
+        0 30px 80px rgba(0,0,0,0.7);
+      overflow: hidden;
+    }
+
+    /* Side buttons */
+    .phone::before {
+      content: '';
+      position: absolute;
+      left: -4px;
+      top: 160px;
+      width: 4px;
+      height: 36px;
+      background: #3a3a3c;
+      border-radius: 2px 0 0 2px;
+      box-shadow: 0 52px 0 #3a3a3c, 0 96px 0 #3a3a3c;
+    }
+    .phone::after {
+      content: '';
+      position: absolute;
+      right: -4px;
+      top: 200px;
+      width: 4px;
+      height: 72px;
+      background: #3a3a3c;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* Dynamic Island */
+    .dynamic-island {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 126px;
+      height: 36px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 10;
+    }
+
+    /* Screen */
+    .screen {
+      position: absolute;
+      inset: 0;
+      border-radius: 54px;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 54px;
+    }
+
+    /* Scale for smaller screens */
+    @media (max-height: 960px) {
+      .phone {
+        transform: scale(0.85);
+        transform-origin: top center;
+      }
+      .phone-wrap {
+        margin-bottom: -128px;
+      }
+    }
+
+    @media (max-height: 800px) {
+      .phone {
+        transform: scale(0.7);
+        transform-origin: top center;
+      }
+      .phone-wrap {
+        margin-bottom: -256px;
+      }
+    }
+
+    .info {
+      color: #334155;
+      font-size: 11px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .info strong { color: #64748b; }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <span class="label">Kouma Preview</span>
+    <a href="/" class="btn" target="_blank">↗ Ouvrir dans un onglet</a>
+    <button class="btn" onclick="reload()">↺ Recharger</button>
+  </div>
+
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="screen">
+        <iframe id="frame" src="/" title="Kouma app"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <p class="info">
+    <strong>iPhone 15 Pro</strong> · 393 × 852px · Scale adaptatif<br>
+    Le rendu ici est identique à ce que verra l'utilisateur sur iPhone en PWA.
+  </p>
+
+  <script>
+    function reload() {
+      document.getElementById('frame').src = document.getElementById('frame').src
+    }
+  </script>
+
+</body>
+</html>

@@ -52,10 +52,13 @@ export function UserLogin() {
       return
     }
 
-    // Load E2E keys into session (best-effort — don't block login if missing)
+    // Load E2E keys into session — generate them first if this is a new account
     const orgRow = await OrganizationService.getForUser(userId)
     if (orgRow) {
-      await KeyService.loadUserKeys(userId, pin, orgRow.id)
+      const { ok } = await KeyService.loadUserKeys(userId, pin, orgRow.id)
+      if (!ok) {
+        await KeyService.generateAndStoreUserKeys(userId, pin)
+      }
     }
 
     navigate('/app/messages', { replace: true })

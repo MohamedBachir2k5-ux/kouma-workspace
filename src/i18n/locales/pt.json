@@ -468,7 +468,12 @@
     "sizeError": "Ficheiro demasiado grande. {{limit}}.",
     "acceptedFormats": "PDF, Word, Excel, PowerPoint, imagens (PNG, JPG, GIF, WebP), texto, CSV, ZIP",
     "maxSize": "50 MB máximo",
-    "docCount": "{{count}} documento(s)"
+    "docCount": "{{count}} documento(s)",
+    "sortDate": "Mais recente",
+    "sortName": "A → Z",
+    "sortSize": "Mais pesado",
+    "sortType": "Por tipo",
+    "loadMore": "Carregar mais"
   },
   "agenda": {
     "title": "Agenda",

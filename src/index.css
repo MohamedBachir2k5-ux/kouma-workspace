@@ -68,7 +68,7 @@ html.dark {
   }
 
   #root {
-    min-height: 100vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
   }
@@ -96,11 +96,6 @@ body {
 .highlight-flash {
   animation: highlight-flash 1.2s ease-out forwards;
   border-radius: 12px;
-}
-
-/* iOS safe-area top padding (notch / Dynamic Island) */
-body {
-  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Global focus-visible ring — ensures keyboard navigation is always visible.

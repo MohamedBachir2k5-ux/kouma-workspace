@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Search, Upload, FileText, File, Table, Plus, FolderOpen, Loader2, Download, X, Users, BookOpen, Trash2, ChevronRight, Folder as FolderIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DocumentService } from '../../services/document.service'
@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase'
 
 const ACCEPTED_FORMATS = 'PDF, Word, Excel, PowerPoint, images (PNG, JPG, GIF, WebP), text, CSV, ZIP'
 const MAX_SIZE_LABEL = '50 MB max'
+const PAGE_SIZE = 30
 
 const FOLDER_COLORS = [
   'bg-amber/10 text-amber',
@@ -42,7 +43,6 @@ function friendlyUploadError(raw: string, t: (key: string, opts?: Record<string,
   return raw
 }
 
-/* ── In-app document viewer ── */
 function DocumentPreviewModal({ docId, docName, docType, orgId, onClose, onDownload }: {
   docId: string; docName: string; docType: string; orgId: string
   onClose: () => void; onDownload: () => void
@@ -69,7 +69,6 @@ function DocumentPreviewModal({ docId, docName, docType, orgId, onClose, onDownl
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm" onClick={onClose}>
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-surface/10 border-b border-white/10" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <FileIcon type={docType} size={16} />
@@ -84,7 +83,6 @@ function DocumentPreviewModal({ docId, docName, docType, orgId, onClose, onDownl
           </button>
         </div>
       </div>
-      {/* Content */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
         {loading && <Loader2 size={28} className="text-white/60 animate-spin" />}
         {error && <p className="text-white/60 text-sm">{error}</p>}
@@ -179,6 +177,7 @@ function NewFolderModal({ defaultVisibility = 'personal', onClose, onCreated }: 
 }
 
 type SpaceTab = 'personal' | 'team' | 'org'
+type SortKey = 'date' | 'name' | 'size' | 'type'
 
 export function Documents() {
   const { t } = useTranslation()
@@ -192,14 +191,28 @@ export function Documents() {
     { value: 'org',      label: t('documents.orgDocs'),  icon: BookOpen },
   ]
 
+  // Filters
   const [space, setSpace] = useState<SpaceTab>('personal')
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [activeFolder, setActiveFolder] = useState<string | null>(null)
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+  const [sort, setSort] = useState<SortKey>('date')
+
+  // Data
   const [docs, setDocs] = useState<Document[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [orgUsers, setOrgUsers] = useState<User[]>([])
   const [myTeams, setMyTeams] = useState<Team[]>([])
+  const [totalUsed, setTotalUsed] = useState(0)
+
+  // Pagination
+  const [hasMore, setHasMore] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshToken, setRefreshToken] = useState(0)
+
+  // Actions
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
@@ -212,76 +225,86 @@ export function Documents() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
 
-  const loadDocs = useCallback(() => {
-    DocumentService.list(currentOrg.id).then(setDocs)
-    DocumentService.listFolders(currentOrg.id).then(setFolders)
-  }, [currentOrg.id])
-
+  // Debounce search
   useEffect(() => {
-    loadDocs()
+    const timer = setTimeout(() => setDebouncedQuery(query), 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  // Main paginated fetch — resets on any filter/sort/refresh change
+  useEffect(() => {
+    let cancelled = false
+    async function fetch() {
+      setLoading(true)
+      const result = await DocumentService.listPaginated(currentOrg.id, currentUser.id, {
+        space,
+        teamId: selectedTeamId,
+        folderId: activeFolder ?? undefined,
+        query: debouncedQuery,
+        sort,
+        limit: PAGE_SIZE,
+        offset: 0,
+      })
+      if (cancelled) return
+      setDocs(result.docs)
+      setHasMore(result.hasMore)
+      setLoading(false)
+    }
+    fetch()
+    return () => { cancelled = true }
+  }, [space, selectedTeamId, activeFolder, debouncedQuery, sort, refreshToken, currentOrg.id, currentUser.id])
+
+  // Load more (next page)
+  async function handleLoadMore() {
+    setLoadingMore(true)
+    const result = await DocumentService.listPaginated(currentOrg.id, currentUser.id, {
+      space, teamId: selectedTeamId, folderId: activeFolder ?? undefined,
+      query: debouncedQuery, sort, limit: PAGE_SIZE, offset: docs.length,
+    })
+    setDocs(prev => [...prev, ...result.docs])
+    setHasMore(result.hasMore)
+    setLoadingMore(false)
+  }
+
+  // Static data — folders, users, teams
+  useEffect(() => {
+    DocumentService.listFolders(currentOrg.id).then(setFolders)
     UserService.getByOrganizationWithRole(currentOrg.id).then(setOrgUsers)
     TeamService.getByOrganizationWithMembers(currentOrg.id).then(teams => {
-      const mine = isAdmin
-        ? teams
-        : teams.filter(t => t.members.includes(currentUser.id))
+      const mine = isAdmin ? teams : teams.filter(t => t.members.includes(currentUser.id))
       setMyTeams(mine)
       if (mine.length > 0 && !selectedTeamId) setSelectedTeamId(mine[0].id)
     })
-  }, [currentOrg.id, loadDocs])
+    DocumentService.totalUsed(currentOrg.id).then(setTotalUsed)
+  }, [currentOrg.id])
 
+  // Realtime
   useEffect(() => {
     const key = `rt-docs-${currentOrg.id}-${Math.random().toString(36).slice(2, 8)}`
     const channel = supabase.channel(key)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'documents',
         filter: `organization_id=eq.${currentOrg.id}`,
-      }, loadDocs)
+      }, () => setRefreshToken(n => n + 1))
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [currentOrg.id, loadDocs])
+  }, [currentOrg.id])
 
-  const spaceDocs = docs.filter(d => {
-    if (space === 'personal') return d.visibility === 'personal' && d.ownerId === currentUser.id
-    if (space === 'team') {
-      if (!selectedTeamId) return false
-      return d.visibility === 'team' && d.teamId === selectedTeamId
-    }
-    return d.visibility === 'org'
+  // Folders visible in current space
+  const spaceFolders = folders.filter(f => {
+    if (space === 'personal') return f.visibility === 'personal' && f.createdBy === currentUser.id
+    if (space === 'team') return f.teamId === selectedTeamId
+    return f.visibility === 'org'
   })
-
-  // Folders visible in current space:
-  // - personal: folders created by current user with personal visibility
-  // - org: folders with org visibility
-  // - team: folders linked to selected team
-  // Plus any folder that actually contains docs in the current space (legacy support)
-  const spaceFolderIds = [...new Set([
-    ...folders
-      .filter(f => {
-        if (space === 'personal') return f.visibility === 'personal' && f.createdBy === currentUser.id
-        if (space === 'team') return f.teamId === selectedTeamId
-        return f.visibility === 'org'
-      })
-      .map(f => f.id),
-    // Also show folders that contain docs in this space even if visibility mismatch (migration safety)
-    ...spaceDocs.filter(d => d.folderId).map(d => d.folderId!),
-  ])]
-  // Keep uniqueFolderIds as alias for drag-and-drop color indexing
-  const uniqueFolderIds = spaceFolderIds
 
   function getFolderName(id: string) {
     return folders.find(f => f.id === id)?.name ?? id
   }
 
   function getFolderColor(id: string) {
-    const idx = uniqueFolderIds.indexOf(id)
-    return FOLDER_COLORS[idx % FOLDER_COLORS.length]
+    const idx = spaceFolders.findIndex(f => f.id === id)
+    return FOLDER_COLORS[(idx < 0 ? 0 : idx) % FOLDER_COLORS.length]
   }
-
-  const filtered = spaceDocs.filter(doc => {
-    if (query && !doc.name.toLowerCase().includes(query.toLowerCase())) return false
-    if (activeFolder && doc.folderId !== activeFolder) return false
-    return true
-  })
 
   function getUploader(id: string): User | undefined {
     return orgUsers.find(u => u.id === id)
@@ -295,35 +318,35 @@ export function Documents() {
       : null
 
   async function uploadFile(file: File) {
-    const currentUsed = docs.reduce((sum, d) => sum + d.size, 0)
+    const currentUsed = totalUsed
     if (storageQuotaBytes > 0 && currentUsed + file.size > storageQuotaBytes) {
       setUploadError(t('documents.quotaExceeded'))
       return
     }
-
     setUploading(true)
     setUploadError(null)
-
     const uploadVisibility = space === 'org' ? 'org' : space === 'team' ? 'team' : 'personal'
     const { document: newDoc, error } = await DocumentService.uploadDocument(
-      currentOrg.id,
-      currentUser.id,
-      file,
-      activeFolder ?? undefined,
-      uploadVisibility,
+      currentOrg.id, currentUser.id, file,
+      activeFolder ?? undefined, uploadVisibility,
       space === 'team' ? (selectedTeamId ?? undefined) : undefined,
     )
-
     setUploading(false)
     if (error) { setUploadError(friendlyUploadError(error, t)); return }
-    if (newDoc) setDocs(prev => [newDoc, ...prev])
+    if (newDoc) {
+      setDocs(prev => [newDoc, ...prev])
+      setTotalUsed(u => u + newDoc.size)
+    }
   }
 
   function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
-    uploadFile(file).catch(err => {
+    if (!files.length) return
+    files.reduce(
+      (chain, file) => chain.then(() => uploadFile(file)),
+      Promise.resolve(),
+    ).catch(err => {
       setUploading(false)
       setUploadError((err as Error).message || t('errors.uploadError'))
     })
@@ -343,7 +366,9 @@ export function Documents() {
     setDeletingId(null)
     setConfirmDeleteId(null)
     if (error) { setActionError(error); return }
+    const removed = docs.find(d => d.id === docId)
     setDocs(prev => prev.filter(d => d.id !== docId))
+    if (removed) setTotalUsed(u => Math.max(0, u - removed.size))
   }
 
   async function handleMoveToFolder(docId: string, folderId: string | null) {
@@ -364,9 +389,12 @@ export function Documents() {
 
   const selectedTeam = myTeams.find(t => t.id === selectedTeamId)
 
+  // Quota percentage
+  const quotaPct = storageQuotaBytes > 0 ? Math.min((totalUsed / storageQuotaBytes) * 100, 100) : 0
+
   return (
     <div className="flex-1 overflow-y-auto">
-      <input ref={fileInputRef} type="file" className="absolute w-px h-px opacity-0 overflow-hidden pointer-events-none" tabIndex={-1} aria-hidden onChange={handleFileSelected} />
+      <input ref={fileInputRef} type="file" multiple className="absolute w-px h-px opacity-0 overflow-hidden pointer-events-none" tabIndex={-1} aria-hidden onChange={handleFileSelected} />
 
       {/* Header */}
       <div className="sticky top-0 z-10 bg-bg px-4 pt-4 pb-3 border-b border-border">
@@ -400,7 +428,7 @@ export function Documents() {
           ))}
         </div>
 
-        {/* Team selector — only in team space */}
+        {/* Team selector */}
         {space === 'team' && myTeams.length > 0 && (
           <div className="flex gap-1.5 mb-3 overflow-x-auto pb-0.5 scrollbar-none">
             {myTeams.map(team => (
@@ -408,9 +436,7 @@ export function Documents() {
                 key={team.id}
                 onClick={() => { setSelectedTeamId(team.id); setActiveFolder(null) }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
-                  selectedTeamId === team.id
-                    ? 'text-white'
-                    : 'bg-surface border border-border text-muted hover:bg-bg'
+                  selectedTeamId === team.id ? 'text-white' : 'bg-surface border border-border text-muted hover:bg-bg'
                 }`}
                 style={selectedTeamId === team.id ? { backgroundColor: team.color } : undefined}
               >
@@ -420,38 +446,67 @@ export function Documents() {
             ))}
           </div>
         )}
-
         {space === 'team' && myTeams.length === 0 && (
           <p className="text-xs text-muted mb-3">{t('teams.noTeams')}</p>
         )}
 
-        {/* Upload helper text */}
+        {/* Upload hint */}
         {!uploadDisabledReason && (
           <p className="text-xs text-faint mb-2">{t('documents.acceptedFormats')} · {t('documents.maxSize')}</p>
+        )}
+
+        {/* Quota bar */}
+        {storageQuotaBytes > 0 && (
+          <div className="mb-2">
+            <div className="flex justify-between text-xs text-muted mb-1">
+              <span>{formatFileSize(totalUsed)} {t('documents.storageUsedPct')}</span>
+              <span>{formatFileSize(storageQuotaBytes)}</span>
+            </div>
+            <div className="h-1.5 bg-border rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${quotaPct > 90 ? 'bg-danger' : quotaPct > 70 ? 'bg-amber' : 'bg-indigo'}`}
+                style={{ width: `${quotaPct}%` }}
+              />
+            </div>
+          </div>
         )}
 
         {uploadError && <p className="text-xs text-danger mb-2">{uploadError}</p>}
         {downloadError && <p className="text-xs text-danger mb-2">{downloadError}</p>}
         {actionError && <p className="text-xs text-danger mb-2">{actionError}</p>}
 
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={t('documents.search')}
-            className="w-full pl-9 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent"
-          />
+        {/* Search + sort */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={t('documents.search')}
+              className="w-full pl-9 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent"
+            />
+          </div>
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value as SortKey)}
+            className="text-xs border border-border rounded-xl px-2 py-2.5 bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-indigo shrink-0"
+          >
+            <option value="date">{t('documents.sortDate')}</option>
+            <option value="name">{t('documents.sortName')}</option>
+            <option value="size">{t('documents.sortSize')}</option>
+            <option value="type">{t('documents.sortType')}</option>
+          </select>
         </div>
       </div>
 
       <div className="px-4 py-4 max-w-3xl">
-        {/* Folders — shown in personal and org spaces when not inside a folder */}
-        {space !== 'team' && !activeFolder && (
+        {/* Folders — all spaces */}
+        {!activeFolder && spaceFolders.length > 0 && (
           <div className="mb-6">
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">{t('documents.folders')}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {uniqueFolderIds.map(fid => {
+              {spaceFolders.map(folder => {
+                const fid = folder.id
                 const fileCount = docs.filter(d => d.folderId === fid).length
                 const isDragTarget = dragOverFolder === fid
                 return (
@@ -477,7 +532,7 @@ export function Documents() {
                       <div className="text-sm font-semibold text-ink truncate">{getFolderName(fid)}</div>
                       <div className="text-xs text-muted">{fileCount !== 1 ? t('documents.fileCountPlural', { count: String(fileCount) }) : t('documents.fileCount', { count: String(fileCount) })}</div>
                     </div>
-                    {(isAdmin || folders.find(f => f.id === fid)?.createdBy === currentUser.id) && (
+                    {(isAdmin || folder.createdBy === currentUser.id) && (
                       <button
                         type="button"
                         onClick={e => { e.stopPropagation(); handleDeleteFolder(fid) }}
@@ -492,7 +547,6 @@ export function Documents() {
                   </button>
                 )
               })}
-              {/* Allow anyone to create personal folders; org/admin only for other spaces */}
               {(space === 'personal' || isAdmin) && (
                 <button
                   onClick={() => setShowNewFolder(true)}
@@ -507,6 +561,21 @@ export function Documents() {
           </div>
         )}
 
+        {/* No folders yet — show "new folder" button */}
+        {!activeFolder && spaceFolders.length === 0 && (space === 'personal' || isAdmin) && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">{t('documents.folders')}</h3>
+            <button
+              onClick={() => setShowNewFolder(true)}
+              className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-border hover:border-indigo/40 hover:bg-bg transition-colors text-left">
+              <div className="w-9 h-9 rounded-lg bg-bg flex items-center justify-center">
+                <Plus size={18} className="text-muted" />
+              </div>
+              <span className="text-sm text-muted">{t('documents.newFolder')}</span>
+            </button>
+          </div>
+        )}
+
         {/* Team header */}
         {space === 'team' && selectedTeam && (
           <div className="flex items-center gap-2.5 mb-4 p-3 bg-surface rounded-xl border border-border">
@@ -515,7 +584,7 @@ export function Documents() {
             </div>
             <div>
               <div className="text-sm font-semibold text-ink">{selectedTeam.name}</div>
-              <div className="text-xs text-muted">{t('documents.docCount', { count: String(spaceDocs.length) })}</div>
+              <div className="text-xs text-muted">{t('documents.docCount', { count: String(docs.length) })}</div>
             </div>
           </div>
         )}
@@ -537,15 +606,15 @@ export function Documents() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wide">
               {activeFolder
-                ? (filtered.length !== 1 ? t('documents.fileCountPlural', { count: String(filtered.length) }) : t('documents.fileCount', { count: String(filtered.length) }))
+                ? (docs.length !== 1 ? t('documents.fileCountPlural', { count: String(docs.length) }) : t('documents.fileCount', { count: String(docs.length) }))
                 : t('documents.files')}
             </h3>
-            {activeFolder && filtered.length > 0 && (
+            {activeFolder && docs.length > 0 && (
               <span className="text-xs text-faint">{t('documents.dragHint')}</span>
             )}
           </div>
 
-          {/* Drop zone when inside a folder — move existing docs in, or upload new files from OS */}
+          {/* Drop zone when inside a folder */}
           {activeFolder && (
             <div
               onDragOver={e => { e.preventDefault(); setDragOverFolder(activeFolder) }}
@@ -553,12 +622,10 @@ export function Documents() {
               onDrop={e => {
                 e.preventDefault()
                 setDragOverFolder(null)
-                // OS file drop → upload into current folder
                 if (e.dataTransfer.files.length > 0) {
                   uploadFile(e.dataTransfer.files[0])
                   return
                 }
-                // In-app drag → move to folder
                 const docId = e.dataTransfer.getData('docId')
                 if (docId) handleMoveToFolder(docId, activeFolder)
               }}
@@ -570,99 +637,124 @@ export function Documents() {
             </div>
           )}
 
-          <div className="space-y-2">
-            {filtered.map(doc => {
-              const uploader = getUploader(doc.ownerId)
-              const isDownloading = downloadingId === doc.id
-              const isDeleting = deletingId === doc.id
-              const confirmingDelete = confirmDeleteId === doc.id
-              const canDelete = isAdmin || doc.ownerId === currentUser.id
-              return (
-                <div
-                  key={doc.id}
-                  draggable
-                  onDragStart={e => { e.dataTransfer.setData('docId', doc.id); e.dataTransfer.effectAllowed = 'move' }}
-                  className="w-full flex items-center gap-4 px-4 py-3.5 bg-surface rounded-xl border border-border hover:border-indigo/30 hover:shadow-sm transition-all cursor-grab active:cursor-grabbing"
-                >
-                  <button
-                    onClick={() => setPreviewDoc(doc)}
-                    disabled={isDownloading || isDeleting}
-                    className="flex items-center gap-4 flex-1 min-w-0 text-left disabled:opacity-60"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-bg flex items-center justify-center shrink-0">
-                      {isDownloading
-                        ? <Loader2 size={18} className="text-indigo animate-spin" />
-                        : <FileIcon type={doc.type} />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-ink truncate">{doc.name}</div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted">{formatFileSize(doc.size)}</span>
-                        <span className="text-border">·</span>
-                        <span className="text-xs text-muted">{formatDate(doc.createdAt).split(' ').slice(1).join(' ')}</span>
-                      </div>
-                    </div>
-                  </button>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {uploader && !confirmingDelete && (
-                      <Avatar firstName={uploader.firstName} lastName={uploader.lastName} id={uploader.id} size="sm" src={uploader.avatarUrl} />
-                    )}
-                    {!confirmingDelete && (
-                      <button type="button" onClick={() => handleDownload(doc)} className="w-12 h-12 flex items-center justify-center rounded-lg text-faint hover:text-indigo transition-colors">
-                        <Download size={14} />
-                      </button>
-                    )}
-                    {canDelete && (
-                      confirmingDelete ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDelete(doc.id)}
-                            disabled={isDeleting}
-                            className="text-xs font-semibold text-white bg-danger rounded-lg px-2 py-1 disabled:opacity-50"
-                          >
-                            {isDeleting ? '…' : t('common.delete')}
-                          </button>
-                          <button
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="text-xs font-semibold text-muted bg-bg border border-border rounded-lg px-2 py-1"
-                          >
-                            {t('common.cancel')}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmDeleteId(doc.id)}
-                          className="p-2.5 rounded-lg text-faint hover:text-danger hover:bg-danger/10 transition-colors"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+          {/* Loading skeleton */}
+          {loading && (
+            <div className="py-16 flex justify-center">
+              <Loader2 size={24} className="text-faint animate-spin" />
+            </div>
+          )}
 
-            {filtered.length === 0 && (space !== 'team' || selectedTeamId) && (
-              <div className="py-16 text-center">
-                <FileText size={32} className="text-faint mx-auto mb-3" />
-                <p className="text-sm text-muted">
-                  {space === 'team' && selectedTeam
-                    ? t('documents.noResults', { query: selectedTeam.name })
-                    : t('documents.noDocuments')
-                  }
-                </p>
-                {canUpload && !uploadDisabledReason && (
+          {/* Document list */}
+          {!loading && (
+            <div className="space-y-2">
+              {docs.map(doc => {
+                const uploader = getUploader(doc.ownerId)
+                const isDownloading = downloadingId === doc.id
+                const isDeleting = deletingId === doc.id
+                const confirmingDelete = confirmDeleteId === doc.id
+                const canDelete = isAdmin || doc.ownerId === currentUser.id
+                return (
+                  <div
+                    key={doc.id}
+                    draggable
+                    onDragStart={e => { e.dataTransfer.setData('docId', doc.id); e.dataTransfer.effectAllowed = 'move' }}
+                    className="w-full flex items-center gap-4 px-4 py-3.5 bg-surface rounded-xl border border-border hover:border-indigo/30 hover:shadow-sm transition-all cursor-grab active:cursor-grabbing"
+                  >
+                    <button
+                      onClick={() => setPreviewDoc(doc)}
+                      disabled={isDownloading || isDeleting}
+                      className="flex items-center gap-4 flex-1 min-w-0 text-left disabled:opacity-60"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-bg flex items-center justify-center shrink-0">
+                        {isDownloading
+                          ? <Loader2 size={18} className="text-indigo animate-spin" />
+                          : <FileIcon type={doc.type} />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-ink truncate">{doc.name}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-muted">{formatFileSize(doc.size)}</span>
+                          <span className="text-border">·</span>
+                          <span className="text-xs text-muted">{formatDate(doc.createdAt).split(' ').slice(1).join(' ')}</span>
+                        </div>
+                      </div>
+                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {uploader && !confirmingDelete && (
+                        <Avatar firstName={uploader.firstName} lastName={uploader.lastName} id={uploader.id} size="sm" src={uploader.avatarUrl} />
+                      )}
+                      {!confirmingDelete && (
+                        <button type="button" onClick={() => handleDownload(doc)} className="w-12 h-12 flex items-center justify-center rounded-lg text-faint hover:text-indigo transition-colors">
+                          <Download size={14} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        confirmingDelete ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDelete(doc.id)}
+                              disabled={isDeleting}
+                              className="text-xs font-semibold text-white bg-danger rounded-lg px-2 py-1 disabled:opacity-50"
+                            >
+                              {isDeleting ? '…' : t('common.delete')}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-xs font-semibold text-muted bg-bg border border-border rounded-lg px-2 py-1"
+                            >
+                              {t('common.cancel')}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(doc.id)}
+                            className="p-2.5 rounded-lg text-faint hover:text-danger hover:bg-danger/10 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Empty state */}
+              {docs.length === 0 && (space !== 'team' || selectedTeamId) && (
+                <div className="py-16 text-center">
+                  <FileText size={32} className="text-faint mx-auto mb-3" />
+                  <p className="text-sm text-muted">
+                    {debouncedQuery
+                      ? t('documents.noResults', { query: debouncedQuery })
+                      : space === 'team' && selectedTeam
+                        ? t('documents.noResults', { query: selectedTeam.name })
+                        : t('documents.noDocuments')}
+                  </p>
+                  {canUpload && !uploadDisabledReason && !debouncedQuery && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-4 text-sm text-indigo hover:underline">
+                      {t('documents.importFirst')}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Load more */}
+              {hasMore && (
+                <div className="py-4 flex justify-center">
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 text-sm text-indigo hover:underline">
-                    {t('documents.importFirst')}
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="flex items-center gap-2 px-5 py-2.5 text-sm text-indigo font-medium border border-indigo/30 rounded-xl hover:bg-indigo-pale transition-colors disabled:opacity-50"
+                  >
+                    {loadingMore ? <Loader2 size={14} className="animate-spin" /> : t('documents.loadMore')}
                   </button>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

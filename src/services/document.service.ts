@@ -40,6 +40,41 @@ function rowToDocument(r: DocumentWithFile): Document {
   }
 }
 
+async function decryptBuffer(
+  rawBuf: ArrayBuffer,
+  storagePath: string,
+  orgId: string,
+  convId?: string | null,
+): Promise<{ buf: ArrayBuffer; error: string | null }> {
+  if (storagePath.endsWith('.enc')) {
+    if (!cryptoSession.isLoaded) return { buf: rawBuf, error: i18n.t('errors.sessionNotLoaded') }
+    const fileKey = await KeyService.getOrLoadFileKey(storagePath, orgId)
+    if (!fileKey) return { buf: rawBuf, error: i18n.t('errors.fileKeyNotFound') }
+    if (rawBuf.byteLength <= 12) return { buf: rawBuf, error: null }
+    try {
+      const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
+      const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
+      return { buf: await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey, cipher), error: null }
+    } catch {
+      return { buf: rawBuf, error: i18n.t('errors.decryptionFailed') }
+    }
+  }
+  if (convId) {
+    if (!cryptoSession.isLoaded) return { buf: rawBuf, error: i18n.t('errors.sessionNotLoaded') }
+    const convKey = await KeyService.getOrLoadConversationKey(convId, orgId)
+    if (convKey && rawBuf.byteLength > 12) {
+      try {
+        const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
+        const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
+        return { buf: await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher), error: null }
+      } catch {
+        return { buf: rawBuf, error: i18n.t('errors.decryptionFailed') }
+      }
+    }
+  }
+  return { buf: rawBuf, error: null }
+}
+
 export const DocumentService = {
   async list(orgId: string): Promise<Document[]> {
     const { data } = await supabase
@@ -73,6 +108,53 @@ export const DocumentService = {
       .eq('visibility', 'team')
       .order('created_at', { ascending: false })
     return ((data ?? []) as unknown as DocumentWithFile[]).map(rowToDocument)
+  },
+
+  async listPaginated(
+    orgId: string,
+    userId: string,
+    opts: {
+      space: 'personal' | 'team' | 'org'
+      teamId?: string | null
+      folderId?: string | null
+      query?: string
+      sort?: 'date' | 'name' | 'size' | 'type'
+      limit?: number
+      offset?: number
+    },
+  ): Promise<{ docs: Document[]; hasMore: boolean; total: number }> {
+    const { space, teamId, folderId, query = '', sort = 'date', limit = 30, offset = 0 } = opts
+
+    let q = supabase
+      .from('documents')
+      .select('*, files(name, type, size, storage_path)', { count: 'exact' })
+      .eq('organization_id', orgId)
+
+    if (space === 'personal') {
+      q = q.eq('visibility', 'personal').eq('owner_id', userId)
+    } else if (space === 'team') {
+      if (!teamId) return { docs: [], hasMore: false, total: 0 }
+      q = q.eq('visibility', 'team').eq('team_id', teamId)
+    } else {
+      q = q.eq('visibility', 'org')
+    }
+
+    if (folderId !== undefined) q = q.eq('folder_id', folderId as string)
+    if (query.trim()) q = q.ilike('title', `%${query.trim()}%`)
+
+    q = sort === 'name'
+      ? q.order('title', { ascending: true })
+      : q.order('created_at', { ascending: false })
+
+    q = q.range(offset, offset + limit - 1)
+
+    const { data, count } = await q
+    const docs = ((data ?? []) as unknown as DocumentWithFile[]).map(rowToDocument)
+
+    if (sort === 'size') docs.sort((a, b) => b.size - a.size)
+    if (sort === 'type') docs.sort((a, b) => a.type.localeCompare(b.type))
+
+    return { docs, hasMore: !!count && offset + limit < count, total: count ?? 0 }
   },
 
   async listFolders(orgId: string): Promise<Folder[]> {
@@ -326,71 +408,29 @@ export const DocumentService = {
     return { error: null }
   },
 
-  // Download a document and decrypt it if the file key is available.
   async downloadDocument(documentId: string, orgId: string, userId?: string): Promise<{ error: string | null }> {
     const { data: doc } = await supabase
       .from('documents')
       .select('title, conversation_id, files(storage_path, name)')
       .eq('id', documentId)
       .single()
-
     if (!doc) return { error: i18n.t('errors.documentNotFound') }
-
     const fileInfo = doc.files as { storage_path: string; name: string } | null
     if (!fileInfo?.storage_path) return { error: i18n.t('errors.fileNotFound') }
 
-    const { data: signed, error: signErr } = await supabase.storage
-      .from('attachments')
-      .createSignedUrl(fileInfo.storage_path, 300)
-
+    const { data: signed, error: signErr } = await supabase.storage.from('attachments').createSignedUrl(fileInfo.storage_path, 300)
     if (signErr || !signed) return { error: signErr?.message ?? i18n.t('errors.downloadUnavailable') }
 
     const response = await fetch(signed.signedUrl)
     if (!response.ok) return { error: i18n.t('errors.downloadFailed') }
 
-    // Log document access (fire-and-forget)
-    supabase.from('document_access_logs').insert({
-      document_id: documentId,
-      organization_id: orgId,
-      user_id: userId ?? null,
-      action: 'download',
-    }).then(() => {})
+    supabase.from('document_access_logs').insert({ document_id: documentId, organization_id: orgId, user_id: userId ?? null, action: 'download' }).then(() => {})
 
-    const rawBuf = await response.arrayBuffer()
-    let plainBuf: ArrayBuffer = rawBuf
-
-    const isEncDoc = fileInfo.storage_path.endsWith('.enc')
     const convId = (doc as unknown as { conversation_id: string | null }).conversation_id
+    const { buf, error } = await decryptBuffer(await response.arrayBuffer(), fileInfo.storage_path, orgId, convId)
+    if (error) return { error }
 
-    if (isEncDoc) {
-      if (!cryptoSession.isLoaded) return { error: i18n.t('errors.sessionNotLoaded') }
-      const fileKey = await KeyService.getOrLoadFileKey(fileInfo.storage_path, orgId)
-      if (!fileKey) return { error: i18n.t('errors.fileKeyNotFound') }
-      if (rawBuf.byteLength > 12) {
-        try {
-          const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
-          const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
-          plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey, cipher)
-        } catch {
-          return { error: i18n.t('errors.decryptionFailed') }
-        }
-      }
-    } else if (convId) {
-      // Promoted message attachment — encrypted with conversation key
-      if (!cryptoSession.isLoaded) return { error: i18n.t('errors.sessionNotLoaded') }
-      const convKey = await KeyService.getOrLoadConversationKey(convId, orgId)
-      if (convKey && rawBuf.byteLength > 12) {
-        try {
-          const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
-          const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
-          plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
-        } catch {
-          return { error: i18n.t('errors.decryptionFailed') }
-        }
-      }
-    }
-
-    await downloadBlob(new Blob([plainBuf]), fileInfo.name)
+    await downloadBlob(new Blob([buf]), fileInfo.name)
     return { error: null }
   },
 
@@ -401,51 +441,19 @@ export const DocumentService = {
       .select('title, conversation_id, files(storage_path, name)')
       .eq('id', documentId)
       .single()
-
     if (!doc) return { url: null, mimeType: '', name: '', error: i18n.t('errors.documentNotFound') }
     const fileInfo = doc.files as { storage_path: string; name: string } | null
     if (!fileInfo?.storage_path) return { url: null, mimeType: '', name: doc.title ?? '', error: i18n.t('errors.fileNotFound') }
 
-    const { data: signed, error: signErr } = await supabase.storage
-      .from('attachments')
-      .createSignedUrl(fileInfo.storage_path, 300)
+    const { data: signed, error: signErr } = await supabase.storage.from('attachments').createSignedUrl(fileInfo.storage_path, 300)
     if (signErr || !signed) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.downloadUnavailable') }
 
     const response = await fetch(signed.signedUrl)
     if (!response.ok) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.loadFailed') }
 
-    const rawBuf = await response.arrayBuffer()
-    let plainBuf: ArrayBuffer = rawBuf
-
-    const isEncDoc = fileInfo.storage_path.endsWith('.enc')
     const convId = (doc as unknown as { conversation_id: string | null }).conversation_id
-
-    if (isEncDoc) {
-      if (!cryptoSession.isLoaded) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.sessionNotLoaded') }
-      const fileKey = await KeyService.getOrLoadFileKey(fileInfo.storage_path, orgId)
-      if (fileKey && rawBuf.byteLength > 12) {
-        try {
-          const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
-          const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
-          plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, fileKey, cipher)
-        } catch {
-          return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.decryptionFailed') }
-        }
-      }
-    } else if (convId) {
-      // Promoted message attachment — encrypted with conversation key
-      if (!cryptoSession.isLoaded) return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.sessionNotLoaded') }
-      const convKey = await KeyService.getOrLoadConversationKey(convId, orgId)
-      if (convKey && rawBuf.byteLength > 12) {
-        try {
-          const iv = new Uint8Array(rawBuf, 0, 12) as Uint8Array<ArrayBuffer>
-          const cipher = new Uint8Array(rawBuf, 12) as Uint8Array<ArrayBuffer>
-          plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, convKey, cipher)
-        } catch {
-          return { url: null, mimeType: '', name: fileInfo.name, error: i18n.t('errors.decryptionFailed') }
-        }
-      }
-    }
+    const { buf, error } = await decryptBuffer(await response.arrayBuffer(), fileInfo.storage_path, orgId, convId)
+    if (error) return { url: null, mimeType: '', name: fileInfo.name, error }
 
     const ext = (fileInfo.name.split('.').pop() ?? '').toLowerCase()
     const mimeMap: Record<string, string> = {
@@ -453,9 +461,6 @@ export const DocumentService = {
       gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
     }
     const mimeType = mimeMap[ext] ?? 'application/octet-stream'
-    const blob = new Blob([plainBuf], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-
-    return { url, mimeType, name: fileInfo.name, error: null }
+    return { url: URL.createObjectURL(new Blob([buf], { type: mimeType })), mimeType, name: fileInfo.name, error: null }
   },
 }
