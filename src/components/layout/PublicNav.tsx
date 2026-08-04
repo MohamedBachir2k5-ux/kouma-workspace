@@ -16,7 +16,7 @@ export function PublicNav() {
   const isActive = (path: string) => pathname.startsWith(path)
 
   return (
-    <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur border-b border-border">
+    <header className="sticky z-50 bg-surface/95 backdrop-blur border-b border-border" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0">
@@ -80,7 +80,7 @@ export function PublicNav() {
         {/* Mobile burger */}
         <button
           onClick={() => setOpen(!open)}
-          className="md:hidden p-2 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors"
+          className="md:hidden p-3 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors"
         >
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -91,14 +91,14 @@ export function PublicNav() {
         <div className="md:hidden border-t border-border bg-surface px-4 py-4 space-y-1">
           <p className="text-xs font-semibold text-faint uppercase tracking-wide px-3 py-2">Solutions</p>
           {solutions.map(s => (
-            <Link key={s.to} to={s.to} onClick={() => setOpen(false)} className="block px-3 py-2.5 text-sm text-ink rounded-lg hover:bg-bg">
+            <Link key={s.to} to={s.to} onClick={() => setOpen(false)} className="flex items-center px-3 min-h-[48px] text-sm text-ink rounded-lg hover:bg-bg">
               {s.label}
             </Link>
           ))}
           <div className="h-px bg-border my-2" />
-          <Link to="/security" onClick={() => setOpen(false)} className="block px-3 py-2.5 text-sm text-ink rounded-lg hover:bg-bg">Sécurité</Link>
-          <Link to="/tarifs" onClick={() => setOpen(false)} className="block px-3 py-2.5 text-sm text-ink rounded-lg hover:bg-bg">Tarifs</Link>
-          <Link to="/resources" onClick={() => setOpen(false)} className="block px-3 py-2.5 text-sm text-ink rounded-lg hover:bg-bg">Ressources</Link>
+          <Link to="/security" onClick={() => setOpen(false)} className="block px-3 py-3 text-sm text-ink rounded-lg hover:bg-bg min-h-[48px] flex items-center">Sécurité</Link>
+          <Link to="/tarifs" onClick={() => setOpen(false)} className="block px-3 py-3 text-sm text-ink rounded-lg hover:bg-bg min-h-[48px] flex items-center">Tarifs</Link>
+          <Link to="/resources" onClick={() => setOpen(false)} className="block px-3 py-3 text-sm text-ink rounded-lg hover:bg-bg min-h-[48px] flex items-center">Ressources</Link>
           <div className="h-px bg-border my-2" />
           <Link
             to="/connexion"
