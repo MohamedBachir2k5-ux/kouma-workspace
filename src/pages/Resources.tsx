@@ -861,7 +861,7 @@ function Sidebar({ sections }: { sections: typeof DOC_SECTIONS }) {
     <nav className="space-y-5">
       {sections.map(section => (
         <div key={section.id}>
-          <p className="text-[10px] font-bold text-faint uppercase tracking-widest mb-1.5 px-2">{section.title}</p>
+          <p className="text-xs font-bold text-faint uppercase tracking-widest mb-1.5 px-2">{section.title}</p>
           <ul className="space-y-0.5">
             {section.items.map(item => (
               <li key={item.id}>

@@ -138,7 +138,7 @@ function NewFolderModal({ defaultVisibility = 'personal', onClose, onCreated }: 
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('documents.newFolder')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="mb-3">
           <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('documents.folderName')}</label>
@@ -161,7 +161,7 @@ function NewFolderModal({ defaultVisibility = 'personal', onClose, onCreated }: 
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-faint mt-1.5">
+          <p className="text-xs text-faint mt-1.5">
             {visibility === 'personal' ? t('documents.visibilityPersonalHint') : t('documents.visibilityOrgHint')}
           </p>
         </div>
@@ -427,7 +427,7 @@ export function Documents() {
 
         {/* Upload helper text */}
         {!uploadDisabledReason && (
-          <p className="text-[11px] text-faint mb-2">{t('documents.acceptedFormats')} · {t('documents.maxSize')}</p>
+          <p className="text-xs text-faint mb-2">{t('documents.acceptedFormats')} · {t('documents.maxSize')}</p>
         )}
 
         {uploadError && <p className="text-xs text-danger mb-2">{uploadError}</p>}
@@ -541,7 +541,7 @@ export function Documents() {
                 : t('documents.files')}
             </h3>
             {activeFolder && filtered.length > 0 && (
-              <span className="text-[10px] text-faint">{t('documents.dragHint')}</span>
+              <span className="text-xs text-faint">{t('documents.dragHint')}</span>
             )}
           </div>
 
@@ -619,13 +619,13 @@ export function Documents() {
                           <button
                             onClick={() => handleDelete(doc.id)}
                             disabled={isDeleting}
-                            className="text-[11px] font-semibold text-white bg-danger rounded-lg px-2 py-1 disabled:opacity-50"
+                            className="text-xs font-semibold text-white bg-danger rounded-lg px-2 py-1 disabled:opacity-50"
                           >
                             {isDeleting ? '…' : t('common.delete')}
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(null)}
-                            className="text-[11px] font-semibold text-muted bg-bg border border-border rounded-lg px-2 py-1"
+                            className="text-xs font-semibold text-muted bg-bg border border-border rounded-lg px-2 py-1"
                           >
                             {t('common.cancel')}
                           </button>

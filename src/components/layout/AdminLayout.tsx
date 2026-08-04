@@ -59,7 +59,7 @@ export function AdminLayout() {
               <div className="text-indigo-light text-xs truncate">{currentOrg.name}</div>
             </div>
           </Link>
-          <button onClick={() => setMobileOpen(false)} className="md:hidden text-indigo-light hover:text-white">
+          <button onClick={() => setMobileOpen(false)} aria-label={t('common.close')} className="md:hidden text-indigo-light hover:text-white">
             <X size={18} />
           </button>
         </div>

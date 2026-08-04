@@ -126,7 +126,7 @@ export function AdminStorage() {
                     <span className="text-xs font-semibold text-ink uppercase">{type}</span>
                     <span className="text-xs text-muted">{formatFileSize(data.size)}</span>
                   </div>
-                  <span className="text-[10px] text-muted">{t(data.count !== 1 ? 'admin.fileCountPlural' : 'admin.fileCount', { count: data.count })}</span>
+                  <span className="text-xs text-muted">{t(data.count !== 1 ? 'admin.fileCountPlural' : 'admin.fileCount', { count: data.count })}</span>
                 </div>
               </div>
             ))}

@@ -59,7 +59,7 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.newGroup')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
           {t('messages.privateGroup')}
@@ -127,7 +127,7 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.newDirect')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('messages.searchCollaborator')} autoFocus
           className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo mb-3" />
@@ -187,7 +187,7 @@ function PromoteModal({ file, conversationId, onClose }: { file: Attachment; con
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-navy text-base">{t('messages.promoteTitle')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
           {t('messages.promoteSubtitle')}
@@ -293,7 +293,7 @@ function ForwardModal({ msg, channels, currentChannel, currentUser, currentOrg, 
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.forward')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="px-3 py-2 rounded-xl bg-bg border border-border text-xs text-muted mb-4 truncate">
           {msg.files?.length ? `📎 ${msg.content.replace('📎 ', '')}` : msg.content.slice(0, 80)}
@@ -350,7 +350,7 @@ function FilePreviewModal({ storagePath, fileName, fileSize, conversationId, org
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.fileLabel')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="flex items-center gap-4 p-4 bg-bg rounded-xl border border-border mb-5">
           <div className="w-12 h-12 rounded-xl bg-indigo/10 flex items-center justify-center shrink-0">
@@ -489,7 +489,7 @@ function PollForm({ onClose, onSubmit }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.pollCreate')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
           <div>
@@ -550,7 +550,7 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg: _currentOrg, onCl
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.scheduleMeeting')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
           <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder={t('agenda.title')}
@@ -1360,13 +1360,13 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
               <div className={`max-w-[75%] flex flex-col gap-0.5 ${isMe ? 'items-end' : 'items-start'}`}>
                 {/* Sender name — only first in group, others only */}
                 {!isMe && isFirstInGroup && user && (
-                  <span className="text-[11px] font-semibold text-muted ml-1 mb-0.5">{user.firstName} {user.lastName}</span>
+                  <span className="text-xs font-semibold text-muted ml-1 mb-0.5">{user.firstName} {user.lastName}</span>
                 )}
                 {repliedMsg && !isPollMsg && (isFileMsg || isMeetingMsg) && (
                   <button type="button" onClick={scrollToReply}
                     className={`block w-full text-left mb-1 px-2 py-1.5 rounded-lg border-l-2 border-indigo bg-indigo/5`}>
-                    <div className="text-[10px] font-semibold mb-0.5 text-indigo truncate">{replyAuthorName}</div>
-                    <div className="text-[11px] text-muted truncate">{replyPreview}</div>
+                    <div className="text-xs font-semibold mb-0.5 text-indigo truncate">{replyAuthorName}</div>
+                    <div className="text-xs text-muted truncate">{replyPreview}</div>
                   </button>
                 )}
                 {isPollMsg && pollId ? (
@@ -1421,8 +1421,8 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                     {repliedMsg && (
                       <button type="button" onClick={scrollToReply}
                         className={`block w-full text-left mb-2 px-2 py-1.5 rounded-lg border-l-2 ${isMe ? 'border-white/50 bg-white/15 text-white/75' : 'border-indigo bg-indigo/8 text-muted'}`}>
-                        <div className="text-[10px] font-semibold mb-0.5 truncate">{replyAuthorName}</div>
-                        <div className="text-[11px] truncate opacity-80">{replyPreview}</div>
+                        <div className="text-xs font-semibold mb-0.5 truncate">{replyAuthorName}</div>
+                        <div className="text-xs truncate opacity-80">{replyPreview}</div>
                       </button>
                     )}
                     {msg.content}
@@ -1434,7 +1434,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                     {Object.values(reactionGroups).map(({ emoji, count, isMine }) => (
                       <button key={emoji} type="button"
                         onClick={() => toggleReaction(msg.id, emoji)}
-                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] border transition-colors ${
+                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
                           isMine ? 'bg-indigo/10 border-indigo/30 text-indigo' : 'bg-surface border-border text-ink hover:bg-bg'
                         }`}>
                         {emoji} {count > 1 && <span>{count}</span>}
@@ -1551,7 +1551,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-danger/5 border border-danger/20 rounded-lg">
             <AlertCircle size={13} className="text-danger shrink-0 mt-0.5" />
             <p className="text-xs text-danger">{uploadError}</p>
-            <button onClick={() => setUploadError(null)} className="ml-auto text-faint hover:text-muted"><X size={12} /></button>
+            <button onClick={() => setUploadError(null)} aria-label={t('common.close')} className="ml-auto text-faint hover:text-muted"><X size={12} /></button>
           </div>
         )}
         <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />

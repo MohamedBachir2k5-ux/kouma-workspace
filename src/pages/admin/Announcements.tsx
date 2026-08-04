@@ -238,7 +238,7 @@ export function AdminAnnouncements() {
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-amber/10 text-amber-600 rounded-full">{t('admin.announcementPinned')}</span>
                       )}
                     </div>
-                    <p className="text-[11px] text-faint mt-0.5">{formatDate(ann.createdAt)}</p>
+                    <p className="text-xs text-faint mt-0.5">{formatDate(ann.createdAt)}</p>
                     <p className="text-sm text-muted mt-2 leading-relaxed line-clamp-2">{ann.body}</p>
                   </div>
                 </div>

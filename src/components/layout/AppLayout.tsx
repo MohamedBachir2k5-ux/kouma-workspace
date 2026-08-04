@@ -247,7 +247,7 @@ export function AppLayout() {
               <div className="absolute bottom-14 right-0 bg-surface border border-border rounded-2xl shadow-2xl py-2 min-w-[180px] z-50">
                 <div className="flex items-center justify-between px-4 py-1.5 mb-1 border-b border-border">
                   <span className="text-xs font-semibold text-muted uppercase tracking-wide">{t('nav.more', 'Plus')}</span>
-                  <button type="button" onClick={() => setShowMore(false)} className="text-faint hover:text-ink"><X size={13} /></button>
+                  <button type="button" onClick={() => setShowMore(false)} aria-label={t('common.close')} className="text-faint hover:text-ink"><X size={13} /></button>
                 </div>
                 {NAV_ITEMS_MOBILE_MORE.map(({ to, icon: Icon, key }) => (
                   <NavLink

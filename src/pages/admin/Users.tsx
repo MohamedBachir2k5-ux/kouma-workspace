@@ -58,7 +58,7 @@ function UserDetail({ user, orgUsers: _orgUsers, currentOrg, onBack, onAction, o
                 {!isAdmin && <p className="text-sm text-muted">{user.email}</p>}
                 {user.jobTitle && !isAdmin && <p className="text-sm text-faint mt-0.5">{user.jobTitle}</p>}
               </div>
-              <span className={`mt-0.5 px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0 ${
+              <span className={`mt-0.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${
                 isAdmin ? 'bg-indigo/10 text-indigo' : statusClass[user.status]
               }`}>
                 {isAdmin ? t('admin.roleOrg') : statusLabel[user.status]}
@@ -367,7 +367,7 @@ export function AdminUsers() {
                     {isAdminRow ? t('admin.roleOrg') : statusLabel[user.status]}
                   </span>
                   {!isAdminRow && user.status === 'deleted' && user.deletedAt && inGracePeriod(user) && (
-                    <span className="text-[10px] text-amber font-medium">{t('admin.filterRevoked')}</span>
+                    <span className="text-xs text-amber font-medium">{t('admin.filterRevoked')}</span>
                   )}
                 </div>
               </button>

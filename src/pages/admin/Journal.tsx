@@ -156,7 +156,7 @@ export function AdminJournal() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm text-ink leading-snug">{actionText(log, t)}</p>
-                  <span className="text-[10px] text-faint shrink-0 mt-0.5">{formatTs(log.createdAt)}</span>
+                  <span className="text-xs text-faint shrink-0 mt-0.5">{formatTs(log.createdAt)}</span>
                 </div>
                 {log.detail && (
                   <p className="text-xs text-muted mt-0.5">{log.detail}</p>

@@ -130,7 +130,7 @@ export function AdminSecurity() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink">{actionLabel(log.action)}</p>
                 {log.detail && <p className="text-xs text-muted mt-0.5">{log.detail}</p>}
-                <div className="flex items-center gap-1 text-[10px] text-faint mt-0.5">
+                <div className="flex items-center gap-1 text-xs text-faint mt-0.5">
                   <Clock size={10} />
                   {formatTs(log.createdAt)}
                 </div>

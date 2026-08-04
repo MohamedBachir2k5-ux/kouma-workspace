@@ -259,6 +259,7 @@ export function AdminTeams() {
                 </div>
                 <div className="relative">
                   <button onClick={() => setMenuOpen(menuOpen === team.id ? null : team.id)}
+                    aria-label={t('common.options')}
                     className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
                     <MoreHorizontal size={16} />
                   </button>

@@ -116,7 +116,7 @@ export function MeetingMinutesModal({ event, orgUsers, organizationId, createdBy
             <ClipboardList size={18} className="text-indigo" />
             <h3 className="font-bold text-navy text-sm">{t('minutes.title')}</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg">
+          <button onClick={onClose} aria-label={t('common.close')} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg">
             <X size={16} />
           </button>
         </div>
@@ -193,14 +193,14 @@ export function MeetingMinutesModal({ event, orgUsers, organizationId, createdBy
                       className="flex-1 bg-transparent text-sm text-ink placeholder:text-faint focus:outline-none"
                     />
                     {actions.length > 1 && (
-                      <button type="button" onClick={() => removeAction(i)} className="p-1 text-faint hover:text-danger transition-colors">
+                      <button type="button" onClick={() => removeAction(i)} aria-label={t('common.delete')} className="p-1 text-faint hover:text-danger transition-colors">
                         <Trash2 size={13} />
                       </button>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-2 pl-5">
                     <div>
-                      <label className="block text-[10px] font-semibold text-faint uppercase tracking-wide mb-1">{t('minutes.assignee')}</label>
+                      <label className="block text-xs font-semibold text-faint uppercase tracking-wide mb-1">{t('minutes.assignee')}</label>
                       <select
                         value={action.assigneeId}
                         onChange={e => updateAction(i, 'assigneeId', e.target.value)}
@@ -213,7 +213,7 @@ export function MeetingMinutesModal({ event, orgUsers, organizationId, createdBy
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-semibold text-faint uppercase tracking-wide mb-1">{t('minutes.dueDate')}</label>
+                      <label className="block text-xs font-semibold text-faint uppercase tracking-wide mb-1">{t('minutes.dueDate')}</label>
                       <input
                         type="date"
                         value={action.dueDate}

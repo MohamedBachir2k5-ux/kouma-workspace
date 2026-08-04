@@ -322,7 +322,7 @@ export function CreateOrg() {
                         ? currencyNameForCountry(form.country)
                         : t('createOrg.currencyAuto')}
                     </div>
-                    <p className="mt-1 text-[10px] text-faint">{t('createOrg.currencyHint')}</p>
+                    <p className="mt-1 text-xs text-faint">{t('createOrg.currencyHint')}</p>
                   </div>
                 </div>
 

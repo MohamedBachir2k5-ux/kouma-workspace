@@ -236,7 +236,7 @@ export function Assistant() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-ink">AXIS</h2>
-            <p className="text-[11px] text-muted">{t('assistant.subtitle')}</p>
+            <p className="text-xs text-muted">{t('assistant.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-0.5">
@@ -267,7 +267,7 @@ export function Assistant() {
                 <button
                   key={cat}
                   onClick={() => { setSelectedCategory(cat); setSelectedEntry(null) }}
-                  className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                  className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                     selectedCategory === cat
                       ? 'bg-indigo text-white'
                       : 'bg-bg border border-border text-muted hover:text-ink hover:border-indigo/40'
@@ -293,7 +293,7 @@ export function Assistant() {
                 </button>
 
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold text-indigo uppercase tracking-wide">
+                  <p className="text-xs font-semibold text-indigo uppercase tracking-wide">
                     {t(CATEGORY_I18N_KEYS[selectedCategory])}
                   </p>
                   <h3 className="text-sm font-semibold text-ink leading-snug">
@@ -318,7 +318,7 @@ export function Assistant() {
             ) : (
               /* Question list */
               <div className="p-3 space-y-1.5">
-                <p className="text-[11px] text-muted px-1 pb-1">
+                <p className="text-xs text-muted px-1 pb-1">
                   {categoryEntries.length !== 1 ? t('assistant.questionCountPlural', { count: String(categoryEntries.length) }) : t('assistant.questionCount', { count: String(categoryEntries.length) })}
                 </p>
                 {categoryEntries.map(entry => (
@@ -386,7 +386,7 @@ export function Assistant() {
               className="w-full resize-none bg-surface border border-border rounded-xl px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-indigo"
             />
             <div>
-              <label className="block text-[11px] text-muted mb-1.5 font-medium uppercase tracking-wide">{t('assistant.dueDateLabel')}</label>
+              <label className="block text-xs text-muted mb-1.5 font-medium uppercase tracking-wide">{t('assistant.dueDateLabel')}</label>
               <input
                 type="date"
                 value={actionDate}
@@ -412,7 +412,7 @@ export function Assistant() {
           </button>
 
           <div className="border-t border-border pt-4">
-            <p className="text-[11px] text-muted mb-3 font-medium uppercase tracking-wide">{t('assistant.taskShortcuts')}</p>
+            <p className="text-xs text-muted mb-3 font-medium uppercase tracking-wide">{t('assistant.taskShortcuts')}</p>
             <div className="space-y-2">
               <button
                 onClick={() => navigate('/app/agenda')}
@@ -462,7 +462,7 @@ export function Assistant() {
                   onClick={() => r.link && navigate(r.link)}
                   className="w-full flex items-start gap-3 px-3 py-3 bg-surface border border-border rounded-xl hover:border-indigo transition-colors text-left"
                 >
-                  <span className="text-[10px] font-semibold text-indigo bg-indigo/10 rounded px-1.5 py-0.5 shrink-0 mt-0.5">{r.type}</span>
+                  <span className="text-xs font-semibold text-indigo bg-indigo/10 rounded px-1.5 py-0.5 shrink-0 mt-0.5">{r.type}</span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-ink truncate">{r.title}</p>
                     {r.sub && <p className="text-xs text-muted">{r.sub}</p>}

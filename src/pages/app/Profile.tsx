@@ -125,7 +125,7 @@ function AvatarCropModal({ src, onConfirm, onCancel }: {
       <div className="bg-surface rounded-2xl border border-border p-5 w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-navy text-base">{t('profile.cropTitle')}</h3>
-          <button onClick={onCancel} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onCancel} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4">{t('profile.cropHint')}</p>
 
@@ -712,7 +712,7 @@ export function Profile() {
           <div className="w-full max-w-sm bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="font-bold text-navy">{t('profile.editTitle')}</h3>
-              <button onClick={() => setEditing(false)} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
+              <button onClick={() => setEditing(false)} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -731,7 +731,7 @@ export function Profile() {
                 <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('auth.email')}</label>
                 <input value={currentUser.email} disabled
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm text-faint cursor-not-allowed" />
-                <p className="mt-1 text-[10px] text-faint">{t('profile.emailReadonly')}</p>
+                <p className="mt-1 text-xs text-faint">{t('profile.emailReadonly')}</p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('profile.phone')}</label>
@@ -759,7 +759,7 @@ export function Profile() {
           <div className="w-full max-w-sm bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="font-bold text-navy">{t('profile.changePinTitle')}</h3>
-              <button onClick={() => setChangingPin(false)} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
+              <button onClick={() => setChangingPin(false)} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
               {[

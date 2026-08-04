@@ -318,7 +318,7 @@ export function JoinOrg() {
                 onChange={v => update('pin', v)}
                 disabled={!ready}
               />
-              <p className="mt-1 text-[10px] text-faint">{t('joinOrg.pinHint')}</p>
+              <p className="mt-1 text-xs text-faint">{t('joinOrg.pinHint')}</p>
             </div>
 
             {/* Confirm PIN */}

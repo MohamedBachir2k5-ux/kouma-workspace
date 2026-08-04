@@ -583,7 +583,7 @@ export function Teams() {
                         ))}
                       </div>
                       {responsable && (
-                        <div className="flex items-center gap-1 text-[10px] text-muted">
+                        <div className="flex items-center gap-1 text-xs text-muted">
                           <Crown size={10} />
                           {responsable.firstName} {responsable.lastName}
                         </div>

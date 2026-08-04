@@ -158,7 +158,7 @@ export function AdminDashboard() {
             </div>
             <div className="text-2xl font-bold text-ink mb-0.5">{value}</div>
             <div className="text-xs font-medium text-ink mb-1">{label}</div>
-            <div className="text-[11px] text-muted">{sub}</div>
+            <div className="text-xs text-muted">{sub}</div>
           </div>
         ))}
       </div>

@@ -154,7 +154,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
       {/* Quick-add by team */}
       {myTeams.length > 0 && (
         <div className="mt-2">
-          <p className="text-[10px] font-semibold text-faint uppercase tracking-wider mb-1.5">{t('agenda.addTeam')}</p>
+          <p className="text-xs font-semibold text-faint uppercase tracking-wider mb-1.5">{t('agenda.addTeam')}</p>
           <div className="flex flex-wrap gap-1.5">
             {myTeams.map(t => (
               <button key={t.id} type="button" onClick={() => addTeam(t.id)}
@@ -170,7 +170,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
       {/* Quick-add by group */}
       {myGroups.length > 0 && (
         <div className="mt-2">
-          <p className="text-[10px] font-semibold text-faint uppercase tracking-wider mb-1.5">{t('agenda.addGroup')}</p>
+          <p className="text-xs font-semibold text-faint uppercase tracking-wider mb-1.5">{t('agenda.addGroup')}</p>
           <div className="flex flex-wrap gap-1.5">
             {myGroups.map(g => (
               <button key={g.id} type="button" onClick={() => addGroup(g.id)}
@@ -239,7 +239,7 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
       <div className="w-full max-w-lg bg-surface rounded-2xl border border-border shadow-2xl max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h3 className="font-bold text-navy text-base">{event ? t('agenda.editMeeting') : t('agenda.newMeeting')}</h3>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -668,15 +668,15 @@ export function Agenda() {
                       {!isDisabled && canModify && (
                         <div className="flex gap-2 flex-wrap">
                           <button onClick={() => setEditEvent(event)}
-                            className="px-2.5 py-1 text-[11px] font-medium text-indigo border border-indigo/20 rounded-lg hover:bg-indigo-pale transition-colors">
+                            className="px-2.5 py-1 text-xs font-medium text-indigo border border-indigo/20 rounded-lg hover:bg-indigo-pale transition-colors">
                             {t('agenda.edit')}
                           </button>
                           <button onClick={() => cancelEvent(event.id)}
-                            className="px-2.5 py-1 text-[11px] font-medium text-danger border border-danger/20 rounded-lg hover:bg-danger/5 transition-colors">
+                            className="px-2.5 py-1 text-xs font-medium text-danger border border-danger/20 rounded-lg hover:bg-danger/5 transition-colors">
                             {t('agenda.cancelEvent')}
                           </button>
                           <button onClick={() => markDone(event.id)}
-                            className="px-2.5 py-1 text-[11px] font-medium text-success border border-success/20 rounded-lg hover:bg-success/5 transition-colors">
+                            className="px-2.5 py-1 text-xs font-medium text-success border border-success/20 rounded-lg hover:bg-success/5 transition-colors">
                             {t('agenda.finish')}
                           </button>
                         </div>
@@ -685,49 +685,49 @@ export function Agenda() {
                       {event.status === 'done' && minutesMap[event.id] && (
                         <div className="flex items-center gap-1.5 mt-2">
                           <ClipboardList size={12} className="text-indigo shrink-0" />
-                          <span className="text-[11px] text-indigo font-medium">{t('minutes.title')}</span>
-                          <span className="text-[10px] text-muted">· {minutesMap[event.id].actions?.length ?? 0} action{(minutesMap[event.id].actions?.length ?? 0) !== 1 ? 's' : ''}</span>
+                          <span className="text-xs text-indigo font-medium">{t('minutes.title')}</span>
+                          <span className="text-xs text-muted">· {minutesMap[event.id].actions?.length ?? 0} action{(minutesMap[event.id].actions?.length ?? 0) !== 1 ? 's' : ''}</span>
                         </div>
                       )}
 
                       {/* RSVP for participants (non-creator) */}
                       {!isDisabled && isParticipant && (
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-muted uppercase tracking-wide font-semibold">{t('agenda.myRsvp')}</span>
+                          <span className="text-xs text-muted uppercase tracking-wide font-semibold">{t('agenda.myRsvp')}</span>
                           {!myRsvp && (
                             <>
                               <button
                                 onClick={() => respondToEvent(event.id, 'accepted')}
-                                className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-border text-muted hover:border-success hover:text-success transition-colors">
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg border border-border text-muted hover:border-success hover:text-success transition-colors">
                                 <ThumbsUp size={10} /> {t('agenda.accept')}
                               </button>
                               <button
                                 onClick={() => respondToEvent(event.id, 'declined')}
-                                className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-border text-muted hover:border-danger hover:text-danger transition-colors">
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg border border-border text-muted hover:border-danger hover:text-danger transition-colors">
                                 <ThumbsDown size={10} /> {t('agenda.decline')}
                               </button>
                             </>
                           )}
                           {myRsvp === 'accepted' && (
                             <>
-                              <span className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-success/10 border border-success text-success">
+                              <span className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg bg-success/10 border border-success text-success">
                                 <ThumbsUp size={10} /> {t('agenda.accept')}
                               </span>
                               <button
                                 onClick={() => respondToEvent(event.id, 'declined')}
-                                className="text-[11px] text-muted underline hover:text-danger transition-colors">
+                                className="text-xs text-muted underline hover:text-danger transition-colors">
                                 {t('agenda.decline')}
                               </button>
                             </>
                           )}
                           {myRsvp === 'declined' && (
                             <>
-                              <span className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-danger/10 border border-danger text-danger">
+                              <span className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg bg-danger/10 border border-danger text-danger">
                                 <ThumbsDown size={10} /> {t('agenda.decline')}
                               </span>
                               <button
                                 onClick={() => respondToEvent(event.id, 'accepted')}
-                                className="text-[11px] text-muted underline hover:text-success transition-colors">
+                                className="text-xs text-muted underline hover:text-success transition-colors">
                                 {t('agenda.accept')}
                               </button>
                             </>

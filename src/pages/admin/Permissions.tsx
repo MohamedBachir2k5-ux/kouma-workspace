@@ -68,7 +68,7 @@ export function AdminPermissions() {
               <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('admin.permTeamCol')}</th>
               {TEAM_PERMS.map(p => (
                 <th key={p.key} className="px-3 py-3 text-center">
-                  <span className="text-[11px] font-semibold text-ink">{p.label}</span>
+                  <span className="text-xs font-semibold text-ink">{p.label}</span>
                 </th>
               ))}
             </tr>
@@ -86,7 +86,7 @@ export function AdminPermissions() {
                       </div>
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-ink truncate">{team.name}</div>
-                        {resp && <div className="text-[10px] text-muted truncate">{resp.firstName} {resp.lastName}</div>}
+                        {resp && <div className="text-xs text-muted truncate">{resp.firstName} {resp.lastName}</div>}
                       </div>
                     </div>
                   </td>
@@ -125,7 +125,7 @@ export function AdminPermissions() {
                   <div key={perm.key} className="flex items-center justify-between">
                     <div>
                       <div className="text-xs font-medium text-ink">{perm.label}</div>
-                      <div className="text-[10px] text-muted">{perm.desc}</div>
+                      <div className="text-xs text-muted">{perm.desc}</div>
                     </div>
                     <ShieldCheck size={16} className={perms[perm.key] ? 'text-success' : 'text-border'} />
                   </div>
