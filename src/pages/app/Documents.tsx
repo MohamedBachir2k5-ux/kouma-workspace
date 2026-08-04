@@ -75,10 +75,10 @@ function DocumentPreviewModal({ docId, docName, docType, orgId, onClose, onDownl
           <span className="text-sm font-semibold text-white truncate max-w-xs">{docName}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onDownload} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
+          <button onClick={onDownload} className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
             <Download size={13} /> {t('common.download')}
           </button>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+          <button onClick={onClose} className="p-2.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -93,7 +93,7 @@ function DocumentPreviewModal({ docId, docName, docType, orgId, onClose, onDownl
               <FileIcon type={docType} size={32} />
             </div>
             <p className="text-white/60 text-sm mb-4">{t('documents.previewUnavailable')}</p>
-            <button onClick={onDownload} className="px-5 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90">
+            <button onClick={onDownload} className="px-5 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90">
               {t('documents.downloadFile')}
             </button>
           </div>
@@ -137,7 +137,7 @@ function NewFolderModal({ defaultVisibility = 'personal', onClose, onCreated }: 
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('documents.newFolder')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="mb-3">
           <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('documents.folderName')}</label>
@@ -155,7 +155,7 @@ function NewFolderModal({ defaultVisibility = 'personal', onClose, onCreated }: 
           <div className="flex gap-2">
             {(['personal', 'org'] as const).map(v => (
               <button key={v} type="button" onClick={() => setVisibility(v)}
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-colors ${visibility === v ? 'bg-indigo text-white border-indigo' : 'bg-bg border-border text-muted hover:border-indigo/40'}`}>
+                className={`flex-1 py-3 rounded-xl text-xs font-semibold border transition-colors ${visibility === v ? 'bg-indigo text-white border-indigo' : 'bg-bg border-border text-muted hover:border-indigo/40'}`}>
                 {v === 'personal' ? `🔒 ${t('documents.visibilityPersonal')}` : `🏢 ${t('documents.visibilityOrg')}`}
               </button>
             ))}
@@ -166,9 +166,9 @@ function NewFolderModal({ defaultVisibility = 'personal', onClose, onCreated }: 
         </div>
         {error && <p className="text-xs text-danger mb-3">{error}</p>}
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={handleCreate} disabled={!name.trim() || creating}
-            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
             {creating ? t('assistant.creating') : t('common.create')}
           </button>
         </div>
@@ -587,7 +587,9 @@ export function Documents() {
                       <Avatar firstName={uploader.firstName} lastName={uploader.lastName} id={uploader.id} size="sm" src={uploader.avatarUrl} />
                     )}
                     {!confirmingDelete && (
-                      <Download size={14} className="text-faint" onClick={() => handleDownload(doc)} />
+                      <button type="button" onClick={() => handleDownload(doc)} className="p-2 rounded-lg text-faint hover:text-indigo transition-colors">
+                        <Download size={14} />
+                      </button>
                     )}
                     {canDelete && (
                       confirmingDelete ? (
@@ -609,7 +611,7 @@ export function Documents() {
                       ) : (
                         <button
                           onClick={() => setConfirmDeleteId(doc.id)}
-                          className="p-1.5 rounded-lg text-faint hover:text-danger hover:bg-danger/10 transition-colors"
+                          className="p-2.5 rounded-lg text-faint hover:text-danger hover:bg-danger/10 transition-colors"
                         >
                           <Trash2 size={13} />
                         </button>
