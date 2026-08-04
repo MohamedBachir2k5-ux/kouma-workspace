@@ -87,3 +87,14 @@ body {
 body {
   padding-top: env(safe-area-inset-top, 0px);
 }
+
+/* Global focus-visible ring — ensures keyboard navigation is always visible.
+   Without this, icon-only buttons (no text label) are invisible to keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+}
+/* Suppress focus ring on mouse/touch — only show for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}
