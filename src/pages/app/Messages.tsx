@@ -6,6 +6,7 @@ import { Search, Plus, Hash, User, Users, Lock, Paperclip, FolderInput, Check, I
 import { PollService } from '../../services/poll.service'
 import type { Poll } from '../../services/poll.service'
 import { useAuth } from '../../contexts/AuthContext'
+import { useLayout } from '../../contexts/LayoutContext'
 import { MessageService } from '../../services/message.service'
 import { UserService } from '../../services/user.service'
 import { TeamService } from '../../services/team.service'
@@ -1549,7 +1550,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
       </div>
 
       {/* Composer */}
-      <div className="px-4 pb-4 pt-3 border-t border-border bg-surface shrink-0">
+      <div className="px-3 pb-3 pt-2 border-t border-border bg-surface shrink-0">
         {replyingTo && (() => {
           const isPhoto = replyingTo.files?.length && /\.(png|jpg|jpeg|gif|webp)$/i.test(replyingTo.content.replace('📎 ', ''))
           const isFile = replyingTo.files?.length && !isPhoto
@@ -1588,7 +1589,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
           {/* "+" shortcuts menu */}
           <div className="relative shrink-0">
             <button onClick={() => setShowPlusMenu(m => !m)} disabled={uploading}
-              className="p-3 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors disabled:opacity-40">
+              className="p-2 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors disabled:opacity-40">
               {uploading ? <Loader2 size={18} className="animate-spin text-indigo" /> : <Plus size={18} />}
             </button>
             {showPlusMenu && (
@@ -1618,7 +1619,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
           <input value={text} onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && text.trim()) { e.preventDefault(); handleSend() } }}
             placeholder={t('messages.messagePlaceholder', { name: channel.name.split(' ')[0] })}
-            className="flex-1 px-4 py-3 bg-bg border border-border rounded-full text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent" />
+            className="flex-1 px-4 py-2 bg-bg border border-border rounded-full text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent" />
           <button onClick={handleSend} disabled={!text.trim()}
             className="w-10 h-10 rounded-full bg-indigo flex items-center justify-center text-white disabled:opacity-30 hover:opacity-90 transition-opacity shrink-0">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1700,9 +1701,15 @@ export function Messages() {
   const [channels, setChannels] = useState<Channel[]>([])
   const [orgUsers, setOrgUsers] = useState<AppUser[]>([])
   const [teams, setTeams] = useState<Team[]>([])
+  const { setHideBottomNav } = useLayout()
   const [selected, setSelected] = useState<string | null>(null)
   const [showNewGroup, setShowNewGroup] = useState(false)
   const [showNewDirect, setShowNewDirect] = useState(false)
+
+  useEffect(() => {
+    setHideBottomNav(!!selected)
+    return () => setHideBottomNav(false)
+  }, [selected, setHideBottomNav])
 
   // Only collaborator accounts (role='member') appear as contacts — admin-only accounts are excluded
   const contacts = orgUsers.filter(u => u.id !== currentUser.id && u.status === 'active' && u.role === 'member')
@@ -1754,6 +1761,26 @@ export function Messages() {
       }, () => { loadChannels() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
+  }, [currentUser.id])
+
+  // Reorder conversation list when a new message arrives
+  useEffect(() => {
+    const key = `rt-msg-reorder-${currentUser.id}-${Math.random().toString(36).slice(2, 8)}`
+    const ch = supabase.channel(key)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages',
+      }, payload => {
+        const convId = (payload.new as { conversation_id: string }).conversation_id
+        setChannels(prev => {
+          const idx = prev.findIndex(c => c.id === convId)
+          if (idx <= 0) return prev
+          const updated = [...prev]
+          updated.unshift(...updated.splice(idx, 1))
+          return updated
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
   }, [currentUser.id])
 
   const selectedChannel = channels.find(c => c.id === selected) ?? null
