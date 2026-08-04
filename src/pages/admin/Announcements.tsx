@@ -64,7 +64,7 @@ function AnnouncementModal({
           <h3 className="font-bold text-navy text-lg">
             {existing ? t('admin.editAnnouncement') : t('announcements.newAnnouncement')}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg">
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg">
             <X size={16} />
           </button>
         </div>

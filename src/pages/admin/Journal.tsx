@@ -132,7 +132,7 @@ export function AdminJournal() {
       <div className="flex gap-2 mb-5 flex-wrap">
         {filterOptions.map(f => (
           <button key={f.value} onClick={() => changeFilter(f.value)}
-            className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+            className={`px-3 py-2.5 rounded-xl text-xs font-medium transition-colors ${
               filter === f.value ? 'bg-navy text-white' : 'bg-surface border border-border text-muted hover:bg-bg'
             }`}>
             {f.label}
@@ -170,14 +170,14 @@ export function AdminJournal() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted hover:bg-surface border border-border disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm text-muted hover:bg-surface border border-border disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             <ChevronLeft size={15} /> {t('admin.journalPrev')}
           </button>
           <span className="text-xs text-muted">
             {t('admin.journalPage', { page: currentPage, total: totalPages })}
           </span>
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted hover:bg-surface border border-border disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm text-muted hover:bg-surface border border-border disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             {t('admin.journalNext')} <ChevronRight size={15} />
           </button>
         </div>

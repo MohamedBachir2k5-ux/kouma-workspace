@@ -325,7 +325,7 @@ export function Assistant() {
                   <button
                     key={entry.id}
                     onClick={() => setSelectedEntry(entry)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 bg-surface border border-border rounded-xl hover:border-indigo hover:text-indigo transition-colors text-left group"
+                    className="w-full flex items-center gap-3 px-3 py-3 bg-surface border border-border rounded-xl hover:border-indigo hover:text-indigo transition-colors text-left group"
                   >
                     <span className="flex-1 text-sm text-ink group-hover:text-indigo transition-colors">
                       {t('axisKb.' + entry.id + '-q', { defaultValue: entry.keywords[0] })}
@@ -359,7 +359,7 @@ export function Assistant() {
           <button
             onClick={handleSummarize}
             disabled={!selectedConvId || summarizing}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-opacity"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-opacity"
           >
             {summarizing ? t('assistant.summarizing') : t('assistant.generateSummary')}
           </button>
@@ -399,7 +399,7 @@ export function Assistant() {
           <button
             onClick={handleSaveAction}
             disabled={!actionDesc.trim() || actionSaving}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-all ${
+            className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-xl transition-all ${
               actionDone
                 ? 'bg-success/10 text-success border border-success/30'
                 : 'bg-indigo text-white hover:opacity-90 disabled:opacity-40'
@@ -416,7 +416,7 @@ export function Assistant() {
             <div className="space-y-2">
               <button
                 onClick={() => navigate('/app/agenda')}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink bg-surface border border-border rounded-xl hover:border-indigo hover:text-indigo transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-3 text-sm text-ink bg-surface border border-border rounded-xl hover:border-indigo hover:text-indigo transition-colors text-left"
               >
                 <CalendarPlus size={15} className="text-muted shrink-0" />
                 {t('assistant.createMeetingShortcut')}
@@ -442,7 +442,7 @@ export function Assistant() {
             <button
               onClick={handleSearch}
               disabled={!searchQ.trim() || searching}
-              className="px-4 py-2.5 bg-indigo text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-opacity"
+              className="px-4 py-3 bg-indigo text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-opacity"
             >
               <Search size={15} />
             </button>
@@ -460,7 +460,7 @@ export function Assistant() {
                 <button
                   key={i}
                   onClick={() => r.link && navigate(r.link)}
-                  className="w-full flex items-start gap-3 px-3 py-2.5 bg-surface border border-border rounded-xl hover:border-indigo transition-colors text-left"
+                  className="w-full flex items-start gap-3 px-3 py-3 bg-surface border border-border rounded-xl hover:border-indigo transition-colors text-left"
                 >
                   <span className="text-[10px] font-semibold text-indigo bg-indigo/10 rounded px-1.5 py-0.5 shrink-0 mt-0.5">{r.type}</span>
                   <div className="min-w-0">

@@ -137,7 +137,7 @@ function ParticipantPicker({ participants, onChange, orgUsers, myTeams, myGroups
             {searchResults.map(u => (
               <button key={u.id} type="button"
                 onClick={() => { add(u.id); setQuery(''); setOpen(false) }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-bg transition-colors ${participants.includes(u.id) ? 'opacity-50 cursor-default' : ''}`}>
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg transition-colors ${participants.includes(u.id) ? 'opacity-50 cursor-default' : ''}`}>
                 <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
@@ -238,7 +238,7 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
       <div className="w-full max-w-lg bg-surface rounded-2xl border border-border shadow-2xl max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h3 className="font-bold text-navy text-base">{event ? t('agenda.editMeeting') : t('agenda.newMeeting')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
         </div>
 
         <div className="p-5 space-y-4">

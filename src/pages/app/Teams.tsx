@@ -213,7 +213,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   </div>
                   {isResponsable && m.id !== team.responsableId ? (
                     <button onClick={() => removeMember(m.id)}
-                      className="p-1.5 rounded-lg text-faint hover:text-danger hover:bg-danger/5 transition-colors">
+                      className="p-2.5 rounded-lg text-faint hover:text-danger hover:bg-danger/5 transition-colors">
                       <X size={15} />
                     </button>
                   ) : (
@@ -239,7 +239,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   <div className="bg-surface border border-border rounded-xl overflow-hidden mb-3 divide-y divide-border">
                     {memberSearchResults.map(u => (
                       <button key={u.id} type="button" onClick={() => addMember(u.id)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg transition-colors text-left">
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-bg transition-colors text-left">
                         <Avatar firstName={u.firstName} lastName={u.lastName} id={u.id} size="sm" src={u.avatarUrl} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-ink">{u.firstName} {u.lastName}</div>
@@ -255,7 +255,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                   <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{memberError}</p>
                 )}
                 <button onClick={saveMembers}
-                  className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                  className={`px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
                     memberSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                   }`}>
                   {memberSaved ? t('common.saved') : t('teams.inviteMembers')}
@@ -303,7 +303,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                 <p className="text-sm font-semibold text-ink mb-1">{t('teams.channelName', { name: team.name })}</p>
                 <p className="text-xs text-muted mb-4">{t('teams.channelDesc')}</p>
                 <button onClick={() => navigate('/app/messages')}
-                  className="px-4 py-2.5 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity">
+                  className="px-4 py-3 bg-indigo text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity">
                   {t('teams.openInMessages')}
                 </button>
               </div>
@@ -341,7 +341,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                 <>
                   {permError && <p className="text-xs text-danger">{permError}</p>}
                   <button onClick={savePerms}
-                    className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                    className={`px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
                       permSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                     }`}>
                     {permSaved ? t('common.saved') : t('teams.permissions')}
@@ -407,7 +407,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                       <div className="px-4 py-3 border-t border-border space-y-2">
                         {memberPermError && <p className="text-xs text-danger">{memberPermError}</p>}
                         <button onClick={saveMemberPerms}
-                          className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                          className={`px-5 py-3 text-sm font-semibold rounded-xl transition-colors ${
                             memberPermSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                           }`}>
                           {memberPermSaved ? t('common.saved') : `${t('common.save')} (${m.firstName})`}
@@ -489,7 +489,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
               <button
                 disabled={!settings.name.trim()}
                 onClick={saveSettings}
-                className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors disabled:opacity-40 ${
+                className={`px-5 py-3 text-sm font-semibold rounded-xl transition-colors disabled:opacity-40 ${
                   settingsSaved ? 'bg-success text-white' : 'bg-navy text-white hover:opacity-90'
                 }`}>
                 {settingsSaved ? t('common.saved') : t('common.save')}

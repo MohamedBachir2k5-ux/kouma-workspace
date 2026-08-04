@@ -125,7 +125,7 @@ function AvatarCropModal({ src, onConfirm, onCancel }: {
       <div className="bg-surface rounded-2xl border border-border p-5 w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-navy text-base">{t('profile.cropTitle')}</h3>
-          <button onClick={onCancel} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onCancel} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4">{t('profile.cropHint')}</p>
 
@@ -155,9 +155,9 @@ function AvatarCropModal({ src, onConfirm, onCancel }: {
         )}
 
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">{t('common.cancel')}</button>
+          <button onClick={onCancel} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors">{t('common.cancel')}</button>
           <button onClick={confirm} disabled={!nat}
-            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
             {t('common.confirm')}
           </button>
         </div>
@@ -435,7 +435,7 @@ export function Profile() {
             </div>
 
             <button onClick={openEdit}
-              className={`w-full py-2.5 border rounded-xl text-sm font-medium transition-colors ${
+              className={`w-full py-3 border rounded-xl text-sm font-medium transition-colors ${
                 saved ? 'border-success/30 bg-success/5 text-success' : 'border-border text-muted hover:bg-bg'
               }`}>
               {saved
@@ -513,7 +513,7 @@ export function Profile() {
                         <button
                           onClick={() => revokeSession(s.id)}
                           disabled={revoking === s.id}
-                          className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-40"
+                          className="p-2.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-40"
                           title={t('profile.disconnect')}
                         >
                           {revoking === s.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
@@ -626,7 +626,7 @@ export function Profile() {
                       setProfile(p => ({ ...p, language: l.value }))
                       UserService.updateProfile(currentUser.id, { language: l.value })
                     }}
-                    className={`py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                    className={`py-3 rounded-xl text-sm font-medium border transition-colors ${
                       i18n.language === l.value ? 'border-navy bg-navy text-white' : 'border-border bg-surface text-muted hover:border-navy/30 hover:bg-bg'
                     }`}>
                     {l.label}
@@ -712,7 +712,7 @@ export function Profile() {
           <div className="w-full max-w-sm bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="font-bold text-navy">{t('profile.editTitle')}</h3>
-              <button onClick={() => setEditing(false)} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
+              <button onClick={() => setEditing(false)} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -742,9 +742,9 @@ export function Profile() {
             </div>
             {editError && <p className="px-5 pb-2 text-xs text-danger">{editError}</p>}
             <div className="flex gap-3 px-5 pb-5">
-              <button onClick={() => setEditing(false)} disabled={editSaving} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
+              <button onClick={() => setEditing(false)} disabled={editSaving} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
               <button onClick={saveEdit} disabled={!draft.firstName.trim() || !draft.lastName.trim() || editSaving}
-                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
+                className="flex-1 py-3 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
                 {editSaving && <Loader2 size={14} className="animate-spin" />}
                 {t('common.save')}
               </button>
@@ -759,7 +759,7 @@ export function Profile() {
           <div className="w-full max-w-sm bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="font-bold text-navy">{t('profile.changePinTitle')}</h3>
-              <button onClick={() => setChangingPin(false)} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
+              <button onClick={() => setChangingPin(false)} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
               {[
@@ -784,9 +784,9 @@ export function Profile() {
               {pwError && <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{pwError}</p>}
             </div>
             <div className="flex gap-3 px-5 pb-5">
-              <button onClick={() => setChangingPin(false)} disabled={pinSaving} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
+              <button onClick={() => setChangingPin(false)} disabled={pinSaving} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg disabled:opacity-40">{t('common.cancel')}</button>
               <button onClick={savePassword} disabled={!pwValid || pinSaving}
-                className="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
+                className="flex-1 py-3 bg-navy text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
                 {pinSaving && <Loader2 size={14} className="animate-spin" />}
                 {t('common.save')}
               </button>

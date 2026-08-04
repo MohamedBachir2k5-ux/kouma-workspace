@@ -78,7 +78,7 @@ function CreateModal({ onClose, onCreated }: {
       <div className="w-full max-w-md bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('announcements.newAnnouncement')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-4">
           <div>
@@ -100,9 +100,9 @@ function CreateModal({ onClose, onCreated }: {
         </div>
         {error && <p className="text-xs text-danger mt-3">{error}</p>}
         <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={handleSave} disabled={!title.trim() || !body.trim() || saving}
-            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
             {saving ? <Loader2 size={14} className="animate-spin mx-auto" /> : t('announcements.publish')}
           </button>
         </div>

@@ -32,7 +32,7 @@ function DeptModal({ dept, onClose, onSave }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-bold text-navy text-lg">{dept ? t('admin.deptEditTitle') : t('admin.newDept')}</h3>
-          <button onClick={onClose} disabled={loading} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg disabled:opacity-40"><X size={16} /></button>
+          <button onClick={onClose} disabled={loading} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg disabled:opacity-40"><X size={16} /></button>
         </div>
         <div className="space-y-4">
           <div>
@@ -156,7 +156,7 @@ export function AdminDepartments() {
                 </div>
                 <div className="relative">
                   <button onClick={() => setMenuOpen(menuOpen === dept.id ? null : dept.id)}
-                    className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
+                    className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
                     <MoreHorizontal size={16} />
                   </button>
                   {menuOpen === dept.id && (

@@ -160,7 +160,7 @@ export function AdminSettings() {
           { id: 'brand',  label: t('settings.customisation'),  icon: Palette },
         ].map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setSection(id as typeof section)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               section === id ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'
             }`}>
             <Icon size={15} />{label}
@@ -185,7 +185,7 @@ export function AdminSettings() {
               <div>
                 <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                 <button type="button" onClick={() => logoRef.current?.click()}
-                  className="flex items-center gap-2 px-3 py-2 border border-border rounded-xl text-sm font-medium text-muted hover:bg-bg transition-colors">
+                  className="flex items-center gap-2 px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-muted hover:bg-bg transition-colors">
                   <Camera size={14} /> {t('settings.changeLogo')}
                 </button>
                 <p className="text-xs text-faint mt-1">{t('settings.logoHint')}</p>

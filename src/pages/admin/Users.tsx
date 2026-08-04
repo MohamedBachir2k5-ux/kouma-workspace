@@ -276,7 +276,7 @@ export function AdminUsers() {
               )}
               <div className="flex gap-3">
                 <button onClick={() => { setConfirm(null); setActionError(null) }} disabled={actionLoading}
-                  className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors disabled:opacity-40">
+                  className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg transition-colors disabled:opacity-40">
                   {t('common.cancel')}
                 </button>
                 <button onClick={executeConfirm} disabled={actionLoading}
