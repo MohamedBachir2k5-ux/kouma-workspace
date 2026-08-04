@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AuthService } from '../../services/auth.service'
 import { KeyService } from '../../services/key.service'
@@ -57,7 +57,7 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-12">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -66,7 +66,7 @@ export function AdminLogin() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <Link to="/connexion" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors">
+        <Link to="/connexion" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[44px]">
           <ArrowLeft size={15} />
           {t('common.back')}
         </Link>
@@ -113,7 +113,7 @@ export function AdminLogin() {
               <button
                 type="button"
                 onClick={() => setShowPw(!showPw)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-ink transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted hover:text-ink transition-colors rounded-lg"
               >
                 {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
@@ -121,21 +121,22 @@ export function AdminLogin() {
           </div>
 
           {error && (
-            <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            <p className="text-xs text-danger bg-danger/5 border border-danger/20 px-3 py-2 rounded-lg">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-50"
+            className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
+            {loading && <Loader2 size={16} className="animate-spin" />}
             {loading ? t('auth.connecting') : t('auth.accessConsole')}
           </button>
         </form>
 
-        <p className="mt-5 text-center text-xs text-faint">
-          <Link to="/recuperation/admin" className="text-indigo hover:underline">{t('auth.forgotPassword')}</Link>
-        </p>
+        <Link to="/recuperation/admin" className="flex items-center justify-center min-h-[44px] mt-3 text-xs text-indigo hover:underline">
+          {t('auth.forgotPassword')}
+        </Link>
       </div>
     </div>
   )

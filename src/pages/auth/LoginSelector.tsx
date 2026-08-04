@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
-import { User } from 'lucide-react'
+import { User, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 export function LoginSelector() {
   const { t } = useTranslation()
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-12">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -32,18 +32,17 @@ export function LoginSelector() {
             <div className="font-semibold text-ink mb-0.5">{t('auth.collaboratorLabel')}</div>
             <div className="text-sm text-muted">{t('auth.collaboratorDesc')}</div>
           </div>
-          <svg className="text-faint group-hover:text-indigo transition-colors shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          <ChevronRight size={18} className="text-faint group-hover:text-indigo transition-colors shrink-0" />
         </Link>
 
-        <p className="mt-10 text-center text-xs text-faint">
-          {t('auth.adminQuestion')}{' '}
-          <Link to="/connexion/admin" className="text-muted font-medium hover:text-ink">{t('auth.accessConsole')}</Link>
-        </p>
-
-        <p className="mt-4 text-center text-xs text-faint">
-          {t('auth.noWorkspace')}{' '}
-          <Link to="/creer" className="text-indigo font-medium hover:underline">{t('auth.createWorkspace')}</Link>
-        </p>
+        <div className="mt-10 space-y-1 text-center">
+          <Link to="/connexion/admin" className="flex items-center justify-center min-h-[44px] text-xs text-muted font-medium hover:text-ink transition-colors">
+            {t('auth.adminQuestion')} {t('auth.accessConsole')}
+          </Link>
+          <Link to="/creer" className="flex items-center justify-center min-h-[44px] text-xs text-indigo font-medium hover:underline">
+            {t('auth.createWorkspace')}
+          </Link>
+        </div>
       </div>
     </div>
   )
