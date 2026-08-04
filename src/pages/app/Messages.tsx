@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { Virtuoso } from 'react-virtuoso'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Plus, Hash, User, Users, Lock, Paperclip, FolderInput, Check, Info, ArrowLeft, X, Bell, BellOff, Link2, Image, Crown, FileText, LogOut, Loader2, Calendar, BarChart2, Download, Trash2, AlertCircle, Reply, Copy, Forward } from 'lucide-react'
@@ -895,16 +896,69 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup, orgUs
     group: t('messages.groups'),
     team: t('messages.teams'),
   }
-  const sections: { type: ConvType; items: Channel[] }[] = [
-    { type: 'direct' as ConvType, items: byType.direct },
-    { type: 'group' as ConvType, items: byType.group },
-    { type: 'team' as ConvType, items: byType.team },
-  ].filter(s => s.items.length > 0)
 
-  function getAvatarParts(ch: Channel) {
-    const parts = ch.name.split(' ')
-    return { firstName: parts[0] ?? '', lastName: parts[1] ?? '' }
+  type ConvRow =
+    | { kind: 'header'; label: string }
+    | { kind: 'item'; ch: Channel; isTeam: boolean; isGroup: boolean }
+
+  // Flatten sections into a single array that Virtuoso can render selectively
+  const rows: ConvRow[] = []
+  for (const type of ['direct', 'group', 'team'] as ConvType[]) {
+    const items = byType[type]
+    if (!items.length) continue
+    rows.push({ kind: 'header', label: sectionLabel[type] })
+    for (const ch of items) {
+      rows.push({ kind: 'item', ch, isTeam: type === 'team', isGroup: type === 'group' })
+    }
   }
+
+  const renderRow = useCallback((index: number) => {
+    const row = rows[index]
+    if (row.kind === 'header') {
+      return (
+        <p className="text-[10px] font-semibold text-faint uppercase tracking-wider px-3 pt-3 pb-1">
+          {row.label}
+        </p>
+      )
+    }
+    const { ch, isTeam, isGroup } = row
+    const parts = ch.name.split(' ')
+    const firstName = parts[0] ?? ''
+    const lastName  = parts[1] ?? ''
+    const otherId   = ch.members.find(id => id !== currentUserId) ?? ch.id
+    const otherUser = orgUsers.find(u => u.id === otherId)
+    return (
+      <button
+        onClick={() => onSelect(ch.id)}
+        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl mb-0.5 text-left transition-colors ${selected === ch.id ? 'bg-indigo-pale' : 'hover:bg-bg'}`}
+      >
+        {isTeam ? (
+          <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center shrink-0">
+            <Hash size={14} className="text-indigo-light" />
+          </div>
+        ) : isGroup ? (
+          <div className="w-9 h-9 rounded-xl bg-indigo-pale flex items-center justify-center shrink-0">
+            <Lock size={14} className="text-indigo" />
+          </div>
+        ) : (
+          <Avatar firstName={firstName} lastName={lastName} id={otherId} src={otherUser?.avatarUrl} />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className={`text-sm font-semibold truncate ${selected === ch.id ? 'text-indigo' : 'text-ink'}`}>{ch.name}</span>
+            {ch.lastMessage && <span className="text-[10px] text-faint shrink-0 ml-1">{formatTime(ch.lastMessage.createdAt)}</span>}
+          </div>
+          {ch.lastMessage && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted truncate">{ch.lastMessage.content}</p>
+              {(ch.unreadCount ?? 0) > 0 && <Badge count={ch.unreadCount!} />}
+            </div>
+          )}
+        </div>
+      </button>
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, selected, orgUsers, currentUserId, onSelect])
 
   return (
     <div className="flex flex-col h-full">
@@ -942,42 +996,16 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup, orgUs
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
-        {sections.map(({ type, items }) => (
-          <div key={type} className="mb-2">
-            <p className="text-[10px] font-semibold text-faint uppercase tracking-wider px-3 py-2">{sectionLabel[type]}</p>
-            {items.map(ch => {
-              const isTeam = type === 'team'
-              const isGroup = type === 'group'
-              const { firstName, lastName } = getAvatarParts(ch)
-              return (
-                <button key={ch.id} onClick={() => onSelect(ch.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl mb-0.5 text-left transition-colors ${selected === ch.id ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
-                  {isTeam ? (
-                    <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center shrink-0"><Hash size={14} className="text-indigo-light" /></div>
-                  ) : isGroup ? (
-                    <div className="w-9 h-9 rounded-xl bg-indigo-pale flex items-center justify-center shrink-0"><Lock size={14} className="text-indigo" /></div>
-                  ) : (
-                    <Avatar firstName={firstName} lastName={lastName} id={ch.members.find(id => id !== currentUserId) ?? ch.id} src={orgUsers.find(u => u.id === ch.members.find(id => id !== currentUserId))?.avatarUrl} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className={`text-sm font-semibold truncate ${selected === ch.id ? 'text-indigo' : 'text-ink'}`}>{ch.name}</span>
-                      {ch.lastMessage && <span className="text-[10px] text-faint shrink-0 ml-1">{formatTime(ch.lastMessage.createdAt)}</span>}
-                    </div>
-                    {ch.lastMessage && (
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted truncate">{ch.lastMessage.content}</p>
-                        {(ch.unreadCount ?? 0) > 0 && <Badge count={ch.unreadCount!} />}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        ))}
-        {sections.length === 0 && <p className="text-xs text-faint text-center py-8">{t('messages.noResults')}</p>}
+      <div className="flex-1 overflow-hidden px-2 pb-2">
+        {rows.length === 0
+          ? <p className="text-xs text-faint text-center py-8">{t('messages.noResults')}</p>
+          : <Virtuoso
+              style={{ height: '100%' }}
+              totalCount={rows.length}
+              itemContent={renderRow}
+              overscan={300}
+            />
+        }
       </div>
     </div>
   )
