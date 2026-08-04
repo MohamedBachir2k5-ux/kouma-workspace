@@ -47,7 +47,8 @@ export const AnnouncementService = {
         .select('*')
         .eq('organization_id', orgId)
         .order('pinned', { ascending: false })
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(100),
       supabase
         .from('announcement_reads')
         .select('announcement_id')

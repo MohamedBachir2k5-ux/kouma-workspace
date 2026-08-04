@@ -49,7 +49,7 @@ export function ResetPassword() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-4 safe-area-bottom">
+      <div className="min-h-dvh bg-bg flex items-center justify-center p-4 safe-area-bottom">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-indigo border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-muted">{t('resetPassword.verifying')}</p>
@@ -60,7 +60,7 @@ export function ResetPassword() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-4 safe-area-bottom">
+      <div className="min-h-dvh bg-bg flex items-center justify-center p-4 safe-area-bottom">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
             <Check size={24} className="text-success" />
@@ -78,7 +78,7 @@ export function ResetPassword() {
   ]
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-4 safe-area-bottom">
+    <div className="min-h-dvh bg-bg flex items-center justify-center p-4 safe-area-bottom">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-ink mb-1">{t('resetPassword.title')}</h1>

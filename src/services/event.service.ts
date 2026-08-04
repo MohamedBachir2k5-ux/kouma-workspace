@@ -43,10 +43,15 @@ function rowToEvent(r: EventRow): Event {
 
 export const EventService = {
   async list(orgId: string): Promise<Event[]> {
+    const now = new Date()
+    const from = new Date(now.getFullYear() - 1, now.getMonth(), 1).toISOString()
+    const to   = new Date(now.getFullYear() + 1, now.getMonth() + 1, 0).toISOString()
     const { data } = await supabase
       .from('events')
       .select('*')
       .eq('organization_id', orgId)
+      .gte('start_at', from)
+      .lte('start_at', to)
       .order('start_at', { ascending: true })
     return (data ?? []).map(r => rowToEvent(r as unknown as EventRow))
   },

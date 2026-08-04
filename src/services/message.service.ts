@@ -516,6 +516,8 @@ export const MessageService = {
       .from('messages')
       .select('id')
       .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(500)
     if (!msgs?.length) return {}
     const msgIds = msgs.map(m => m.id)
     const { data } = await supabase

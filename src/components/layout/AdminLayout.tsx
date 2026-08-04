@@ -31,7 +31,7 @@ export function AdminLayout() {
   const { checking } = useRequireAuth('/connexion/admin')
 
   if (checking || loading) return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
+    <div className="min-h-dvh bg-bg flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-navy border-t-transparent rounded-full animate-spin" />
     </div>
   )

@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Building2, CreditCard, Bell, Camera, Loader2, Palette, BookOpen, Mail, ExternalLink } from 'lucide-react'
 
-// TODO: replace SUPPORT_GUIDE_URL with real doc URL before go-live
-const SUPPORT_GUIDE_URL = '#'
+const SUPPORT_GUIDE_URL = '/resources/guides'
 const SUPPORT_EMAIL     = 'support@kouma.app'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'

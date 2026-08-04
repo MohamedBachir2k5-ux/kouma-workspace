@@ -48,6 +48,7 @@ export function JoinOrg() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [activeSession, setActiveSession] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
 
   const [form, setForm] = useState({
     email: '',
@@ -71,6 +72,8 @@ export function JoinOrg() {
       setInvite(data)
       const depts = await DepartmentService.listByInviteToken(token)
       setDepartments(depts)
+    }).catch(() => {
+      setLoadError(t('joinOrg.expiredLink'))
     })
   }, [token, t])
 
@@ -100,6 +103,7 @@ export function JoinOrg() {
     pinValid
 
   async function handleSubmit() {
+    setShowValidation(true)
     if (!valid || !invite || !token) return
     setLoading(true)
     setError(null)
@@ -169,7 +173,7 @@ export function JoinOrg() {
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
         <div className="w-full max-w-sm text-center">
           <p className="text-sm text-danger mb-4">{loadError}</p>
           <Link to="/" className="flex items-center justify-center min-h-[48px] text-sm text-indigo hover:underline">{t('joinOrg.backToHome')}</Link>
@@ -180,7 +184,7 @@ export function JoinOrg() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
         <div className="w-full max-w-sm text-center">
           <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-5">
             <Check size={28} className="text-success" />
@@ -195,7 +199,7 @@ export function JoinOrg() {
   const ready = !!invite
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
       <Link to="/" className="flex items-center gap-2 mb-10">
         <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
           <span className="text-white font-bold text-base">K</span>
@@ -230,8 +234,11 @@ export function JoinOrg() {
                 placeholder={t('joinOrg.emailPlaceholder')}
                 autoFocus
                 disabled={!ready}
-                className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                className={`w-full px-3 py-3 bg-bg border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50 ${showValidation && !form.email.trim().includes('@') ? 'border-danger' : 'border-border'}`}
               />
+              {showValidation && !form.email.trim().includes('@') && (
+                <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>
+              )}
             </div>
 
             {/* First + Last name */}
@@ -243,8 +250,11 @@ export function JoinOrg() {
                   onChange={e => update('firstName', e.target.value)}
                   placeholder={t('joinOrg.firstNamePlaceholder')}
                   disabled={!ready}
-                  className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                  className={`w-full px-3 py-3 bg-bg border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50 ${showValidation && !form.firstName.trim() ? 'border-danger' : 'border-border'}`}
                 />
+                {showValidation && !form.firstName.trim() && (
+                  <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('joinOrg.lastName')} *</label>
@@ -253,8 +263,11 @@ export function JoinOrg() {
                   onChange={e => update('lastName', e.target.value)}
                   placeholder={t('joinOrg.lastNamePlaceholder')}
                   disabled={!ready}
-                  className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                  className={`w-full px-3 py-3 bg-bg border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50 ${showValidation && !form.lastName.trim() ? 'border-danger' : 'border-border'}`}
                 />
+                {showValidation && !form.lastName.trim() && (
+                  <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>
+                )}
               </div>
             </div>
 
@@ -284,7 +297,7 @@ export function JoinOrg() {
                     value={form.departmentId}
                     onChange={e => update('departmentId', e.target.value)}
                     disabled={!ready}
-                    className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                    className={`w-full px-3 py-3 bg-bg border rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50 ${showValidation && !form.departmentId ? 'border-danger' : 'border-border'}`}
                   >
                     <option value="">{t('joinOrg.selectDepartment')}</option>
                     {departments.map(d => (
@@ -293,6 +306,9 @@ export function JoinOrg() {
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                 </div>
+                {showValidation && !form.departmentId && (
+                  <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>
+                )}
               </div>
             )}
 
@@ -304,8 +320,11 @@ export function JoinOrg() {
                 onChange={e => update('jobTitle', e.target.value)}
                 placeholder={t('joinOrg.jobTitlePlaceholder')}
                 disabled={!ready}
-                className="w-full px-3 py-3 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50"
+                className={`w-full px-3 py-3 bg-bg border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy disabled:opacity-50 ${showValidation && !form.jobTitle.trim() ? 'border-danger' : 'border-border'}`}
               />
+              {showValidation && !form.jobTitle.trim() && (
+                <p className="mt-1 text-xs text-danger">{t('createOrg.fieldRequired')}</p>
+              )}
             </div>
 
             {/* PIN */}
@@ -345,7 +364,7 @@ export function JoinOrg() {
 
           <button
             onClick={handleSubmit}
-            disabled={!valid || loading || !ready}
+            disabled={loading || !ready}
             className="mt-6 w-full py-3.5 bg-navy text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 size={15} className="animate-spin" />{t('joinOrg.creating')}</> : <><span>{t('joinOrg.createAccount')}</span><ArrowRight size={15} /></>}

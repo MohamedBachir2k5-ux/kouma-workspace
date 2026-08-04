@@ -14,7 +14,7 @@ interface State {
 function ErrorFallback({ error, onReload }: { error: Error; onReload: () => void }) {
   const { t } = useTranslation()
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 py-12 text-center">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-6 py-12 text-center">
       <div className="w-14 h-14 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-5">
         <span className="text-danger text-2xl font-bold">!</span>
       </div>
