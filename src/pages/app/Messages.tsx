@@ -58,7 +58,7 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.newGroup')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
           {t('messages.privateGroup')}
@@ -87,9 +87,9 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={handleCreate} disabled={!name.trim() || selected.length === 0 || creating}
-            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
             {creating ? t('messages.creating') : t('common.create')}
           </button>
         </div>
@@ -126,7 +126,7 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.newDirect')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('messages.searchCollaborator')} autoFocus
           className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo mb-3" />
@@ -186,7 +186,7 @@ function PromoteModal({ file, conversationId, onClose }: { file: Attachment; con
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-navy text-base">{t('messages.promoteTitle')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
           {t('messages.promoteSubtitle')}
@@ -219,9 +219,9 @@ function PromoteModal({ file, conversationId, onClose }: { file: Attachment; con
         </div>
         {error && <p className="text-xs text-danger mb-3">{error}</p>}
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={confirm} disabled={saving || !file.storagePath}
-            className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
+            className={`flex-1 py-3 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
             {saving ? t('messages.saving') : done ? t('messages.added') : t('common.confirm')}
           </button>
         </div>
@@ -292,7 +292,7 @@ function ForwardModal({ msg, channels, currentChannel, currentUser, currentOrg, 
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.forward')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="px-3 py-2 rounded-xl bg-bg border border-border text-xs text-muted mb-4 truncate">
           {msg.files?.length ? `📎 ${msg.content.replace('📎 ', '')}` : msg.content.slice(0, 80)}
@@ -316,9 +316,9 @@ function ForwardModal({ msg, channels, currentChannel, currentUser, currentOrg, 
           {targets.length === 0 && <p className="text-xs text-faint text-center py-4">{t('messages.forwardNoResults')}</p>}
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button onClick={handleForward} disabled={!targetId || sending || done}
-            className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
+            className={`flex-1 py-3 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 ${done ? 'bg-success' : 'bg-indigo hover:opacity-90'}`}>
             {sending ? <Loader2 size={14} className="animate-spin mx-auto" /> : done ? t('messages.forwarded') : t('messages.forward')}
           </button>
         </div>
@@ -349,7 +349,7 @@ function FilePreviewModal({ storagePath, fileName, fileSize, conversationId, org
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.fileLabel')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="flex items-center gap-4 p-4 bg-bg rounded-xl border border-border mb-5">
           <div className="w-12 h-12 rounded-xl bg-indigo/10 flex items-center justify-center shrink-0">
@@ -365,12 +365,12 @@ function FilePreviewModal({ storagePath, fileName, fileSize, conversationId, org
         </div>
         <div className="flex flex-col gap-2">
           <button onClick={handleDownload} disabled={downloading}
-            className="flex items-center justify-center gap-2 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50">
+            className="flex items-center justify-center gap-2 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50">
             {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
             {downloading ? t('messages.downloading') : t('common.download')}
           </button>
           <button onClick={() => { onSaveToMyDocs(); onClose() }}
-            className="flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm font-semibold text-ink hover:bg-bg">
+            className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-semibold text-ink hover:bg-bg">
             <FolderInput size={15} className="text-indigo" />
             {t('messages.saveToMyDocs')}
           </button>
@@ -488,7 +488,7 @@ function PollForm({ onClose, onSubmit }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.pollCreate')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
           <div>
@@ -516,9 +516,9 @@ function PollForm({ onClose, onSubmit }: {
           </label>
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button disabled={!canSubmit} onClick={() => onSubmit(question.trim(), options.filter(o => o.trim()), multiple)}
-            className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.create')}</button>
+            className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.create')}</button>
         </div>
       </div>
     </div>
@@ -549,7 +549,7 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg: _currentOrg, onCl
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.scheduleMeeting')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
           <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder={t('agenda.title')}
@@ -595,13 +595,13 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg: _currentOrg, onCl
           )}
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:bg-bg">{t('common.cancel')}</button>
           <button disabled={!canSubmit} onClick={() => {
             const startAt = new Date(`${date}T${timeStart}:00`).toISOString()
             const endAt = new Date(`${date}T${timeEnd}:00`).toISOString()
             onCreated(title.trim(), startAt, endAt, selected)
             onClose()
-          }} className="flex-1 py-2.5 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.create')}</button>
+          }} className="flex-1 py-3 bg-indigo text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">{t('common.create')}</button>
         </div>
         <button
           onClick={() => {
@@ -912,7 +912,7 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup, orgUs
           <h2 className="text-base font-bold text-ink">{t('messages.title')}</h2>
           <div className="relative">
             <button onClick={() => setShowNewMenu(m => !m)} title={t('messages.newConversation')}
-              className="w-8 h-8 rounded-full bg-indigo-pale flex items-center justify-center text-indigo hover:bg-indigo hover:text-white transition-colors">
+              className="w-10 h-10 rounded-full bg-indigo-pale flex items-center justify-center text-indigo hover:bg-indigo hover:text-white transition-colors">
               <Plus size={16} />
             </button>
             {showNewMenu && (
@@ -920,12 +920,12 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup, orgUs
                 <div className="fixed inset-0 z-40" onClick={() => setShowNewMenu(false)} />
                 <div className="absolute right-0 top-9 z-50 bg-surface border border-border rounded-xl shadow-xl overflow-hidden w-48">
                   <button onClick={() => { setShowNewMenu(false); onNewDirect() }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-ink hover:bg-bg">
+                    className="w-full flex items-center gap-2.5 px-3 py-3 text-left text-sm text-ink hover:bg-bg">
                     <User size={14} className="text-indigo shrink-0" />
                     {t('messages.newDirectMsg')}
                   </button>
                   <button onClick={() => { setShowNewMenu(false); onNewGroup() }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-ink hover:bg-bg border-t border-border">
+                    className="w-full flex items-center gap-2.5 px-3 py-3 text-left text-sm text-ink hover:bg-bg border-t border-border">
                     <Users size={14} className="text-indigo shrink-0" />
                     {t('messages.newGroup')}
                   </button>
@@ -951,7 +951,7 @@ function ConvList({ channels, onSelect, selected, onNewDirect, onNewGroup, orgUs
               const { firstName, lastName } = getAvatarParts(ch)
               return (
                 <button key={ch.id} onClick={() => onSelect(ch.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-left transition-colors ${selected === ch.id ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl mb-0.5 text-left transition-colors ${selected === ch.id ? 'bg-indigo-pale' : 'hover:bg-bg'}`}>
                   {isTeam ? (
                     <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center shrink-0"><Hash size={14} className="text-indigo-light" /></div>
                   ) : isGroup ? (
@@ -1179,7 +1179,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 h-14 border-b border-border bg-surface shrink-0">
-        <button onClick={onBack} className="md:hidden p-1.5 rounded-lg text-muted hover:text-ink">
+        <button onClick={onBack} className="md:hidden p-2.5 rounded-lg text-muted hover:text-ink -ml-1">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
 
@@ -1208,7 +1208,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
               <Paperclip size={13} />{localAttachments.length}
             </button>
           )}
-          <button onClick={() => setShowInfo(true)} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
+          <button onClick={() => setShowInfo(true)} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
             <Info size={17} />
           </button>
         </div>
@@ -1540,7 +1540,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                 <div className="text-[10px] font-semibold text-indigo">{replyAuthor}</div>
                 <div className="text-xs text-muted truncate">{preview}</div>
               </div>
-              <button type="button" onClick={() => setReplyingTo(null)} className="text-faint hover:text-muted shrink-0">
+              <button type="button" onClick={() => setReplyingTo(null)} className="p-2 text-faint hover:text-muted shrink-0 rounded-lg">
                 <X size={12} />
               </button>
             </div>
@@ -1559,7 +1559,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
           {/* "+" shortcuts menu */}
           <div className="relative shrink-0">
             <button onClick={() => setShowPlusMenu(m => !m)} disabled={uploading}
-              className="p-2.5 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors disabled:opacity-40">
+              className="p-3 rounded-xl text-muted hover:text-indigo hover:bg-indigo-pale transition-colors disabled:opacity-40">
               {uploading ? <Loader2 size={18} className="animate-spin text-indigo" /> : <Plus size={18} />}
             </button>
             {showPlusMenu && (

@@ -181,7 +181,7 @@ export function AppLayout() {
                 key={to}
                 to={to}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  `flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-indigo text-white'
                       : 'text-indigo-light hover:bg-navy-light hover:text-white'
@@ -217,13 +217,13 @@ export function AppLayout() {
       <PWAInstallBanner />
 
       {/* Bottom nav — mobile */}
-      <nav className="md:hidden flex items-center justify-around h-16 bg-surface border-t border-border shrink-0 px-2 safe-area-bottom relative">
+      <nav className="md:hidden flex items-stretch justify-around h-16 bg-surface border-t border-border shrink-0 px-2 safe-area-bottom relative">
         {NAV_ITEMS_MOBILE_MAIN.map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${
+              `flex flex-col items-center justify-center gap-0.5 px-3 py-1 min-h-[44px] rounded-lg transition-colors ${
                 isActive ? 'text-indigo' : 'text-faint'
               }`
             }
@@ -232,11 +232,11 @@ export function AppLayout() {
             <span className="text-[10px] font-medium">{t(key)}</span>
           </NavLink>
         ))}
-        <div ref={moreRef} className="relative flex flex-col items-center">
+        <div ref={moreRef} className="relative flex items-center">
           <button
             type="button"
             onClick={() => setShowMore(v => !v)}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${showMore ? 'text-indigo' : 'text-faint'}`}
+            className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1 min-h-[44px] rounded-lg transition-colors ${showMore ? 'text-indigo' : 'text-faint'}`}
           >
             <MoreHorizontal size={22} />
             <span className="text-[10px] font-medium">{t('nav.more', 'Plus')}</span>
