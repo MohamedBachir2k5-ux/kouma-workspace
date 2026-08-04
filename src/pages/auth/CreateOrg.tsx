@@ -517,7 +517,7 @@ export function CreateOrg() {
             <button
               type="button"
               onClick={() => step > 0 && step < 3 ? setStep(step - 1) : null}
-              className={`inline-flex items-center gap-2 min-h-[44px] text-sm text-muted hover:text-ink transition-colors ${step === 0 || step === 3 ? 'invisible' : ''}`}
+              className={`inline-flex items-center gap-2 min-h-[48px] text-sm text-muted hover:text-ink transition-colors ${step === 0 || step === 3 ? 'invisible' : ''}`}
             >
               <ArrowLeft size={15} />
               {t('common.previous')}
@@ -559,7 +559,7 @@ export function CreateOrg() {
 
         <p className="mt-6 text-center text-xs text-faint">
           {t('auth.alreadyHaveAccount')}{' '}
-          <Link to="/connexion" className="text-indigo font-medium hover:underline inline-flex items-center min-h-[44px]">{t('auth.login')}</Link>
+          <Link to="/connexion" className="text-indigo font-medium hover:underline inline-flex items-center min-h-[48px]">{t('auth.login')}</Link>
         </p>
       </div>
     </div>

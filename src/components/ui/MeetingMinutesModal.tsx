@@ -116,7 +116,7 @@ export function MeetingMinutesModal({ event, orgUsers, organizationId, createdBy
             <ClipboardList size={18} className="text-indigo" />
             <h3 className="font-bold text-navy text-sm">{t('minutes.title')}</h3>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg">
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg">
             <X size={16} />
           </button>
         </div>
@@ -193,7 +193,7 @@ export function MeetingMinutesModal({ event, orgUsers, organizationId, createdBy
                       className="flex-1 bg-transparent text-sm text-ink placeholder:text-faint focus:outline-none"
                     />
                     {actions.length > 1 && (
-                      <button type="button" onClick={() => removeAction(i)} aria-label={t('common.delete')} className="p-1 text-faint hover:text-danger transition-colors">
+                      <button type="button" onClick={() => removeAction(i)} aria-label={t('common.delete')} className="w-12 h-12 flex items-center justify-center text-faint hover:text-danger transition-colors rounded-lg shrink-0">
                         <Trash2 size={13} />
                       </button>
                     )}

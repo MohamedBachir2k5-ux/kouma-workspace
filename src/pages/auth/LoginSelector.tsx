@@ -36,10 +36,10 @@ export function LoginSelector() {
         </Link>
 
         <div className="mt-10 space-y-1 text-center">
-          <Link to="/connexion/admin" className="flex items-center justify-center min-h-[44px] text-xs text-muted font-medium hover:text-ink transition-colors">
+          <Link to="/connexion/admin" className="flex items-center justify-center min-h-[48px] text-xs text-muted font-medium hover:text-ink transition-colors">
             {t('auth.adminQuestion')} {t('auth.accessConsole')}
           </Link>
-          <Link to="/creer" className="flex items-center justify-center min-h-[44px] text-xs text-indigo font-medium hover:underline">
+          <Link to="/creer" className="flex items-center justify-center min-h-[48px] text-xs text-indigo font-medium hover:underline">
             {t('auth.createWorkspace')}
           </Link>
         </div>

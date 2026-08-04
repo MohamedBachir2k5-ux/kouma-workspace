@@ -66,7 +66,7 @@ export function AdminLogin() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <Link to="/connexion" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[44px]">
+        <Link to="/connexion" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[48px]">
           <ArrowLeft size={15} />
           {t('common.back')}
         </Link>
@@ -134,7 +134,7 @@ export function AdminLogin() {
           </button>
         </form>
 
-        <Link to="/recuperation/admin" className="flex items-center justify-center min-h-[44px] mt-3 text-xs text-indigo hover:underline">
+        <Link to="/recuperation/admin" className="flex items-center justify-center min-h-[48px] mt-3 text-xs text-indigo hover:underline">
           {t('auth.forgotPassword')}
         </Link>
       </div>

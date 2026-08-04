@@ -157,7 +157,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="px-4 py-4 max-w-2xl">
-        <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted hover:text-ink mb-5 transition-colors">
+        <button onClick={onBack} className="flex items-center gap-2 min-h-[48px] text-sm text-muted hover:text-ink mb-5 transition-colors">
           <ArrowLeft size={16} /> {t('teams.backToTeams')}
         </button>
 
@@ -209,7 +209,7 @@ function TeamDetail({ team, orgUsers, channels, onBack, onTeamUpdated }: {
                     <button onClick={() => removeMember(m.id)}
                       disabled={memberSaving}
                       aria-label={t('common.delete')}
-                      className="p-2.5 rounded-lg text-faint hover:text-danger hover:bg-danger/5 transition-colors disabled:opacity-40">
+                      className="w-12 h-12 flex items-center justify-center rounded-lg text-faint hover:text-danger hover:bg-danger/5 transition-colors disabled:opacity-40">
                       {memberSaving ? <Loader2 size={15} className="animate-spin" /> : <X size={15} />}
                     </button>
                   ) : (

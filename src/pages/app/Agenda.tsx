@@ -239,7 +239,7 @@ function EventModal({ event, prefill, orgUsers, myTeams, myGroups, onClose, onSa
       <div className="w-full max-w-lg bg-surface rounded-2xl border border-border shadow-2xl max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h3 className="font-bold text-navy text-base">{event ? t('agenda.editMeeting') : t('agenda.newMeeting')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -545,11 +545,11 @@ export function Agenda() {
         {/* Calendar */}
         <div className="bg-surface rounded-2xl border border-border p-4 mb-5">
           <div className="flex items-center justify-between mb-5">
-            <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-bg transition-colors text-muted hover:text-ink">
+            <button onClick={prevMonth} className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-bg transition-colors text-muted hover:text-ink">
               <ChevronLeft size={18} />
             </button>
             <h3 className="font-semibold text-ink text-sm">{MONTHS[month]} {year}</h3>
-            <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-bg transition-colors text-muted hover:text-ink">
+            <button onClick={nextMonth} className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-bg transition-colors text-muted hover:text-ink">
               <ChevronRight size={18} />
             </button>
           </div>

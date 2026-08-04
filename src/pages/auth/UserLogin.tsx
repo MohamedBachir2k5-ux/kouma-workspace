@@ -73,7 +73,7 @@ export function UserLogin() {
       <div className="w-full max-w-sm">
         <Link
           to="/connexion"
-          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-6 transition-colors min-h-[44px]"
+          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-6 transition-colors min-h-[48px]"
         >
           <ArrowLeft size={15} />
           {t('common.back')}
@@ -113,7 +113,7 @@ export function UserLogin() {
             <button
               type="button"
               onClick={() => { setStep('email'); setPin(''); setError(null) }}
-              className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[44px]"
+              className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[48px]"
             >
               <ArrowLeft size={15} />
               {t('auth.changeEmail')}
@@ -159,7 +159,7 @@ export function UserLogin() {
                 {loading && <Loader2 size={16} className="animate-spin" />}
                 {loading ? t('auth.connecting') : t('auth.login')}
               </button>
-              <Link to="/recuperation/utilisateur" className="flex items-center justify-center min-h-[44px] text-xs text-indigo hover:underline">
+              <Link to="/recuperation/utilisateur" className="flex items-center justify-center min-h-[48px] text-xs text-indigo hover:underline">
                 {t('auth.forgotPin')}
               </Link>
             </div>

@@ -172,7 +172,7 @@ export function JoinOrg() {
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
         <div className="w-full max-w-sm text-center">
           <p className="text-sm text-danger mb-4">{loadError}</p>
-          <Link to="/" className="flex items-center justify-center min-h-[44px] text-sm text-indigo hover:underline">{t('joinOrg.backToHome')}</Link>
+          <Link to="/" className="flex items-center justify-center min-h-[48px] text-sm text-indigo hover:underline">{t('joinOrg.backToHome')}</Link>
         </div>
       </div>
     )

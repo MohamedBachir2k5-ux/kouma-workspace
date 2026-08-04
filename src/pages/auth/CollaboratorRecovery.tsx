@@ -117,7 +117,7 @@ export function CollaboratorRecovery() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <Link to="/connexion/utilisateur" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[44px]">
+        <Link to="/connexion/utilisateur" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[48px]">
           <ArrowLeft size={15} /> {t('auth.backToLogin')}
         </Link>
 
@@ -185,7 +185,7 @@ export function CollaboratorRecovery() {
                   {loading && <Loader2 size={15} className="animate-spin" />}
                   {loading ? t('auth.verifying') : t('auth.verifyCode')}
                 </button>
-                <button onClick={() => { setStep('email'); setOtp(''); setError(null) }} className="w-full min-h-[44px] text-xs text-muted hover:text-ink transition-colors">
+                <button onClick={() => { setStep('email'); setOtp(''); setError(null) }} className="w-full min-h-[48px] text-xs text-muted hover:text-ink transition-colors">
                   {t('auth.resendCode')}
                 </button>
               </div>

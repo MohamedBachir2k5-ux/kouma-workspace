@@ -59,7 +59,7 @@ function NewGroupModal({ onClose, orgUsers, onCreated }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.newGroup')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
           {t('messages.privateGroup')}
@@ -127,7 +127,7 @@ function NewDirectModal({ onClose, contacts, onCreated }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.newDirect')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('messages.searchCollaborator')} autoFocus
           className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo mb-3" />
@@ -187,7 +187,7 @@ function PromoteModal({ file, conversationId, onClose }: { file: Attachment; con
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-navy text-base">{t('messages.promoteTitle')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <p className="text-xs text-muted mb-4 leading-relaxed">
           {t('messages.promoteSubtitle')}
@@ -293,7 +293,7 @@ function ForwardModal({ msg, channels, currentChannel, currentUser, currentOrg, 
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy text-base">{t('messages.forward')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="px-3 py-2 rounded-xl bg-bg border border-border text-xs text-muted mb-4 truncate">
           {msg.files?.length ? `📎 ${msg.content.replace('📎 ', '')}` : msg.content.slice(0, 80)}
@@ -350,7 +350,7 @@ function FilePreviewModal({ storagePath, fileName, fileSize, conversationId, org
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.fileLabel')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="flex items-center gap-4 p-4 bg-bg rounded-xl border border-border mb-5">
           <div className="w-12 h-12 rounded-xl bg-indigo/10 flex items-center justify-center shrink-0">
@@ -489,7 +489,7 @@ function PollForm({ onClose, onSubmit }: {
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.pollCreate')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
           <div>
@@ -550,7 +550,7 @@ function QuickMeetingForm({ orgUsers, currentUser, currentOrg: _currentOrg, onCl
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('messages.scheduleMeeting')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="space-y-3">
           <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder={t('agenda.title')}
@@ -664,7 +664,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
     return (
       <div className="flex flex-col h-full bg-bg">
         <div className="flex items-center gap-3 px-4 h-14 border-b border-border bg-surface shrink-0">
-          <button onClick={() => setLibraryOpen(null)} className="p-1.5 rounded-lg text-muted hover:text-ink">
+          <button onClick={() => setLibraryOpen(null)} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink">
             <ArrowLeft size={18} />
           </button>
           <span className="text-sm font-semibold text-ink">{libraryTitles[libraryOpen]}</span>
@@ -704,7 +704,7 @@ function InfoPanel({ channel, orgUsers, teams, attachments, onClose, onNavigateT
   return (
     <div className="flex flex-col h-full bg-bg">
       <div className="flex items-center gap-3 px-4 h-14 border-b border-border bg-surface shrink-0">
-        <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-ink">
+        <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink">
           <ArrowLeft size={18} />
         </button>
         <span className="text-sm font-semibold text-ink">
@@ -1180,7 +1180,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 h-14 border-b border-border bg-surface shrink-0">
-        <button onClick={onBack} className="md:hidden p-2.5 rounded-lg text-muted hover:text-ink -ml-1">
+        <button onClick={onBack} className="md:hidden w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink -ml-1">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
 
@@ -1209,7 +1209,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
               <Paperclip size={13} />{localAttachments.length}
             </button>
           )}
-          <button onClick={() => setShowInfo(true)} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
+          <button onClick={() => setShowInfo(true)} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors">
             <Info size={17} />
           </button>
         </div>
@@ -1541,7 +1541,7 @@ function ConvView({ channel, channels, orgUsers, teams, onBack, onLeaveChannel }
                 <div className="text-[10px] font-semibold text-indigo">{replyAuthor}</div>
                 <div className="text-xs text-muted truncate">{preview}</div>
               </div>
-              <button type="button" onClick={() => setReplyingTo(null)} className="p-2 text-faint hover:text-muted shrink-0 rounded-lg">
+              <button type="button" onClick={() => setReplyingTo(null)} className="w-12 h-12 flex items-center justify-center shrink-0 rounded-lg text-faint hover:text-muted">
                 <X size={12} />
               </button>
             </div>

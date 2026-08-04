@@ -34,7 +34,7 @@ function UserDetail({ user, orgUsers: _orgUsers, currentOrg, onBack, onAction, o
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
-      <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted hover:text-ink mb-5 transition-colors">
+      <button onClick={onBack} className="flex items-center gap-2 min-h-[48px] text-sm text-muted hover:text-ink mb-5 transition-colors">
         <ArrowLeft size={16} /> {t('admin.backToUsers')}
       </button>
 

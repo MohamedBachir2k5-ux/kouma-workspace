@@ -76,10 +76,10 @@ function DocumentPreviewModal({ docId, docName, docType, orgId, onClose, onDownl
           <span className="text-sm font-semibold text-white truncate max-w-xs">{docName}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onDownload} className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
+          <button onClick={onDownload} className="flex items-center gap-1.5 px-3 py-2.5 min-h-[48px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
             <Download size={13} /> {t('common.download')}
           </button>
-          <button onClick={onClose} className="p-2.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+          <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -138,7 +138,7 @@ function NewFolderModal({ defaultVisibility = 'personal', onClose, onCreated }: 
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-border p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-navy text-base">{t('documents.newFolder')}</h3>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-2.5 rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
+          <button onClick={onClose} aria-label={t('common.close')} className="w-12 h-12 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={15} /></button>
         </div>
         <div className="mb-3">
           <label className="block text-xs font-semibold text-ink mb-1.5 uppercase tracking-wide">{t('documents.folderName')}</label>
@@ -525,7 +525,7 @@ export function Documents() {
           {/* Breadcrumb when inside a folder */}
           {activeFolder && (
             <div className="flex items-center gap-2 mb-4">
-              <button onClick={() => setActiveFolder(null)} className="flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors">
+              <button onClick={() => setActiveFolder(null)} className="flex items-center gap-1.5 min-h-[48px] text-xs text-muted hover:text-ink transition-colors">
                 <FolderOpen size={13} />
                 <span>{t('documents.folders')}</span>
               </button>
@@ -609,7 +609,7 @@ export function Documents() {
                       <Avatar firstName={uploader.firstName} lastName={uploader.lastName} id={uploader.id} size="sm" src={uploader.avatarUrl} />
                     )}
                     {!confirmingDelete && (
-                      <button type="button" onClick={() => handleDownload(doc)} className="p-2 rounded-lg text-faint hover:text-indigo transition-colors">
+                      <button type="button" onClick={() => handleDownload(doc)} className="w-12 h-12 flex items-center justify-center rounded-lg text-faint hover:text-indigo transition-colors">
                         <Download size={14} />
                       </button>
                     )}
