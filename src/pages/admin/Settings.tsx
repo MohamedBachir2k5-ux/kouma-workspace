@@ -553,7 +553,6 @@ export function AdminSettings() {
         </div>
       </div>
     )}
-    </div>
     </>
   )
 }

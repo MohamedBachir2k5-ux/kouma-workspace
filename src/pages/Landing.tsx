@@ -156,7 +156,7 @@ export function Landing() {
         </div>
 
         <h1 className="text-4xl md:text-6xl font-bold text-navy leading-[1.08] tracking-tight max-w-3xl">
-          Votre entreprise mérite mieux que WhatsApp.
+          L'espace de travail que votre organisation mérite.
         </h1>
 
         <p className="mt-6 text-lg md:text-xl text-muted max-w-2xl leading-relaxed">
@@ -203,7 +203,7 @@ export function Landing() {
             <div className="text-center mb-12">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-3">Le problème</p>
               <h2 className="text-2xl md:text-3xl font-bold text-navy">
-                WhatsApp n'a pas été conçu pour les entreprises.
+                Les messageries grand public ne sont pas faites pour les entreprises.
               </h2>
             </div>
           </Reveal>
@@ -268,7 +268,7 @@ export function Landing() {
                 icon: FolderOpen,
                 color: 'bg-success/10 text-success',
                 title: 'Documents centralisés',
-                desc: 'Tous vos fichiers professionnels au même endroit, accessibles aux bonnes personnes. Plus de "tu m\'envoies le document sur WhatsApp ?".',
+                desc: 'Tous vos fichiers professionnels au même endroit, accessibles aux bonnes personnes. Fini les documents perdus dans des conversations personnelles.',
               },
               {
                 icon: CalendarDays,
