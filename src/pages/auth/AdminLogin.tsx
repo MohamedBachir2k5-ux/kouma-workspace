@@ -2,9 +2,13 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 import { AuthService } from '../../services/auth.service'
 import { KeyService } from '../../services/key.service'
 import { OrganizationService } from '../../services/organization.service'
+import { AuthBrandPanel, MobileAuthStrip } from '../../components/layout/AuthBrandPanel'
 
 export function AdminLogin() {
   const { t } = useTranslation()
@@ -47,7 +51,6 @@ export function AdminLogin() {
       return
     }
 
-    // Load E2E keys into session (best-effort — don't block login if missing)
     const orgRow = await OrganizationService.getForUser(userId)
     if (orgRow) {
       await KeyService.loadUserKeys(userId, password, orgRow.id)
@@ -57,86 +60,92 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
-      <Link to="/" className="flex items-center gap-2 mb-12">
-        <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
-          <span className="text-white font-bold text-base">K</span>
-        </div>
-        <span className="font-bold text-navy text-xl tracking-tight">Kouma</span>
-      </Link>
+    <div className="min-h-dvh flex overflow-hidden">
+      <AuthBrandPanel />
 
-      <div className="w-full max-w-sm">
-        <Link to="/connexion" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[48px]">
-          <ArrowLeft size={15} />
-          {t('common.back')}
-        </Link>
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <MobileAuthStrip />
 
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-navy/5 rounded-lg mb-5">
-            <div className="w-1.5 h-1.5 rounded-full bg-navy" />
-            <span className="text-navy text-xs font-semibold uppercase tracking-wide">{t('auth.adminBadge')}</span>
-          </div>
-          <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.adminTitle')}</h1>
-          <p className="text-muted text-sm">{t('auth.adminSubtitle')}</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-              {t('auth.orgEmail')}
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="admin@organisation.com"
-              required
-              autoFocus
-              className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-              {t('auth.password')}
-            </label>
-            <div className="relative">
-              <input
-                type={showPw ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={4}
-                className="w-full px-4 py-3.5 pr-11 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted hover:text-ink transition-colors rounded-lg"
-              >
-                {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-xs text-danger bg-danger/5 border border-danger/20 px-3 py-2 rounded-lg">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+        <div className="flex-1 bg-bg flex flex-col items-center justify-center px-6 py-12 safe-area-bottom">
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: EASE }}
+            className="w-full max-w-sm"
           >
-            {loading && <Loader2 size={16} className="animate-spin" />}
-            {loading ? t('auth.connecting') : t('auth.accessConsole')}
-          </button>
-        </form>
+            <Link to="/connexion" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[48px]">
+              <ArrowLeft size={15} />
+              {t('common.back')}
+            </Link>
 
-        <Link to="/recuperation/admin" className="flex items-center justify-center min-h-[48px] mt-3 text-xs text-indigo hover:underline">
-          {t('auth.forgotPassword')}
-        </Link>
+            <div className="mb-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-navy/5 rounded-lg mb-5">
+                <div className="w-1.5 h-1.5 rounded-full bg-navy" />
+                <span className="text-navy text-xs font-semibold uppercase tracking-wide">{t('auth.adminBadge')}</span>
+              </div>
+              <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.adminTitle')}</h1>
+              <p className="text-muted text-sm">{t('auth.adminSubtitle')}</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
+                  {t('auth.orgEmail')}
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="admin@organisation.com"
+                  required
+                  autoFocus
+                  className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
+                  {t('auth.password')}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={4}
+                    className="w-full px-4 py-3.5 pr-11 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted hover:text-ink transition-colors rounded-lg"
+                  >
+                    {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-xs text-danger bg-danger/5 border border-danger/20 px-3 py-2 rounded-lg">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading && <Loader2 size={16} className="animate-spin" />}
+                {loading ? t('auth.connecting') : t('auth.accessConsole')}
+              </button>
+            </form>
+
+            <Link to="/recuperation/admin" className="flex items-center justify-center min-h-[48px] mt-3 text-xs text-indigo hover:underline">
+              {t('auth.forgotPassword')}
+            </Link>
+          </motion.div>
+        </div>
       </div>
     </div>
   )

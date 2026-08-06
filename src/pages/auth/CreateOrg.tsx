@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, ChevronDown, HelpCircle, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AuthBrandPanel, MobileAuthStrip } from '../../components/layout/AuthBrandPanel'
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 import { useTranslation } from 'react-i18next'
 import { COUNTRIES } from '../../config/countries'
 import { CURRENCY_LABELS } from '../../config/pricing'
@@ -156,13 +160,13 @@ export function CreateOrg() {
   )
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center px-4 py-12 safe-area-bottom">
-      <Link to="/" className="flex items-center gap-2 mb-10">
-        <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
-          <span className="text-white font-bold text-base">K</span>
-        </div>
-        <span className="font-bold text-navy text-xl tracking-tight">Kouma</span>
-      </Link>
+    <div className="min-h-dvh flex overflow-hidden">
+      <AuthBrandPanel />
+
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <MobileAuthStrip />
+
+        <div className="flex-1 bg-bg flex flex-col items-center px-4 py-10 safe-area-bottom">
 
       <div className="w-full max-w-md">
         {/* Stepper */}
@@ -186,10 +190,17 @@ export function CreateOrg() {
           ))}
         </div>
 
-        <div className="bg-surface rounded-2xl border border-border p-6 md:p-8">
+        <div className="bg-surface rounded-2xl border border-border p-6 md:p-8 overflow-hidden">
+          <AnimatePresence mode="wait">
           {/* ── STEP 1 ── */}
           {step === 0 && (
-            <div>
+            <motion.div
+              key="step0"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.28, ease: EASE }}
+            >
               <div className="flex items-start justify-between mb-1">
                 <h1 className="text-xl font-bold text-navy">{t('createOrg.title')}</h1>
                 <a href="/resources/guides#creer-organisation" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo hover:underline shrink-0 mt-0.5">
@@ -349,12 +360,18 @@ export function CreateOrg() {
                   />
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* ── STEP 2 ── */}
           {step === 1 && (
-            <div>
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.28, ease: EASE }}
+            >
               <div className="flex items-start justify-between mb-1">
                 <h1 className="text-xl font-bold text-navy">{t('createOrg.adminTitle')}</h1>
                 <a href="/resources/guides#compte-administrateur" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo hover:underline shrink-0 mt-0.5">
@@ -447,12 +464,18 @@ export function CreateOrg() {
                   )}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* ── STEP 3 ── */}
           {step === 2 && (
-            <div>
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.28, ease: EASE }}
+            >
               <h1 className="text-xl font-bold text-navy mb-1">{t('createOrg.confirmTitle')}</h1>
               <p className="text-muted text-sm mb-6">{t('createOrg.confirmSubtitle')}</p>
 
@@ -477,12 +500,18 @@ export function CreateOrg() {
               <div className="p-4 bg-indigo-pale rounded-xl">
                 <p className="text-xs text-indigo leading-relaxed">{t('createOrg.consentText')}</p>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* ── STEP 4 — Breakglass phrase ── */}
           {step === 3 && breakglassPhrase && (
-            <div>
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.28, ease: EASE }}
+            >
               <div className="flex items-center justify-between mb-5">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
                   <span className="text-amber-700 text-xs font-semibold uppercase tracking-wide">{t('createOrg.breakglassTag')}</span>
@@ -508,8 +537,9 @@ export function CreateOrg() {
                 />
                 <span className="text-sm text-ink leading-relaxed">{t('createOrg.breakglassConfirm')}</span>
               </label>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           {/* Navigation */}
           {error && <p className="mt-4 text-sm text-center text-danger">{error}</p>}
@@ -561,6 +591,9 @@ export function CreateOrg() {
           {t('auth.alreadyHaveAccount')}{' '}
           <Link to="/connexion" className="text-indigo font-medium hover:underline inline-flex items-center min-h-[48px]">{t('auth.login')}</Link>
         </p>
+      </div>
+
+        </div>
       </div>
     </div>
   )

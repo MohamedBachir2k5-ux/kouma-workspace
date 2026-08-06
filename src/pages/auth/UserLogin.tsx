@@ -2,9 +2,20 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { motion, AnimatePresence } from 'framer-motion'
 import { AuthService } from '../../services/auth.service'
 import { KeyService } from '../../services/key.service'
 import { OrganizationService } from '../../services/organization.service'
+import { AuthBrandPanel, MobileAuthStrip } from '../../components/layout/AuthBrandPanel'
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+const slide = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -20 },
+  transition: { duration: 0.3, ease: EASE },
+}
 
 export function UserLogin() {
   const { t } = useTranslation()
@@ -52,7 +63,6 @@ export function UserLogin() {
       return
     }
 
-    // Load E2E keys into session — generate them first if this is a new account
     const orgRow = await OrganizationService.getForUser(userId)
     if (orgRow) {
       const { ok } = await KeyService.loadUserKeys(userId, pin, orgRow.id)
@@ -65,109 +75,111 @@ export function UserLogin() {
   }
 
   return (
-    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center px-4 py-12 safe-area-bottom">
-      <Link to="/" className="flex items-center gap-2 mb-12">
-        <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center">
-          <span className="text-white font-bold text-base">K</span>
-        </div>
-        <span className="font-bold text-navy text-xl tracking-tight">Kouma</span>
-      </Link>
+    <div className="min-h-dvh flex overflow-hidden">
+      <AuthBrandPanel />
 
-      <div className="w-full max-w-sm">
-        <Link
-          to="/connexion"
-          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-6 transition-colors min-h-[48px]"
-        >
-          <ArrowLeft size={15} />
-          {t('common.back')}
-        </Link>
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <MobileAuthStrip />
 
-        {step === 'email' ? (
-          <form onSubmit={handleEmailNext}>
-            <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.loginTitle')}</h1>
-            <p className="text-muted text-sm mb-8">{t('auth.loginSubtitle')}</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                  {t('auth.professionalEmail')}
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="vous@organisation.com"
-                  required
-                  autoFocus
-                  className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent transition-all"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors"
-              >
-                {t('auth.continue')}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <button
-              type="button"
-              onClick={() => { setStep('email'); setPin(''); setError(null) }}
+        <div className="flex-1 bg-bg flex flex-col items-center justify-center px-6 py-12 safe-area-bottom">
+          <div className="w-full max-w-sm">
+            <Link
+              to="/connexion"
               className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[48px]"
             >
               <ArrowLeft size={15} />
-              {t('auth.changeEmail')}
-            </button>
+              {t('common.back')}
+            </Link>
 
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-pale rounded-lg mb-6">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo" />
-                <span className="text-indigo text-xs font-medium truncate max-w-[220px]">{email}</span>
-              </div>
-              <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.pinTitle')}</h1>
-              <p className="text-muted text-sm">{t('auth.pinSubtitle')}</p>
-            </div>
+            <AnimatePresence mode="wait">
+              {step === 'email' ? (
+                <motion.form key="email" onSubmit={handleEmailNext} {...slide}>
+                  <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.loginTitle')}</h1>
+                  <p className="text-muted text-sm mb-8">{t('auth.loginSubtitle')}</p>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
-                  {t('auth.pinLabel')}
-                </label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  value={pin}
-                  onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="••••••"
-                  required
-                  autoFocus
-                  className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink text-center tracking-[1rem] font-mono placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent transition-all"
-                />
-              </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
+                        {t('auth.professionalEmail')}
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="vous@organisation.com"
+                        required
+                        autoFocus
+                        className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors"
+                    >
+                      {t('auth.continue')}
+                    </button>
+                  </div>
+                </motion.form>
+              ) : (
+                <motion.form key="pin" onSubmit={handleSubmit} {...slide}>
+                  <button
+                    type="button"
+                    onClick={() => { setStep('email'); setPin(''); setError(null) }}
+                    className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-8 transition-colors min-h-[48px]"
+                  >
+                    <ArrowLeft size={15} />
+                    {t('auth.changeEmail')}
+                  </button>
 
-              {error && (
-                <p className="text-xs text-danger bg-danger/5 border border-danger/20 px-3 py-2 rounded-lg">{error}</p>
+                  <div className="mb-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-pale rounded-lg mb-6">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo" />
+                      <span className="text-indigo text-xs font-medium truncate max-w-[220px]">{email}</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-navy mb-1">{t('auth.pinTitle')}</h1>
+                    <p className="text-muted text-sm">{t('auth.pinSubtitle')}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-ink mb-2 uppercase tracking-wide">
+                        {t('auth.pinLabel')}
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        value={pin}
+                        onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="••••••"
+                        required
+                        autoFocus
+                        className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-sm text-ink text-center tracking-[1rem] font-mono placeholder-faint focus:outline-none focus:ring-2 focus:ring-indigo focus:border-transparent transition-all"
+                      />
+                    </div>
+
+                    {error && (
+                      <p className="text-xs text-danger bg-danger/5 border border-danger/20 px-3 py-2 rounded-lg">{error}</p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={pin.length !== 6 || loading}
+                      className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {loading && <Loader2 size={16} className="animate-spin" />}
+                      {loading ? t('auth.connecting') : t('auth.login')}
+                    </button>
+                    <Link to="/recuperation/utilisateur" className="flex items-center justify-center min-h-[48px] text-xs text-indigo hover:underline">
+                      {t('auth.forgotPin')}
+                    </Link>
+                  </div>
+                </motion.form>
               )}
-
-              <button
-                type="submit"
-                disabled={pin.length !== 6 || loading}
-                className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl text-sm hover:bg-navy-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 size={16} className="animate-spin" />}
-                {loading ? t('auth.connecting') : t('auth.login')}
-              </button>
-              <Link to="/recuperation/utilisateur" className="flex items-center justify-center min-h-[48px] text-xs text-indigo hover:underline">
-                {t('auth.forgotPin')}
-              </Link>
-            </div>
-          </form>
-        )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </div>
   )
