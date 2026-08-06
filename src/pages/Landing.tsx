@@ -2,22 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   MessageSquare, FolderOpen, CalendarDays, Users,
-  LayoutDashboard, ShieldCheck, Building2, Landmark,
-  ArrowRight, Check, Sparkles,
+  ShieldCheck, ArrowRight, Check, Sparkles, Lock,
+  LayoutDashboard, Megaphone, Bell, Briefcase, School,
+  HeartPulse, Scale, X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PublicNav } from '../components/layout/PublicNav'
 
 /* ── Scroll reveal ── */
-function Reveal({
-  children,
-  delay = 0,
-  className = '',
-}: {
-  children: React.ReactNode
-  delay?: number
-  className?: string
-}) {
+function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   useEffect(() => {
@@ -44,7 +37,7 @@ function Reveal({
 /* ── App preview mockups ── */
 function MessagingMockup() {
   return (
-    <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-xl shadow-navy/10 w-full max-w-[280px]">
+    <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-2xl shadow-navy/15 w-full max-w-[280px]">
       <div className="bg-navy px-4 py-3 flex items-center gap-2.5">
         <div className="w-5 h-5 rounded-md bg-indigo flex items-center justify-center">
           <span className="text-white font-bold text-[10px]">K</span>
@@ -55,12 +48,12 @@ function MessagingMockup() {
         <div className="h-7 bg-border/40 rounded-lg" />
       </div>
       {[
-        { name: 'Finance', msg: 'Rapport Q2 validé.', time: '14:32', unread: 3, team: true },
-        { name: 'Amadou K.', msg: 'Je t\'envoie le document.', time: '10:15', unread: 1, team: false },
-        { name: 'RH', msg: 'Entretiens confirmés.', time: '09:40', unread: 0, team: true },
-        { name: 'Mariam S.', msg: 'Merci, à demain.', time: 'Hier', unread: 0, team: false },
+        { name: 'Finance', msg: 'Rapport Q2 validé ✓', time: '14:32', unread: 3, team: true },
+        { name: 'Amadou K.', msg: 'Je t\'envoie le contrat.', time: '10:15', unread: 1, team: false },
+        { name: 'Direction RH', msg: 'Recrutements confirmés.', time: '09:40', unread: 0, team: true },
+        { name: 'Mariam S.', msg: 'Dossier transmis.', time: 'Hier', unread: 0, team: false },
       ].map(item => (
-        <div key={item.name} className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border last:border-0 hover:bg-bg transition-colors">
+        <div key={item.name} className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border last:border-0">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[10px] font-bold ${item.team ? 'bg-navy' : 'bg-indigo'}`}>
             {item.team ? '#' : item.name[0]}
           </div>
@@ -84,19 +77,19 @@ function MessagingMockup() {
 
 function AdminMockup() {
   return (
-    <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-xl shadow-navy/10 w-full max-w-[240px]">
+    <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-2xl shadow-navy/15 w-full max-w-[240px]">
       <div className="bg-navy px-4 py-3">
-        <span className="text-white text-xs font-semibold">Console administration</span>
+        <span className="text-white text-xs font-semibold">Administration</span>
       </div>
       <div className="p-3 space-y-2">
         {[
-          { label: 'Membres actifs', value: '47', color: 'bg-success' },
-          { label: 'Stockage', value: '4,2 Go / 5 Go', color: 'bg-indigo' },
-          { label: 'Documents partagés', value: '38', color: 'bg-amber' },
+          { label: 'Membres actifs', value: '47', color: 'text-success' },
+          { label: 'Stockage utilisé', value: '4,2 Go / 50 Go', color: 'text-indigo' },
+          { label: 'Documents partagés', value: '138', color: 'text-amber' },
         ].map(item => (
           <div key={item.label} className="flex items-center justify-between p-2.5 bg-bg rounded-lg">
             <span className="text-[10px] text-muted">{item.label}</span>
-            <span className="text-[10px] font-bold text-ink">{item.value}</span>
+            <span className={`text-[10px] font-bold ${item.color}`}>{item.value}</span>
           </div>
         ))}
         <div className="pt-1">
@@ -113,51 +106,9 @@ function AdminMockup() {
   )
 }
 
-function AxisMockup() {
-  return (
-    <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-xl shadow-navy/10 w-full max-w-[260px]">
-      <div className="bg-navy px-4 py-3 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-lg bg-indigo/20 flex items-center justify-center">
-          <Sparkles size={11} className="text-indigo-light" />
-        </div>
-        <span className="text-white text-xs font-semibold">AXIS</span>
-        <span className="text-indigo-light/50 text-[9px] ml-auto">Guide Kouma</span>
-      </div>
-      <div className="p-3 space-y-2.5">
-        <div className="flex justify-end">
-          <div className="bg-indigo text-white text-[10px] rounded-xl rounded-br-sm px-3 py-2 max-w-[165px] leading-relaxed">
-            Comment inviter un collaborateur ?
-          </div>
-        </div>
-        <div className="flex gap-2 items-start">
-          <div className="w-5 h-5 rounded-md bg-indigo/10 flex items-center justify-center shrink-0 mt-0.5">
-            <Sparkles size={8} className="text-indigo" />
-          </div>
-          <div className="bg-bg text-ink text-[10px] rounded-xl rounded-bl-sm px-3 py-2 leading-relaxed">
-            Dans la console d'administration → Utilisateurs, cliquez sur <span className="font-semibold">Générer un lien</span> et partagez-le avec votre collaborateur.
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <div className="bg-indigo text-white text-[10px] rounded-xl rounded-br-sm px-3 py-2 max-w-[140px] leading-relaxed">
-            Et si le lien expire ?
-          </div>
-        </div>
-        <div className="flex gap-2 items-start">
-          <div className="w-5 h-5 rounded-md bg-indigo/10 flex items-center justify-center shrink-0 mt-0.5">
-            <Sparkles size={8} className="text-indigo" />
-          </div>
-          <div className="bg-bg text-ink text-[10px] rounded-xl rounded-bl-sm px-3 py-2 leading-relaxed">
-            Générez-en un nouveau depuis la même page. Les anciens liens sont révoqués automatiquement.
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function AgendaMockup() {
   return (
-    <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-xl shadow-navy/10 w-full max-w-[200px]">
+    <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-2xl shadow-navy/15 w-full max-w-[200px]">
       <div className="p-3 border-b border-border">
         <div className="text-[10px] font-bold text-navy mb-2">Juillet 2026</div>
         <div className="grid grid-cols-7 gap-0.5">
@@ -167,8 +118,8 @@ function AgendaMockup() {
           {[...Array(1)].map((_, i) => <div key={`e${i}`} />)}
           {[...Array(31)].map((_, i) => {
             const d = i + 1
-            const isToday = d === 29
-            const hasEvent = [7, 15, 29, 31].includes(d)
+            const isToday = d === 15
+            const hasEvent = [7, 15, 22, 28].includes(d)
             return (
               <div key={d} className={`flex items-center justify-center w-5 h-5 mx-auto rounded-full text-[8px] font-medium relative ${isToday ? 'bg-navy text-white' : 'text-ink'}`}>
                 {d}
@@ -180,7 +131,7 @@ function AgendaMockup() {
       </div>
       <div className="p-3 space-y-1.5">
         <div className="text-[9px] font-semibold text-muted uppercase tracking-wide mb-1">Aujourd'hui</div>
-        {['Réunion budget · 10h00', 'Comité RH · 14h30'].map(e => (
+        {['Réunion DG · 10h00', 'Revue budgétaire · 14h30'].map(e => (
           <div key={e} className="flex items-center gap-1.5 p-1.5 bg-indigo-pale rounded-lg">
             <div className="w-1 h-1 rounded-full bg-indigo shrink-0" />
             <span className="text-[9px] text-indigo font-medium">{e}</span>
@@ -191,106 +142,7 @@ function AgendaMockup() {
   )
 }
 
-/* ── Features ── */
-const FEATURES = [
-  {
-    icon: MessageSquare,
-    color: 'bg-indigo/10 text-indigo',
-    title: 'Espaces d\'équipe',
-    desc: 'Créez des espaces dédiés à chaque équipe ou projet. Fini les fils de discussion mélangés.',
-  },
-  {
-    icon: FolderOpen,
-    color: 'bg-success/10 text-success',
-    title: 'Documents partagés',
-    desc: 'Importez et retrouvez vos fichiers professionnels en un seul endroit, accessibles aux bonnes personnes.',
-  },
-  {
-    icon: CalendarDays,
-    color: 'bg-amber/10 text-amber',
-    title: 'Agenda collaboratif',
-    desc: 'Planifiez vos réunions et activités directement dans votre espace. Tout le monde reste informé.',
-  },
-  {
-    icon: Users,
-    color: 'bg-indigo/10 text-indigo',
-    title: 'Gestion des membres',
-    desc: 'Invitez vos collaborateurs, organisez-les par équipe, contrôlez les accès depuis un seul endroit.',
-  },
-  {
-    icon: LayoutDashboard,
-    color: 'bg-navy/10 text-navy',
-    title: 'Console d\'administration',
-    desc: 'Un tableau de bord pour piloter votre organisation, suivre l\'activité et garder le contrôle.',
-  },
-  {
-    icon: ShieldCheck,
-    color: 'bg-success/10 text-success',
-    title: 'Espace 100 % privé',
-    desc: 'Vos échanges et vos fichiers n\'appartiennent qu\'à vous. Pas de publicité. Pas de revente.',
-  },
-]
-
-/* ── Plans ── */
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Gratuit',
-    target: 'Pour démarrer',
-    desc: 'Créez votre espace et invitez vos premiers collaborateurs.',
-    highlight: false,
-    badge: null,
-    trial: null,
-    features: ['25 membres inclus', '5 Go de stockage', 'Messagerie d\'équipe', 'Documents et fichiers', 'Agenda partagé', 'Support par email'],
-    cta: 'Créer mon espace',
-    href: '/creer',
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    target: 'Pour les équipes',
-    desc: 'Toutes les fonctionnalités pour une organisation en croissance.',
-    highlight: true,
-    badge: 'Populaire',
-    trial: '3 semaines d\'essai gratuit',
-    features: ['100 membres', '50 Go de stockage', 'Tout ce qu\'inclut Gratuit', 'Accompagnement onboarding', 'Support prioritaire'],
-    cta: 'Essayer gratuitement',
-    href: '/creer',
-  },
-  {
-    id: 'enterprise',
-    name: 'Entreprise',
-    target: 'Pour les grandes organisations',
-    desc: 'Capacité illimitée et accompagnement dédié.',
-    highlight: false,
-    badge: null,
-    trial: '3 semaines d\'essai gratuit',
-    features: ['Membres illimités', '250 Go de stockage', 'Tout ce qu\'inclut Business', 'SLA personnalisé', 'Support dédié'],
-    cta: 'Créer mon espace',
-    href: '/creer',
-  },
-]
-
-/* ── For whom ── */
-const FOR_WHOM = [
-  {
-    icon: Building2,
-    title: 'Entreprises et PME',
-    desc: 'Gardez le contrôle de vos communications internes sans dépendre d\'outils grand public.',
-  },
-  {
-    icon: Landmark,
-    title: 'Institutions et administrations',
-    desc: 'Un espace numérique structuré, avec gestion des accès rigoureuse et confidentialité garantie.',
-  },
-  {
-    icon: Users,
-    title: 'Associations et organisations',
-    desc: 'Pour toute structure qui a besoin d\'un espace professionnel commun pour ses membres.',
-  },
-]
-
-/* ── Landing page ── */
+/* ── Landing ── */
 export function Landing() {
   return (
     <div className="min-h-dvh flex flex-col">
@@ -299,31 +151,33 @@ export function Landing() {
       {/* ── HERO ── */}
       <section className="flex flex-col items-center text-center px-4 pt-20 pb-16 md:pt-28 md:pb-24 bg-gradient-to-b from-surface via-surface to-bg overflow-hidden">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-pale text-indigo text-xs font-semibold mb-8 tracking-wide">
-          Workspace professionnel privé
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo animate-pulse" />
+          Conçu pour les entreprises africaines
         </div>
 
         <h1 className="text-4xl md:text-6xl font-bold text-navy leading-[1.08] tracking-tight max-w-3xl">
-          Votre équipe, vos données, votre espace.
+          Votre entreprise mérite mieux que WhatsApp.
         </h1>
 
         <p className="mt-6 text-lg md:text-xl text-muted max-w-2xl leading-relaxed">
-          Messagerie interne, documents et agenda réunis dans un espace de travail privé qui appartient uniquement à votre organisation.
+          Kouma réunit messagerie sécurisée, documents, agenda et gestion d'équipe dans un espace qui appartient à votre organisation — pas à vos employés.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-3">
           <Link
             to="/creer"
-            className="px-6 py-3.5 bg-navy text-white font-semibold rounded-full text-sm hover:bg-navy-light transition-colors shadow-lg shadow-navy/20"
+            className="px-7 py-3.5 bg-navy text-white font-semibold rounded-full text-sm hover:bg-navy-light transition-colors shadow-lg shadow-navy/20"
           >
-            Créer mon espace
+            Créer mon espace — c'est gratuit
           </Link>
           <Link
             to="/connexion"
-            className="px-6 py-3.5 bg-surface text-ink font-semibold rounded-full text-sm border border-border hover:bg-bg transition-colors"
+            className="px-7 py-3.5 bg-surface text-ink font-semibold rounded-full text-sm border border-border hover:bg-bg transition-colors"
           >
-            Accéder à mon espace
+            Accéder à mon espace →
           </Link>
         </div>
+        <p className="mt-3 text-xs text-faint">21 jours d'essai gratuit sur les plans payants · Aucune carte requise</p>
 
         {/* Mockups */}
         <div className="mt-16 md:mt-20 relative w-full max-w-5xl">
@@ -338,26 +192,111 @@ export function Landing() {
               <AdminMockup />
             </div>
           </div>
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-bg to-transparent pointer-events-none" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-bg to-transparent pointer-events-none" />
+        </div>
+      </section>
+
+      {/* ── PROBLÈME ── */}
+      <section className="py-20 px-4 bg-bg">
+        <div className="max-w-5xl mx-auto">
+          <Reveal>
+            <div className="text-center mb-12">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-3">Le problème</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-navy">
+                WhatsApp n'a pas été conçu pour les entreprises.
+              </h2>
+            </div>
+          </Reveal>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              {
+                icon: X,
+                color: 'bg-danger/8 text-danger',
+                title: 'Zéro contrôle à la sortie',
+                desc: 'Quand un employé quitte, il repart avec toutes les conversations, les contacts clients et les fichiers partagés. Votre entreprise ne peut rien y faire.',
+              },
+              {
+                icon: X,
+                color: 'bg-danger/8 text-danger',
+                title: 'Perso et pro mélangés',
+                desc: 'Vos collaborateurs reçoivent les messages de travail sur leur téléphone personnel, au milieu de leurs discussions familiales. Ce n\'est pas professionnel — et c\'est risqué.',
+              },
+              {
+                icon: X,
+                color: 'bg-danger/8 text-danger',
+                title: 'Aucune trace de vos décisions',
+                desc: 'Les décisions importantes disparaissent dans des fils de discussion sans structure. Impossible de retrouver qui a validé quoi, et quand.',
+              },
+            ].map((item, i) => (
+              <Reveal key={item.title} delay={i * 100}>
+                <div className="flex flex-col gap-3 p-6 rounded-2xl bg-surface border border-danger/15 h-full">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.color}`}>
+                    <item.icon size={17} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-ink text-sm mb-1.5">{item.title}</h3>
+                    <p className="text-muted text-sm leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── FONCTIONNALITÉS ── */}
-      <section className="py-24 px-4 bg-bg">
+      <section className="py-24 px-4 bg-surface">
         <div className="max-w-6xl mx-auto">
           <Reveal>
             <div className="text-center max-w-xl mx-auto mb-14">
-              <p className="text-indigo font-semibold text-xs uppercase tracking-wider mb-3">Fonctionnalités</p>
+              <p className="text-indigo font-semibold text-xs uppercase tracking-widest mb-3">La solution</p>
               <h2 className="text-3xl md:text-4xl font-bold text-navy leading-tight">
-                Tout ce dont votre organisation a besoin, réuni au même endroit.
+                Un espace de travail complet, que vous contrôlez à 100 %.
               </h2>
             </div>
           </Reveal>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f, i) => (
+            {[
+              {
+                icon: MessageSquare,
+                color: 'bg-indigo/10 text-indigo',
+                title: 'Messagerie d\'équipe sécurisée',
+                desc: 'Des espaces dédiés à chaque équipe ou projet. Chiffrement bout-en-bout. Quand un employé part, vous révoquez son accès en un clic.',
+              },
+              {
+                icon: FolderOpen,
+                color: 'bg-success/10 text-success',
+                title: 'Documents centralisés',
+                desc: 'Tous vos fichiers professionnels au même endroit, accessibles aux bonnes personnes. Plus de "tu m\'envoies le document sur WhatsApp ?".',
+              },
+              {
+                icon: CalendarDays,
+                color: 'bg-amber/10 text-amber',
+                title: 'Agenda d\'organisation',
+                desc: 'Planifiez réunions et événements directement dans votre espace. Tout le monde est informé, sans création de groupes supplémentaires.',
+              },
+              {
+                icon: Megaphone,
+                color: 'bg-indigo/10 text-indigo',
+                title: 'Annonces officielles',
+                desc: 'Diffusez les informations importantes à toute l\'organisation d\'un seul envoi. Épinglées, datées, traçables.',
+              },
+              {
+                icon: LayoutDashboard,
+                color: 'bg-navy/10 text-navy',
+                title: 'Console d\'administration',
+                desc: 'Gérez vos équipes, droits d\'accès et paramètres depuis un tableau de bord centralisé. Vous avez le contrôle total.',
+              },
+              {
+                icon: Sparkles,
+                color: 'bg-indigo/10 text-indigo',
+                title: 'Assistant AXIS intégré',
+                desc: 'Un guide intelligent qui répond à vos questions sur la plateforme, directement depuis votre espace. Disponible 24h/24.',
+              },
+            ].map((f, i) => (
               <Reveal key={f.title} delay={i * 80}>
-                <div className="flex flex-col gap-4 p-7 rounded-2xl bg-surface border border-border h-full hover:shadow-md hover:border-indigo/20 transition-all">
+                <div className="flex flex-col gap-4 p-7 rounded-2xl bg-bg border border-border h-full hover:shadow-md hover:border-indigo/20 transition-all">
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${f.color}`}>
                     <f.icon size={20} />
                   </div>
@@ -372,63 +311,99 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ── AXIS ── */}
-      <section className="py-24 px-4 bg-surface">
-        <div className="max-w-5xl mx-auto">
+      {/* ── SÉCURITÉ ── */}
+      <section className="py-24 px-4 bg-navy">
+        <div className="max-w-4xl mx-auto">
           <Reveal>
-            <div className="flex flex-col md:flex-row items-center gap-12 md:gap-16">
-              <div className="flex-1 order-2 md:order-1">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-pale text-indigo text-xs font-semibold mb-5 tracking-wide">
-                  <Sparkles size={11} />
-                  Guide intégré
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="flex-1 text-center md:text-left">
+                <div className="w-14 h-14 rounded-2xl bg-indigo/20 flex items-center justify-center mb-6 mx-auto md:mx-0">
+                  <Lock size={24} className="text-indigo-light" />
                 </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-navy leading-tight mb-5">
-                  AXIS répond à vos questions sur Kouma.
+                <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-5">
+                  Ce qui se dit chez vous reste chez vous.
                 </h2>
-                <p className="text-muted text-base leading-relaxed mb-7">
-                  Vous avez une question sur la plateforme ? AXIS est votre guide intégré. Il vous explique comment utiliser chaque fonctionnalité, directement depuis votre espace de travail.
+                <p className="text-indigo-light text-base leading-relaxed mb-6">
+                  Tous les messages et documents échangés sur Kouma sont chiffrés de bout en bout. Même nous, on ne peut pas les lire. Vos données sont hébergées en Europe, soumises au RGPD — pas sur des serveurs dont vous ne savez rien.
                 </p>
-                <ul className="space-y-3">
+                <ul className="space-y-3 mb-8">
                   {[
-                    'Réponses immédiates sur l\'utilisation de Kouma',
-                    'Guide par fonctionnalité : messagerie, agenda, documents, administration…',
-                    'Disponible à tout moment, sans quitter votre espace',
+                    'Chiffrement bout-en-bout sur tous les échanges',
+                    'Données hébergées en Union Européenne (Irlande)',
+                    'Aucun accès tiers — ni publicité, ni revente',
+                    'Accès révocable instantanément pour chaque membre',
                   ].map(item => (
-                    <li key={item} className="flex items-start gap-2.5">
-                      <Check size={14} className="mt-0.5 shrink-0 text-success" />
-                      <span className="text-sm text-muted">{item}</span>
+                    <li key={item} className="flex items-center gap-3">
+                      <Check size={14} className="text-success shrink-0" />
+                      <span className="text-sm text-white/80">{item}</span>
                     </li>
                   ))}
                 </ul>
+                <Link
+                  to="/security"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full text-sm transition-colors border border-white/20"
+                >
+                  Notre approche de la sécurité <ArrowRight size={14} />
+                </Link>
               </div>
-              <div className="order-1 md:order-2 flex justify-center">
-                <AxisMockup />
+              <div className="shrink-0">
+                <div className="w-64 bg-navy-light rounded-2xl border border-white/10 p-6 space-y-4">
+                  <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+                    <ShieldCheck size={20} className="text-success" />
+                    <span className="text-white text-sm font-semibold">Garanties de sécurité</span>
+                  </div>
+                  {[
+                    { label: 'Chiffrement', value: 'AES-256 + E2EE' },
+                    { label: 'Hébergement', value: 'EU (Irlande)' },
+                    { label: 'Norme', value: 'RGPD conforme' },
+                    { label: 'Accès Kouma', value: 'Aucun' },
+                  ].map(row => (
+                    <div key={row.label} className="flex justify-between items-center">
+                      <span className="text-xs text-white/50">{row.label}</span>
+                      <span className="text-xs font-semibold text-white">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ── CONFIDENTIALITÉ ── */}
-      <section className="py-24 px-4 bg-navy">
-        <div className="max-w-3xl mx-auto text-center">
+      {/* ── POUR QUI ── */}
+      <section className="py-24 px-4 bg-bg">
+        <div className="max-w-5xl mx-auto">
           <Reveal>
-            <div className="w-14 h-14 rounded-2xl bg-indigo/20 flex items-center justify-center mx-auto mb-6">
-              <ShieldCheck size={26} className="text-indigo-light" />
+            <div className="text-center max-w-xl mx-auto mb-14">
+              <p className="text-indigo font-semibold text-xs uppercase tracking-widest mb-3">Pour qui</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-navy leading-tight">
+                Pour toute organisation qui a besoin d'un espace professionnel sérieux.
+              </h2>
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-5">
-              Ce qui se passe dans votre espace reste dans votre espace.
-            </h2>
-            <p className="text-indigo-light text-base md:text-lg leading-relaxed mb-10 max-w-2xl mx-auto">
-              Kouma ne lit pas vos messages, ne vend pas vos données et ne les partage avec personne. Votre organisation est propriétaire de tout ce qui s'y dit et s'y partage.
-            </p>
-            <Link
-              to="/security"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full text-sm transition-colors border border-white/20"
-            >
-              Notre approche de la confidentialité <ArrowRight size={15} />
-            </Link>
           </Reveal>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {[
+              { icon: Briefcase, label: 'PME & Startups',          desc: 'Structurez vos communications dès le premier jour.' },
+              { icon: Scale,     label: 'Cabinets juridiques',      desc: 'Confidentialité et traçabilité des échanges.' },
+              { icon: HeartPulse, label: 'Cliniques & Santé',       desc: 'Coordination interne protégée, sans risque.' },
+              { icon: School,    label: 'Établissements scolaires', desc: 'Un espace commun pour administration et équipes.' },
+              { icon: Users,     label: 'Associations & ONG',       desc: 'Un espace commun pour tous vos membres.' },
+              { icon: LayoutDashboard, label: 'Administrations',    desc: 'Rigueur d\'accès et archivage des décisions.' },
+            ].map((item, i) => (
+              <Reveal key={item.label} delay={i * 70}>
+                <div className="flex flex-col gap-3 p-5 rounded-2xl bg-surface border border-border h-full hover:border-indigo/25 hover:shadow-sm transition-all">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-pale flex items-center justify-center">
+                    <item.icon size={17} className="text-indigo" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-ink text-sm mb-1">{item.label}</h3>
+                    <p className="text-muted text-xs leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -437,41 +412,93 @@ export function Landing() {
         <div className="max-w-5xl mx-auto">
           <Reveal>
             <div className="text-center max-w-xl mx-auto mb-14">
-              <p className="text-indigo font-semibold text-xs uppercase tracking-wider mb-3">Tarifs</p>
+              <p className="text-indigo font-semibold text-xs uppercase tracking-widest mb-3">Tarifs</p>
               <h2 className="text-3xl md:text-4xl font-bold text-navy leading-tight mb-4">
-                Simple et transparent.
+                Simple, transparent, sans surprise.
               </h2>
               <p className="text-muted text-sm leading-relaxed">
-                Un abonnement mensuel, toutes les fonctionnalités incluses. 3 semaines d'essai gratuit sans engagement.
+                Commencez gratuitement. Évoluez quand votre équipe grandit. 21 jours d'essai gratuit sur les plans payants.
               </p>
             </div>
           </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {PLANS.map((plan, i) => (
-              <Reveal key={plan.id} delay={i * 100}>
-                <div className={`flex flex-col p-7 rounded-2xl border h-full ${plan.highlight ? 'bg-navy border-navy shadow-xl shadow-navy/20' : 'bg-surface border-border hover:border-indigo/20 hover:shadow-md transition-all'}`}>
+            {[
+              {
+                name: 'Démarrage',
+                price: 'Gratuit',
+                period: '',
+                target: 'Jusqu\'à 25 membres',
+                highlight: false,
+                badge: null,
+                features: [
+                  '25 membres inclus',
+                  '5 Go de stockage',
+                  'Messagerie d\'équipe',
+                  'Documents et fichiers',
+                  'Agenda partagé',
+                  'Support par email',
+                ],
+                cta: 'Créer mon espace',
+                href: '/creer',
+              },
+              {
+                name: 'Business',
+                price: 'À partir de 80 €',
+                period: '/mois',
+                target: 'Jusqu\'à 100 membres',
+                highlight: true,
+                badge: 'Le plus choisi',
+                features: [
+                  '100 membres inclus',
+                  '50 Go de stockage',
+                  'Tout le plan Démarrage',
+                  '21 jours d\'essai gratuit',
+                  'Accompagnement onboarding',
+                  'Support prioritaire',
+                ],
+                cta: 'Essayer gratuitement',
+                href: '/creer',
+              },
+              {
+                name: 'Entreprise',
+                price: 'À partir de 170 €',
+                period: '/mois',
+                target: 'Membres illimités',
+                highlight: false,
+                badge: null,
+                features: [
+                  'Membres illimités',
+                  '250 Go de stockage',
+                  'Tout le plan Business',
+                  '21 jours d\'essai gratuit',
+                  'SLA personnalisé',
+                  'Support dédié 7j/7',
+                ],
+                cta: 'Nous contacter',
+                href: '/creer',
+              },
+            ].map((plan, i) => (
+              <Reveal key={plan.name} delay={i * 100}>
+                <div className={`flex flex-col p-7 rounded-2xl border h-full ${plan.highlight ? 'bg-navy border-navy shadow-xl shadow-navy/25' : 'bg-bg border-border hover:border-indigo/20 hover:shadow-md transition-all'}`}>
                   {plan.badge && (
                     <span className="inline-flex self-start px-2.5 py-1 rounded-full bg-indigo text-white text-[10px] font-bold uppercase tracking-wide mb-4">
                       {plan.badge}
                     </span>
                   )}
-                  {plan.trial && (
-                    <div className={`inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold mb-4 ${plan.badge ? 'mt-0' : ''} ${plan.highlight ? 'bg-white/15 text-white' : 'bg-success/10 text-success'}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      {plan.trial}
-                    </div>
-                  )}
                   <div className="mb-6">
-                    <h3 className={`text-xl font-bold mb-1 ${plan.highlight ? 'text-white' : 'text-navy'}`}>{plan.name}</h3>
-                    <p className={`text-xs font-semibold uppercase tracking-wide mb-3 ${plan.highlight ? 'text-indigo-light' : 'text-indigo'}`}>{plan.target}</p>
-                    <p className={`text-sm leading-relaxed ${plan.highlight ? 'text-indigo-light/80' : 'text-muted'}`}>{plan.desc}</p>
+                    <h3 className={`text-lg font-bold mb-0.5 ${plan.highlight ? 'text-white' : 'text-navy'}`}>{plan.name}</h3>
+                    <p className={`text-xs mb-3 ${plan.highlight ? 'text-indigo-light' : 'text-indigo'}`}>{plan.target}</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-2xl font-bold ${plan.highlight ? 'text-white' : 'text-navy'}`}>{plan.price}</span>
+                      {plan.period && <span className={`text-sm ${plan.highlight ? 'text-indigo-light' : 'text-muted'}`}>{plan.period}</span>}
+                    </div>
                   </div>
 
                   <ul className="flex-1 space-y-2.5 mb-8">
                     {plan.features.map(feat => (
                       <li key={feat} className="flex items-start gap-2.5">
-                        <Check size={14} className={`mt-0.5 shrink-0 ${plan.highlight ? 'text-indigo-light' : 'text-success'}`} />
+                        <Check size={13} className={`mt-0.5 shrink-0 ${plan.highlight ? 'text-indigo-light' : 'text-success'}`} />
                         <span className={`text-sm ${plan.highlight ? 'text-white/80' : 'text-muted'}`}>{feat}</span>
                       </li>
                     ))}
@@ -490,51 +517,21 @@ export function Landing() {
 
           <Reveal delay={300}>
             <p className="text-center text-sm text-muted mt-8">
-              Tarifs disponibles en plusieurs devises,{' '}
-              <Link to="/tarifs" className="text-indigo hover:underline font-medium">voir la grille complète</Link>
+              Disponible en Franc guinéen, CFA, Dollar et plus —{' '}
+              <Link to="/tarifs" className="text-indigo hover:underline font-medium">voir la grille tarifaire complète</Link>
             </p>
           </Reveal>
         </div>
       </section>
 
-      {/* ── POUR QUI ── */}
-      <section className="py-24 px-4 bg-bg">
-        <div className="max-w-5xl mx-auto">
-          <Reveal>
-            <div className="text-center max-w-xl mx-auto mb-14">
-              <p className="text-indigo font-semibold text-xs uppercase tracking-wider mb-3">Pour qui</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-navy leading-tight">
-                Conçu pour les organisations qui ont besoin de sérieux.
-              </h2>
-            </div>
-          </Reveal>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {FOR_WHOM.map((item, i) => (
-              <Reveal key={item.title} delay={i * 100}>
-                <div className="flex flex-col gap-4 p-7 rounded-2xl bg-surface border border-border h-full">
-                  <div className="w-11 h-11 rounded-xl bg-indigo-pale flex items-center justify-center">
-                    <item.icon size={20} className="text-indigo" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-ink text-base mb-2">{item.title}</h3>
-                    <p className="text-muted text-sm leading-relaxed">{item.desc}</p>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA FINAL ── */}
-      <section className="py-28 px-4 bg-gradient-to-b from-surface to-indigo-pale text-center">
+      <section className="py-28 px-4 bg-gradient-to-b from-bg to-indigo-pale text-center">
         <Reveal>
           <h2 className="text-3xl md:text-5xl font-bold text-navy leading-tight mb-5">
             Votre espace est prêt en 3 minutes.
           </h2>
           <p className="text-muted text-base md:text-lg mb-10 max-w-lg mx-auto leading-relaxed">
-            Créez votre workspace, invitez vos collègues, commencez à travailler.
+            Créez votre workspace, invitez vos équipes, reprenez le contrôle de vos communications.
           </p>
           <Link
             to="/creer"
@@ -542,7 +539,7 @@ export function Landing() {
           >
             Créer mon espace gratuitement <ArrowRight size={16} />
           </Link>
-          <p className="mt-5 text-xs text-faint">3 semaines d'essai gratuit, aucune carte bancaire requise.</p>
+          <p className="mt-4 text-xs text-faint">21 jours d'essai gratuit sur les plans payants · Aucune carte bancaire requise</p>
         </Reveal>
       </section>
 
