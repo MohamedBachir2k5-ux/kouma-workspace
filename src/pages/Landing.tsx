@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   MessageSquare, FolderOpen, CalendarDays, Users,
   ShieldCheck, ArrowRight, Check, Sparkles, Lock,
-  LayoutDashboard, Megaphone, Bell, Briefcase, School,
+  LayoutDashboard, Megaphone, Briefcase, School,
   HeartPulse, Scale, X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
