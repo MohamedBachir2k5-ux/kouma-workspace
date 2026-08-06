@@ -39,8 +39,8 @@ interface CurrencyPricing {
 export const PRICING: Record<SupportedCurrency, CurrencyPricing> = {
   GNF: {
     free:       { monthly: 0,           discountPercent: 0  },
-    business:   { monthly: 700_000,     discountPercent: 40 },
-    enterprise: { monthly: 1_500_000,   discountPercent: 15 },
+    business:   { monthly: 450_000,     discountPercent: 40 },
+    enterprise: { monthly: 900_000,     discountPercent: 15 },
   },
   XOF: {
     free:       { monthly: 0,        discountPercent: 0  },
