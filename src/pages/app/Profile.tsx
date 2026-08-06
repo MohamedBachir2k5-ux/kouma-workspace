@@ -197,6 +197,21 @@ export function Profile() {
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
   const [pwError, setPwError] = useState<string | null>(null)
 
+  // Self-delete
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function handleSelfDelete() {
+    if (deleteConfirm !== currentUser.email) return
+    setDeleting(true)
+    setDeleteError(null)
+    const { error } = await UserService.selfDeleteAccount(currentOrg.id)
+    if (error) { setDeleteError(error); setDeleting(false); return }
+    await signOut()
+  }
+
   // Sessions
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
@@ -676,6 +691,21 @@ export function Profile() {
           </div>
         )}
 
+        {/* ── Zone de danger ── */}
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="text-xs font-semibold text-danger uppercase tracking-wide mb-3 px-1">{t('profile.dangerZone')}</p>
+          <div className="rounded-xl border border-danger/20 bg-danger/3 p-4 space-y-2">
+            <p className="text-sm font-medium text-ink">{t('profile.deleteAccountTitle')}</p>
+            <p className="text-xs text-muted leading-relaxed">{t('profile.deleteAccountDesc')}</p>
+            <button
+              onClick={() => { setShowDeleteModal(true); setDeleteConfirm(''); setDeleteError(null) }}
+              className="mt-1 px-4 py-2 text-xs font-semibold rounded-lg border border-danger/30 text-danger hover:bg-danger/8 transition-colors"
+            >
+              {t('profile.deleteAccountBtn')}
+            </button>
+          </div>
+        </div>
+
         {/* ── Aide & Support ── */}
         <div className="mt-6 border-t border-border pt-5">
           <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3 px-1">{t('profile.helpTitle')}</p>
@@ -705,6 +735,42 @@ export function Profile() {
 
         <p className="text-center text-xs text-faint mt-6">{t('profile.version')}</p>
       </div>
+
+      {/* Delete account modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className="w-full max-w-sm bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="font-bold text-danger">{t('profile.deleteAccountTitle')}</h3>
+              {!deleting && <button onClick={() => setShowDeleteModal(false)} aria-label={t('common.close')} className="w-10 h-10 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg"><X size={16} /></button>}
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-danger/5 border border-danger/20 rounded-xl">
+                <p className="text-xs text-danger leading-relaxed">{t('profile.deleteAccountWarning', { org: currentOrg.name })}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">{t('profile.deleteAccountConfirmLabel', { email: currentUser.email })}</label>
+                <input
+                  type="email"
+                  value={deleteConfirm}
+                  onChange={e => setDeleteConfirm(e.target.value)}
+                  placeholder={currentUser.email}
+                  disabled={deleting}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-danger disabled:opacity-50"
+                />
+              </div>
+              {deleteError && <p className="text-xs text-danger">{deleteError}</p>}
+              <button
+                onClick={handleSelfDelete}
+                disabled={deleteConfirm !== currentUser.email || deleting}
+                className="w-full py-3 rounded-xl text-sm font-semibold text-white bg-danger hover:bg-danger/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deleting ? <><Loader2 size={14} className="animate-spin" /> {t('common.loading')}</> : t('profile.deleteAccountConfirmBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit profile modal */}
       {editing && (

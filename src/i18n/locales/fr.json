@@ -657,7 +657,13 @@
     "helpGuideDesc": "Comment utiliser chaque fonctionnalité",
     "helpSupportTitle": "Contacter le support",
     "helpSupportDesc": "Une question ? On vous répond.",
-    "disconnect": "Déconnecter"
+    "disconnect": "Déconnecter",
+    "deleteAccountTitle": "Supprimer mon compte",
+    "deleteAccountDesc": "Votre accès à cet espace de travail sera immédiatement supprimé. Cette action est irréversible.",
+    "deleteAccountBtn": "Supprimer mon compte",
+    "deleteAccountWarning": "Vous allez quitter définitivement l'espace de travail « {{org}} ». Toutes vos sessions seront révoquées et vous ne pourrez plus y accéder.",
+    "deleteAccountConfirmLabel": "Saisissez votre adresse e-mail « {{email}} » pour confirmer",
+    "deleteAccountConfirmBtn": "Supprimer mon compte définitivement"
   },
   "admin": {
     "dashboard": "Tableau de bord",
@@ -980,7 +986,13 @@
     "guideTitle": "Guide & Support",
     "guideUserTitle": "Guide d'utilisation",
     "guideUserDesc": "Documentation complète de la plateforme",
-    "supportEmailLabel": "Email de support"
+    "supportEmailLabel": "Email de support",
+    "deleteOrgTitle": "Supprimer l'organisation",
+    "deleteOrgDesc": "Supprime définitivement l'organisation et toutes ses données : messages, documents, équipes, agenda. Tous les membres perdent immédiatement l'accès.",
+    "deleteOrgBtn": "Supprimer l'organisation",
+    "deleteOrgWarning": "Cette action est irréversible. Toutes les données seront supprimées définitivement et tous les membres seront déconnectés immédiatement.",
+    "deleteOrgConfirmLabel": "Saisissez le nom de l'organisation « {{name}} » pour confirmer",
+    "deleteOrgConfirmBtn": "Supprimer définitivement"
   },
   "pricing": {
     "title": "Tarifs simples, adaptés à l'Afrique",

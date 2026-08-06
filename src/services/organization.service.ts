@@ -164,4 +164,11 @@ export const OrganizationService = {
       }, { onConflict: 'organization_id' })
     return { error: serviceError(error) }
   },
+
+  async deleteOrganization(orgId: string): Promise<{ error: string | null }> {
+    const { error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: unknown }>)(
+      'delete_organization', { p_org_id: orgId }
+    )
+    return { error: serviceError(error as Parameters<typeof serviceError>[0]) }
+  },
 }
