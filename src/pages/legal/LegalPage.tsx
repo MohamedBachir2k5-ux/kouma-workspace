@@ -664,104 +664,92 @@ export function Cookies() {
   return (
     <LegalPage
       title="Politique de cookies"
-      subtitle="Ce document détaille l'utilisation des cookies et technologies similaires par Kouma Workspace, conformément aux obligations légales applicables."
+      subtitle="Une explication simple et honnête de ce qu'on utilise — et de ce qu'on n'utilise pas."
       version="v1.0"
       updated="Août 2026"
     >
 
-      <InfoCard color="green" title="Résumé en une phrase">
-        Kouma Workspace n'utilise <strong>aucun cookie publicitaire, aucun cookie de traçage, et aucun outil
-        d'analyse tiers</strong>. Uniquement des cookies techniques strictement nécessaires au fonctionnement du service.
+      <InfoCard color="green" title="En résumé">
+        Kouma ne vous suit pas, ne vous profile pas, et ne revend aucune de vos données.
+        On utilise uniquement ce qui est strictement nécessaire pour que l'application fonctionne.
       </InfoCard>
 
-      <Article num={1} title="Qu'est-ce qu'un cookie ?">
+      <Article num={1} title="C'est quoi un cookie ?">
         <P>
-          Un cookie est un petit fichier texte déposé sur l'appareil de l'Utilisateur lors de sa visite sur une
-          application ou un site web. Il permet de mémoriser des informations entre deux sessions. Tous les cookies
-          ne sont pas équivalents : certains sont indispensables au fonctionnement du service, d'autres servent
-          à des fins publicitaires ou de profilage. Kouma Workspace n'utilise que les premiers.
+          Un cookie, c'est un petit fichier que l'application enregistre sur votre téléphone ou ordinateur
+          pour se souvenir de vous. Ça sert par exemple à rester connecté sans avoir à retaper votre mot
+          de passe à chaque fois. Certaines applications utilisent aussi des cookies pour vous espionner
+          à des fins publicitaires. Kouma ne fait pas ça.
         </P>
       </Article>
 
       <Divider />
 
-      <Article num={2} title="Cookies utilisés par Kouma Workspace">
-        <P>Le tableau ci-dessous recense l'intégralité des cookies et technologies de stockage utilisés :</P>
+      <Article num={2} title="Ce qu'on utilise — et pourquoi">
 
-        <div className="rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-navy/4 border-b border-border">
-                <th className="text-left text-xs font-bold text-navy uppercase tracking-wider px-4 py-3 w-32">Nom</th>
-                <th className="text-left text-xs font-bold text-navy uppercase tracking-wider px-4 py-3">Finalité</th>
-                <th className="text-left text-xs font-bold text-navy uppercase tracking-wider px-4 py-3 w-28">Durée</th>
-                <th className="text-left text-xs font-bold text-navy uppercase tracking-wider px-4 py-3 w-24">Obligatoire</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              <tr>
-                <td className="px-4 py-3 font-mono text-xs text-indigo">sb-*</td>
-                <td className="px-4 py-3 text-muted">Session d'authentification Supabase — maintient la connexion de l'Utilisateur active.</td>
-                <td className="px-4 py-3 text-muted">Session / déconnexion</td>
-                <td className="px-4 py-3"><span className="text-xs font-semibold text-success">Oui</span></td>
-              </tr>
-              <tr className="bg-bg/50">
-                <td className="px-4 py-3 font-mono text-xs text-indigo">localStorage</td>
-                <td className="px-4 py-3 text-muted">Préférences locales : thème (clair/sombre), langue de l'interface, statut de la bannière PWA. Ces données ne quittent jamais l'appareil.</td>
-                <td className="px-4 py-3 text-muted">Persistant</td>
-                <td className="px-4 py-3"><span className="text-xs font-semibold text-muted">Non</span></td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border bg-surface p-4 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-navy">Cookie de connexion</p>
+              <span className="text-[10px] font-bold uppercase tracking-wide text-success bg-success/10 px-2 py-0.5 rounded-full">Obligatoire</span>
+            </div>
+            <p className="text-sm text-muted">
+              Quand vous vous connectez à Kouma, on enregistre un petit code de session sur votre appareil.
+              Sans ça, vous seriez déconnecté à chaque page. Ce cookie disparaît quand vous vous déconnectez.
+            </p>
+            <p className="text-xs text-faint">Durée : le temps de votre session</p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-4 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-navy">Préférences locales</p>
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted bg-bg px-2 py-0.5 rounded-full border border-border">Facultatif</span>
+            </div>
+            <p className="text-sm text-muted">
+              On mémorise aussi vos préférences directement sur votre appareil : la langue que vous avez
+              choisie, le thème clair ou sombre. Ces informations ne quittent jamais votre téléphone —
+              on ne les envoie pas à nos serveurs.
+            </p>
+            <p className="text-xs text-faint">Durée : jusqu'à ce que vous vidiez le cache de votre navigateur</p>
+          </div>
         </div>
       </Article>
 
       <Divider />
 
-      <Article num={3} title="Ce que nous n'utilisons pas">
-        <P>Kouma Workspace s'engage formellement à ne jamais recourir aux technologies suivantes :</P>
+      <Article num={3} title="Ce qu'on ne fait pas">
+        <P>On ne fait rien de tout ça, et on s'y engage :</P>
         <UL>
-          <LI>Outils de statistiques et d'analyse tiers (Google Analytics, Mixpanel, Hotjar, etc.)</LI>
-          <LI>Cookies publicitaires ou de reciblage (retargeting)</LI>
-          <LI>Pixels de conversion ou de suivi issus de réseaux sociaux (Meta Pixel, LinkedIn Insight, etc.)</LI>
-          <LI>Outils de heat mapping ou d'enregistrement de session (FullStory, Clarity, etc.)</LI>
-          <LI>Cookies tiers de toute nature à des fins non essentielles</LI>
+          <LI>Pas de publicité ciblée ni de profil publicitaire vous concernant</LI>
+          <LI>Pas de Google Analytics ni d'aucun autre outil qui mesure votre comportement pour des tiers</LI>
+          <LI>Pas de boutons « J'aime » Facebook ou LinkedIn qui vous traquent en arrière-plan</LI>
+          <LI>Pas de caméra cachée qui enregistre comment vous bougez dans l'application</LI>
+          <LI>Aucune donnée vendue ou partagée avec des partenaires commerciaux</LI>
         </UL>
       </Article>
 
       <Divider />
 
-      <Article num={4} title="Gestion et suppression des cookies">
+      <Article num={4} title="Vous voulez tout effacer ?">
         <P>
-          L'Utilisateur peut à tout moment configurer son navigateur pour refuser, limiter ou supprimer les cookies.
-          Les paramètres de gestion des cookies sont accessibles dans les préférences de chaque navigateur :
+          C'est votre droit. Vous pouvez supprimer les cookies et préférences enregistrés par Kouma
+          depuis les paramètres de votre navigateur ou application :
         </P>
         <UL>
-          <LI><strong>Chrome</strong> : Paramètres → Confidentialité et sécurité → Cookies et autres données de sites</LI>
-          <LI><strong>Safari</strong> : Préférences → Confidentialité → Gérer les données des sites web</LI>
-          <LI><strong>Firefox</strong> : Paramètres → Vie privée et sécurité → Cookies et données de sites</LI>
+          <LI><strong>Sur téléphone</strong> : Paramètres de l'appli → Effacer les données</LI>
+          <LI><strong>Sur Chrome</strong> : Menu (⋮) → Paramètres → Confidentialité → Effacer les données</LI>
+          <LI><strong>Sur Safari</strong> : Réglages → Safari → Effacer l'historique et les données</LI>
         </UL>
         <InfoCard color="amber">
-          Le refus des cookies de session (sb-*) rend le Service inutilisable : la connexion à l'application
-          ne peut être maintenue sans ces cookies. Les données stockées en localStorage peuvent être effacées
-          via les outils développeur du navigateur (F12 → Application → Local Storage).
+          Si vous supprimez le cookie de connexion, vous serez déconnecté de Kouma et devrez vous
+          reconnecter. L'application restera 100 % fonctionnelle.
         </InfoCard>
       </Article>
 
       <Divider />
 
-      <Article num={5} title="Évolutions de la présente politique">
-        <P>
-          La présente Politique de Cookies peut être mise à jour afin de refléter les évolutions du Service ou des
-          obligations légales applicables. Toute modification substantielle sera communiquée par notification dans
-          l'application. La version en vigueur est toujours accessible à l'adresse <em>/legal/cookies</em>.
-        </P>
-      </Article>
-
-      <Divider />
-
-      <Article num={6} title="Contact">
-        <P>Pour toute question relative à la présente politique :</P>
+      <Article num={5} title="Contact">
+        <P>Des questions sur ce qu'on collecte ? Écrivez-nous :</P>
         <div className="rounded-xl border border-border bg-surface p-4 flex flex-col sm:flex-row gap-4">
           <div className="flex-1 space-y-0.5">
             <p className="text-xs font-semibold text-muted uppercase tracking-wide">Email</p>
