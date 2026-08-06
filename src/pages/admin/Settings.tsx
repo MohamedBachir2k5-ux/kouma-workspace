@@ -65,7 +65,7 @@ export function AdminSettings() {
   const userLimit = PLAN_USER_LIMITS[plan]
 
   useEffect(() => {
-    // Billing counts all non-deleted members (active + suspended) — Gundo bills per
+    // Billing counts all non-deleted members (active + suspended) — Syli taa bills per
     // authorized collaborator regardless of activity. getByOrganizationWithRole already
     // excludes status='deleted', so users.length is the billable seat count.
     UserService.getByOrganizationWithRole(currentOrg.id).then(users => {

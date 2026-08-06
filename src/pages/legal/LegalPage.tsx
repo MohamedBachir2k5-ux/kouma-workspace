@@ -64,7 +64,7 @@ export function MentionsLegales() {
 
       <Section title="Éditeur de l'application">
         <P>
-          L'application Kouma Workspace est éditée par <strong>Gundo</strong>,{' '}
+          L'application Kouma Workspace est éditée par <strong>Syli taa</strong>,{' '}
           <Placeholder label="forme juridique : SARL, SAS, etc." />{', '}
           au capital de <Placeholder label="montant du capital" />.
         </P>
@@ -93,7 +93,7 @@ export function MentionsLegales() {
 
       <Section title="Propriété intellectuelle">
         <P>
-          L'ensemble du contenu de Kouma Workspace — interface, code, marque, logo, textes — est la propriété exclusive de Gundo, sauf mention contraire. Toute reproduction ou représentation, totale ou partielle, sans autorisation écrite préalable de Gundo est interdite.
+          L'ensemble du contenu de Kouma Workspace — interface, code, marque, logo, textes — est la propriété exclusive de Syli taa, sauf mention contraire. Toute reproduction ou représentation, totale ou partielle, sans autorisation écrite préalable de Syli taa est interdite.
         </P>
       </Section>
 
@@ -253,7 +253,7 @@ export function CGU() {
 
       <Section title="1. Objet du service">
         <P>
-          Kouma Workspace est une plateforme de collaboration professionnelle sécurisée éditée par Gundo. Elle permet aux organisations d'échanger des messages chiffrés, de partager des documents, de gérer des agendas et des équipes au sein d'un espace de travail privé.
+          Kouma Workspace est une plateforme de collaboration professionnelle sécurisée éditée par Syli taa. Elle permet aux organisations d'échanger des messages chiffrés, de partager des documents, de gérer des agendas et des équipes au sein d'un espace de travail privé.
         </P>
         <P>
           L'accès à Kouma Workspace est réservé aux organisations ayant souscrit un abonnement (pour les administrateurs) et aux collaborateurs invités par ces organisations.
@@ -299,16 +299,16 @@ export function CGU() {
 
       <Section title="6. Disponibilité du service">
         <P>
-          Gundo s'engage à maintenir le service disponible avec un niveau de qualité raisonnable. Des interruptions ponctuelles peuvent survenir pour maintenance, mise à jour ou en cas d'événements imprévisibles. Gundo ne garantit pas une disponibilité de 100 % et ne pourra être tenu responsable des dommages causés par une interruption de service.
+          Syli taa s'engage à maintenir le service disponible avec un niveau de qualité raisonnable. Des interruptions ponctuelles peuvent survenir pour maintenance, mise à jour ou en cas d'événements imprévisibles. Syli taa ne garantit pas une disponibilité de 100 % et ne pourra être tenu responsable des dommages causés par une interruption de service.
         </P>
       </Section>
 
       <Section title="7. Limitation de responsabilité">
         <P>Dans les limites autorisées par la loi :</P>
         <UL>
-          <li>Gundo n'est pas responsable des contenus échangés entre utilisateurs (qui sont chiffrés et inaccessibles à Gundo)</li>
-          <li>Gundo n'est pas responsable des pertes ou dommages indirects résultant de l'utilisation ou de l'impossibilité d'utiliser le service</li>
-          <li>La responsabilité de Gundo est limitée au montant payé par l'organisation au cours des 12 derniers mois</li>
+          <li>Syli taa n'est pas responsable des contenus échangés entre utilisateurs (qui sont chiffrés et inaccessibles à Syli taa)</li>
+          <li>Syli taa n'est pas responsable des pertes ou dommages indirects résultant de l'utilisation ou de l'impossibilité d'utiliser le service</li>
+          <li>La responsabilité de Syli taa est limitée au montant payé par l'organisation au cours des 12 derniers mois</li>
         </UL>
       </Section>
 
@@ -316,19 +316,19 @@ export function CGU() {
         <UL>
           <li><strong>Par l'utilisateur :</strong> vous pouvez demander la suppression de votre compte à tout moment auprès de votre administrateur, ou en nous contactant directement.</li>
           <li><strong>Par l'organisation :</strong> l'organisation peut résilier son abonnement en nous contactant. Les données sont conservées 30 jours après résiliation, puis supprimées définitivement.</li>
-          <li><strong>Par Gundo :</strong> nous nous réservons le droit de suspendre ou résilier un accès en cas de violation grave des présentes CGU, sans préavis ni remboursement dans ce cas.</li>
+          <li><strong>Par Syli taa :</strong> nous nous réservons le droit de suspendre ou résilier un accès en cas de violation grave des présentes CGU, sans préavis ni remboursement dans ce cas.</li>
         </UL>
       </Section>
 
       <Section title="9. Modifications des CGU">
         <P>
-          Gundo peut modifier les présentes CGU à tout moment. Les utilisateurs seront informés des modifications significatives par e-mail ou notification dans l'application, avec un préavis minimum de 15 jours. La poursuite de l'utilisation du service après notification vaut acceptation des nouvelles conditions.
+          Syli taa peut modifier les présentes CGU à tout moment. Les utilisateurs seront informés des modifications significatives par e-mail ou notification dans l'application, avec un préavis minimum de 15 jours. La poursuite de l'utilisation du service après notification vaut acceptation des nouvelles conditions.
         </P>
       </Section>
 
       <Section title="10. Droit applicable et litiges">
         <P>
-          Les présentes CGU sont soumises au droit <Placeholder label="guinéen / du pays de siège de Gundo" />. En cas de litige, les parties s'engagent à rechercher une solution amiable avant tout recours judiciaire. À défaut, les tribunaux compétents seront ceux du siège de Gundo.
+          Les présentes CGU sont soumises au droit <Placeholder label="guinéen / du pays de siège de Syli taa" />. En cas de litige, les parties s'engagent à rechercher une solution amiable avant tout recours judiciaire. À défaut, les tribunaux compétents seront ceux du siège de Syli taa.
         </P>
       </Section>
 
