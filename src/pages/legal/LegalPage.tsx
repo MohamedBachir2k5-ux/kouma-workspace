@@ -46,7 +46,7 @@ function UL({ children }: { children: React.ReactNode }) {
 function Placeholder({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center px-2 py-0.5 bg-amber/10 border border-amber/30 rounded text-xs font-mono text-amber">
-      [À COMPLÉTER — {label}]
+      [{label}]
     </span>
   )
 }
@@ -58,22 +58,17 @@ export function MentionsLegales() {
   return (
     <LegalPage title="Mentions légales">
 
-      <div className="p-4 bg-amber/5 border border-amber/20 rounded-xl text-xs text-amber leading-relaxed">
-        <strong>Note :</strong> Ce document contient des espaces réservés <span className="font-mono">[À COMPLÉTER]</span> qui doivent être renseignés avant publication officielle, et doit faire l'objet d'une relecture par un juriste pour s'assurer de sa conformité avec les lois guinéennes et internationales applicables.
-      </div>
-
       <Section title="Éditeur de l'application">
         <P>
-          L'application Kouma Workspace est éditée par <strong>Syli taa</strong>,{' '}
-          <Placeholder label="forme juridique : SARL, SAS, etc." />{', '}
-          au capital de <Placeholder label="montant du capital" />.
+          L'application Kouma Workspace est éditée par <strong>SILY TAA</strong>, Entreprise Individuelle.
         </P>
         <UL>
-          <li>Siège social : <Placeholder label="adresse complète" /></li>
-          <li>Numéro RCCM / immatriculation : <Placeholder label="numéro d'immatriculation" /></li>
-          <li>Numéro de contribuable / NIF : <Placeholder label="NIF" /></li>
-          <li>Directeur de publication : <Placeholder label="nom et prénom du responsable légal" /></li>
-          <li>Contact : <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a></li>
+          <li>Siège social : Lambanyi, Ratoma, Conakry, Guinée</li>
+          <li>Numéro RCCM : GN.TCC.2025.A.00676</li>
+          <li>Numéro de contribuable / NIF : 780696041</li>
+          <li>Directeur de publication : <Placeholder label="NOM PRÉNOM DU RESPONSABLE LÉGAL" /></li>
+          <li>Email : <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" /></li>
+          <li>Téléphone : <Placeholder label="TÉLÉPHONE_PROFESSIONNEL_À_CRÉER" /></li>
         </UL>
       </Section>
 
@@ -93,13 +88,14 @@ export function MentionsLegales() {
 
       <Section title="Propriété intellectuelle">
         <P>
-          L'ensemble du contenu de Kouma Workspace — interface, code, marque, logo, textes — est la propriété exclusive de Syli taa, sauf mention contraire. Toute reproduction ou représentation, totale ou partielle, sans autorisation écrite préalable de Syli taa est interdite.
+          L'ensemble du contenu de Kouma Workspace — interface, code, marque, logo, textes — est la propriété exclusive de SILY TAA, sauf mention contraire. Toute reproduction ou représentation, totale ou partielle, sans autorisation écrite préalable de SILY TAA est interdite.
         </P>
       </Section>
 
       <Section title="Contact">
         <P>
-          Pour toute question d'ordre légal ou toute demande relative à vos données personnelles, vous pouvez nous contacter à l'adresse suivante : <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>
+          Pour toute question d'ordre légal ou toute demande relative à vos données personnelles :{' '}
+          <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" /> · <Placeholder label="TÉLÉPHONE_PROFESSIONNEL_À_CRÉER" />
         </P>
       </Section>
 
@@ -127,7 +123,7 @@ export function Confidentialite() {
         <strong>{t('confid.effectivePre')}</strong>
         {' — '}
         {t('confid.responsablePre')}{' '}
-        <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>
+        <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" />
       </P>
 
       <div className="p-5 bg-indigo-pale border border-indigo/20 rounded-2xl space-y-2">
@@ -208,7 +204,7 @@ export function Confidentialite() {
         </div>
         <P>
           {t('confid.s6contactPre')}{' '}
-          <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>
+          <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" />
           {'. '}{t('confid.s6contactPost')}
         </P>
       </Section>
@@ -230,7 +226,7 @@ export function Confidentialite() {
       <Section title={t('confid.s9Title')}>
         <P>
           {t('confid.s9pre')}{' '}
-          <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>
+          <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" />
         </P>
       </Section>
 
@@ -245,11 +241,7 @@ export function CGU() {
   return (
     <LegalPage title="Conditions générales d'utilisation">
 
-      <div className="p-4 bg-amber/5 border border-amber/20 rounded-xl text-xs text-amber leading-relaxed">
-        <strong>Note :</strong> Ce document doit faire l'objet d'une relecture par un juriste qualifié avant toute publication officielle, notamment pour sa conformité au droit guinéen applicable.
-      </div>
-
-      <P>Dernière mise à jour : juillet 2026. En utilisant Kouma Workspace, vous acceptez les présentes conditions.</P>
+      <P>Dernière mise à jour : août 2026. En utilisant Kouma Workspace, vous acceptez les présentes conditions.</P>
 
       <Section title="1. Objet du service">
         <P>
@@ -293,7 +285,7 @@ export function CGU() {
 
       <Section title="5. Propriété des données">
         <P>
-          <strong>Vos données vous appartiennent.</strong> Kouma Workspace ne revendique aucun droit de propriété sur les messages, documents ou contenus que vous créez au sein de votre espace de travail. En cas de résiliation, vos données peuvent être exportées sur demande adressée à <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a>, dans un délai de 30 jours suivant la demande.
+          <strong>Vos données vous appartiennent.</strong> Kouma Workspace ne revendique aucun droit de propriété sur les messages, documents ou contenus que vous créez au sein de votre espace de travail. En cas de résiliation, vos données peuvent être exportées sur demande adressée à <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" />, dans un délai de 30 jours suivant la demande.
         </P>
       </Section>
 
@@ -328,12 +320,12 @@ export function CGU() {
 
       <Section title="10. Droit applicable et litiges">
         <P>
-          Les présentes CGU sont soumises au droit <Placeholder label="guinéen / du pays de siège de Syli taa" />. En cas de litige, les parties s'engagent à rechercher une solution amiable avant tout recours judiciaire. À défaut, les tribunaux compétents seront ceux du siège de Syli taa.
+          Les présentes CGU sont soumises au droit guinéen. En cas de litige, les parties s'engagent à rechercher une solution amiable avant tout recours judiciaire. À défaut, les tribunaux compétents seront ceux de Conakry, Guinée.
         </P>
       </Section>
 
       <Section title="Contact">
-        <P>Pour toute question relative aux présentes CGU : <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a></P>
+        <P>Pour toute question relative aux présentes CGU : <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" /> · <Placeholder label="TÉLÉPHONE_PROFESSIONNEL_À_CRÉER" /></P>
       </Section>
 
     </LegalPage>
@@ -398,7 +390,7 @@ export function Cookies() {
       </Section>
 
       <Section title="Contact">
-        <P>Pour toute question sur notre utilisation des cookies : <a href="mailto:contact@gundo.africa" className="text-indigo hover:underline">contact@gundo.africa</a></P>
+        <P>Pour toute question sur notre utilisation des cookies : <Placeholder label="EMAIL_PROFESSIONNEL_À_CRÉER" /></P>
       </Section>
 
     </LegalPage>

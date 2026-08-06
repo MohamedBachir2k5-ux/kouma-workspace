@@ -574,7 +574,7 @@ export function SiteFooter() {
           <p className="text-sm leading-relaxed text-indigo-light/70 max-w-xs">
             {t('footer.tagline')}
           </p>
-          <p className="text-xs text-indigo-light/40 mt-2">{t('footer.bySyli taa')}</p>
+          <p className="text-xs text-indigo-light/40 mt-2">{t('footer.bySyliTaa')}</p>
         </div>
 
         <div>
