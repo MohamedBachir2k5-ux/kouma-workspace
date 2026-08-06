@@ -13,7 +13,7 @@ export function LoginSelector() {
         </div>
         <div>
           <span className="font-bold text-navy text-xl tracking-tight">Kouma</span>
-          <span className="block text-xs text-muted leading-none">by Goundo</span>
+          <span className="block text-xs text-muted leading-none">by Syli taa</span>
         </div>
       </Link>
 
