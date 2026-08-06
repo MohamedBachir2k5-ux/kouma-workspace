@@ -1,4 +1,4 @@
-# Gundo — Modèle de données Supabase
+# Syli taa — Modèle de données Supabase
 
 ## Projet Supabase
 

@@ -1,8 +1,8 @@
-# Gundo — Architecture Générale
+# Syli taa — Architecture Générale
 
 ## Vue d'ensemble
 
-Gundo est un workspace collaboratif SaaS ciblant les organisations africaines. Il combine messagerie chiffrée bout-en-bout, gestion documentaire, agenda et gestion d'équipes, le tout sous un modèle multi-tenant strict.
+Syli taa est un workspace collaboratif SaaS ciblant les organisations africaines. Il combine messagerie chiffrée bout-en-bout, gestion documentaire, agenda et gestion d'équipes, le tout sous un modèle multi-tenant strict.
 
 ## Stack technique
 

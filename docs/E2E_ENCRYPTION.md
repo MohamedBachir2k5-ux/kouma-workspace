@@ -1,4 +1,4 @@
-# Gundo — Chiffrement E2E
+# Syli taa — Chiffrement E2E
 
 ## Principes
 
