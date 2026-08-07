@@ -614,9 +614,13 @@ export function Documents() {
             )}
           </div>
 
-          {/* Drop zone when inside a folder */}
+          {/* Drop zone when inside a folder — also acts as tap target on iOS (no drag-and-drop in Safari PWA) */}
           {activeFolder && (
             <div
+              role="button"
+              tabIndex={0}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click() }}
               onDragOver={e => { e.preventDefault(); setDragOverFolder(activeFolder) }}
               onDragLeave={() => setDragOverFolder(null)}
               onDrop={e => {
@@ -629,8 +633,8 @@ export function Documents() {
                 const docId = e.dataTransfer.getData('docId')
                 if (docId) handleMoveToFolder(docId, activeFolder)
               }}
-              className={`mb-3 h-10 rounded-xl border-2 border-dashed flex items-center justify-center text-xs transition-all ${
-                dragOverFolder === activeFolder ? 'border-indigo bg-indigo-pale text-indigo' : 'border-border text-faint'
+              className={`mb-3 h-10 rounded-xl border-2 border-dashed flex items-center justify-center text-xs transition-all cursor-pointer select-none ${
+                dragOverFolder === activeFolder ? 'border-indigo bg-indigo-pale text-indigo' : 'border-border text-faint hover:border-indigo hover:text-indigo'
               }`}
             >
               {t('documents.dropZoneHint')}
