@@ -31,13 +31,13 @@ function isOverdue(dueDate: string | null, status: Status) {
 
 // ─── Assignee picker ──────────────────────────────────────────────────────────
 function AssigneePicker({
-  value, onChange, members, groups, currentUserId,
+  value, onChange, members, groups, currentUser,
 }: {
   value: string | null
   onChange: (id: string | null) => void
   members: Member[]
   groups: Group[]
-  currentUserId: string
+  currentUser: Member
 }) {
   const [open, setOpen]     = useState(false)
   const [search, setSearch] = useState('')
@@ -55,13 +55,13 @@ function AssigneePicker({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const selected = members.find(m => m.id === value)
-  const me       = members.find(m => m.id === currentUserId)
+  // "selected" can be the currentUser even if not yet in members list
+  const selected = value === currentUser.id ? currentUser : members.find(m => m.id === value)
   const q        = search.toLowerCase()
 
   const matches = (m: Member) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
 
-  const colleagues = members.filter(m => m.id !== currentUserId && matches(m))
+  const colleagues = members.filter(m => m.id !== currentUser.id && matches(m))
 
   function pick(id: string | null) {
     onChange(id)
@@ -87,7 +87,7 @@ function AssigneePicker({
             />
             <span className="flex-1 text-ink">
               {selected.firstName} {selected.lastName}
-              {selected.id === currentUserId && <span className="ml-1.5 text-xs text-faint font-normal">(Moi)</span>}
+              {selected.id === currentUser.id && <span className="ml-1.5 text-xs text-faint font-normal">(Moi)</span>}
             </span>
           </>
         ) : (
@@ -127,18 +127,18 @@ function AssigneePicker({
               </button>
             )}
 
-            {/* Moi */}
-            {me && (!q || matches(me)) && (
+            {/* Moi — toujours visible */}
+            {(!q || matches(currentUser)) && (
               <>
                 <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-faint">Moi</div>
                 <button
                   type="button"
-                  onClick={() => pick(me.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-bg transition-colors ${value === me.id ? 'text-indigo font-medium' : 'text-ink'}`}
+                  onClick={() => pick(currentUser.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-bg transition-colors ${value === currentUser.id ? 'text-indigo font-medium' : 'text-ink'}`}
                 >
-                  <Avatar firstName={me.firstName} lastName={me.lastName} src={me.avatarUrl ?? undefined} size="sm" />
-                  <span className="flex-1 text-left">{me.firstName} {me.lastName}</span>
-                  {value === me.id && <span className="text-indigo">✓</span>}
+                  <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} src={currentUser.avatarUrl ?? undefined} size="sm" />
+                  <span className="flex-1 text-left">{currentUser.firstName} {currentUser.lastName}</span>
+                  {value === currentUser.id && <span className="text-indigo">✓</span>}
                 </button>
               </>
             )}
@@ -165,7 +165,7 @@ function AssigneePicker({
             {/* Groupes */}
             {groups.map(g => {
               const gMembers = members.filter(
-                m => g.memberIds.includes(m.id) && m.id !== currentUserId && (!q || matches(m))
+                m => g.memberIds.includes(m.id) && m.id !== currentUser.id && (!q || matches(m))
               )
               if (!gMembers.length) return null
               return (
@@ -202,12 +202,12 @@ function AssigneePicker({
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 function TaskModal({
-  task, members, groups, currentUserId, orgId, onClose, onSaved,
+  task, members, groups, currentUser, orgId, onClose, onSaved,
 }: {
   task: Task | null
   members: Member[]
   groups: Group[]
-  currentUserId: string
+  currentUser: Member
   orgId: string
   onClose: () => void
   onSaved: () => void
@@ -300,7 +300,7 @@ function TaskModal({
               onChange={setAssigneeId}
               members={members}
               groups={groups}
-              currentUserId={currentUserId}
+              currentUser={currentUser}
             />
           </div>
 
@@ -539,7 +539,7 @@ export function Tasks() {
           task={modal === 'new' ? null : modal}
           members={members}
           groups={groups}
-          currentUserId={currentUser.id}
+          currentUser={currentUser}
           orgId={orgId}
           onClose={() => setModal(null)}
           onSaved={() => { setModal(null); load() }}
