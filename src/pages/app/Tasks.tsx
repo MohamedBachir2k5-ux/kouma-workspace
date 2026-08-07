@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, CheckCircle2, Circle, PauseCircle, Trash2, X, Calendar, ChevronDown, Loader2, Clock } from 'lucide-react'
+import { Plus, CheckCircle2, Circle, PauseCircle, Trash2, X, Calendar, ChevronDown, Loader2, Clock, Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { TaskService } from '../../services/task.service'
 import { UserService } from '../../services/user.service'
+import { MessageService } from '../../services/message.service'
 import { supabase } from '../../lib/supabase'
 import { Avatar } from '../../components/ui/Avatar'
 import type { Task, User } from '../../lib/types'
@@ -12,6 +13,7 @@ type Status = Task['status']
 type Filter = 'all' | Status
 
 type Member = Pick<User, 'id' | 'firstName' | 'lastName' | 'avatarUrl'>
+type Group = { id: string; name: string; memberIds: string[] }
 
 const STATUS_ORDER: Status[] = ['todo', 'in_progress', 'waiting', 'done']
 
@@ -22,18 +24,189 @@ function StatusIcon({ status, size = 18 }: { status: Status; size?: number }) {
   return <Circle size={size} className="text-faint" />
 }
 
-
 function isOverdue(dueDate: string | null, status: Status) {
   if (!dueDate || status === 'done') return false
   return new Date(dueDate) < new Date(new Date().toDateString())
 }
 
+// ─── Assignee picker ──────────────────────────────────────────────────────────
+function AssigneePicker({
+  value, onChange, members, groups, currentUserId,
+}: {
+  value: string | null
+  onChange: (id: string | null) => void
+  members: Member[]
+  groups: Group[]
+  currentUserId: string
+}) {
+  const [open, setOpen]     = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const selected = members.find(m => m.id === value)
+  const me       = members.find(m => m.id === currentUserId)
+  const q        = search.toLowerCase()
+
+  const matches = (m: Member) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+
+  const colleagues = members.filter(m => m.id !== currentUserId && matches(m))
+
+  function pick(id: string | null) {
+    onChange(id)
+    setOpen(false)
+    setSearch('')
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2.5 px-4 py-3 bg-bg border border-border rounded-xl text-sm hover:border-indigo/40 transition-colors text-left"
+      >
+        {selected ? (
+          <>
+            <Avatar
+              firstName={selected.firstName}
+              lastName={selected.lastName}
+              src={selected.avatarUrl ?? undefined}
+              size="sm"
+            />
+            <span className="flex-1 text-ink">
+              {selected.firstName} {selected.lastName}
+              {selected.id === currentUserId && <span className="ml-1.5 text-xs text-faint font-normal">(Moi)</span>}
+            </span>
+          </>
+        ) : (
+          <span className="flex-1 text-faint">Non assigné</span>
+        )}
+        <ChevronDown size={14} className="text-faint shrink-0" />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+          {/* Search */}
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
+            <Search size={13} className="text-faint shrink-0" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher…"
+              className="flex-1 bg-transparent text-sm text-ink placeholder:text-faint focus:outline-none"
+            />
+          </div>
+
+          <div className="max-h-60 overflow-y-auto">
+            {/* Non assigné */}
+            {!q && (
+              <button
+                type="button"
+                onClick={() => pick(null)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-bg transition-colors ${!value ? 'text-indigo font-medium' : 'text-muted'}`}
+              >
+                <div className="w-8 h-8 rounded-full border-2 border-dashed border-border flex items-center justify-center shrink-0">
+                  <span className="text-[9px] text-faint">—</span>
+                </div>
+                Non assigné
+                {!value && <span className="ml-auto text-indigo">✓</span>}
+              </button>
+            )}
+
+            {/* Moi */}
+            {me && (!q || matches(me)) && (
+              <>
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-faint">Moi</div>
+                <button
+                  type="button"
+                  onClick={() => pick(me.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-bg transition-colors ${value === me.id ? 'text-indigo font-medium' : 'text-ink'}`}
+                >
+                  <Avatar firstName={me.firstName} lastName={me.lastName} src={me.avatarUrl ?? undefined} size="sm" />
+                  <span className="flex-1 text-left">{me.firstName} {me.lastName}</span>
+                  {value === me.id && <span className="text-indigo">✓</span>}
+                </button>
+              </>
+            )}
+
+            {/* Collègues */}
+            {colleagues.length > 0 && (
+              <>
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-faint border-t border-border mt-1">Collègues</div>
+                {colleagues.map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => pick(m.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-bg transition-colors ${value === m.id ? 'text-indigo font-medium' : 'text-ink'}`}
+                  >
+                    <Avatar firstName={m.firstName} lastName={m.lastName} src={m.avatarUrl ?? undefined} size="sm" />
+                    <span className="flex-1 text-left">{m.firstName} {m.lastName}</span>
+                    {value === m.id && <span className="text-indigo">✓</span>}
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* Groupes */}
+            {groups.map(g => {
+              const gMembers = members.filter(
+                m => g.memberIds.includes(m.id) && m.id !== currentUserId && (!q || matches(m))
+              )
+              if (!gMembers.length) return null
+              return (
+                <div key={g.id}>
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-faint border-t border-border mt-1">
+                    {g.name}
+                  </div>
+                  {gMembers.map(m => (
+                    <button
+                      key={`${g.id}-${m.id}`}
+                      type="button"
+                      onClick={() => pick(m.id)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-bg transition-colors ${value === m.id ? 'text-indigo font-medium' : 'text-ink'}`}
+                    >
+                      <Avatar firstName={m.firstName} lastName={m.lastName} src={m.avatarUrl ?? undefined} size="sm" />
+                      <span className="flex-1 text-left">{m.firstName} {m.lastName}</span>
+                      {value === m.id && <span className="text-indigo">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )
+            })}
+
+            {/* Aucun résultat */}
+            {q && !members.some(matches) && (
+              <p className="text-sm text-faint text-center py-6">Aucun résultat</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 function TaskModal({
-  task, members, currentUserId, orgId, onClose, onSaved,
+  task, members, groups, currentUserId, orgId, onClose, onSaved,
 }: {
   task: Task | null
   members: Member[]
+  groups: Group[]
   currentUserId: string
   orgId: string
   onClose: () => void
@@ -70,7 +243,7 @@ function TaskModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl p-6 pb-safe">
         <div className="flex items-center justify-between mb-5">
@@ -122,21 +295,13 @@ function TaskModal({
           {/* Assigné */}
           <div>
             <label className="block text-xs font-semibold text-ink uppercase tracking-wide mb-2">{t('tasks.assignee')}</label>
-            <div className="relative">
-              <select
-                value={assigneeId ?? ''}
-                onChange={e => setAssigneeId(e.target.value || null)}
-                className="w-full appearance-none px-4 py-3 bg-bg border border-border rounded-xl text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo pr-10"
-              >
-                <option value="">{t('tasks.assigneeNone')}</option>
-                {members.map(m => (
-                  <option key={m.id} value={m.id}>
-                    {m.firstName} {m.lastName}{m.id === currentUserId ? ` (${t('tasks.me')})` : ''}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
-            </div>
+            <AssigneePicker
+              value={assigneeId}
+              onChange={setAssigneeId}
+              members={members}
+              groups={groups}
+              currentUserId={currentUserId}
+            />
           </div>
 
           {/* Échéance */}
@@ -191,6 +356,7 @@ export function Tasks() {
   const { currentUser, currentOrg } = useAuth()
   const [tasks, setTasks]     = useState<Task[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [groups, setGroups]   = useState<Group[]>([])
   const [filter, setFilter]   = useState<Filter>('all')
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState<'new' | Task | null>(null)
@@ -205,20 +371,23 @@ export function Tasks() {
   }
 
   useEffect(() => {
-    if (!orgId) return
+    if (!orgId || !currentUser) return
     load()
 
-    // Fetch org members for assignee dropdown
     UserService.getByOrganizationWithRole(orgId).then(users => {
       setMembers(users.filter(u => u.status === 'active'))
     })
 
-    // Realtime
+    MessageService.getConversations(orgId, currentUser.id).then(convs => {
+      const myGroups = convs.filter(c => c.type === 'group' && c.members.includes(currentUser.id))
+      setGroups(myGroups.map(g => ({ id: g.id, name: g.name, memberIds: g.members })))
+    })
+
     const ch = supabase.channel(`tasks-${orgId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `org_id=eq.${orgId}` }, () => load())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [orgId])
+  }, [orgId, currentUser?.id])
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all',        label: t('tasks.filterAll') },
@@ -253,23 +422,18 @@ export function Tasks() {
           </button>
         </div>
 
-        {/* Filtres */}
         <div className="flex gap-1 overflow-x-auto pb-0.5 no-scrollbar">
           {filters.map(f => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                filter === f.key
-                  ? 'bg-navy text-white'
-                  : 'text-muted hover:text-ink hover:bg-bg'
+                filter === f.key ? 'bg-navy text-white' : 'text-muted hover:text-ink hover:bg-bg'
               }`}
             >
               {f.label}
               {f.key !== 'all' && (
-                <span className="ml-1.5 opacity-60">
-                  {tasks.filter(t => t.status === f.key).length}
-                </span>
+                <span className="ml-1.5 opacity-60">{tasks.filter(t => t.status === f.key).length}</span>
               )}
             </button>
           ))}
@@ -299,7 +463,7 @@ export function Tasks() {
               return (
                 <li
                   key={task.id}
-                  className="flex items-center gap-3 px-4 sm:px-6 py-4 hover:bg-surface/50 transition-colors cursor-pointer group"
+                  className="flex items-center gap-3 px-4 sm:px-6 py-4 hover:bg-surface/50 transition-colors cursor-pointer"
                   onClick={() => setModal(task)}
                 >
                   {/* Status toggle */}
@@ -316,7 +480,13 @@ export function Tasks() {
                     <p className={`text-sm font-medium truncate ${task.status === 'done' ? 'line-through text-muted' : 'text-ink'}`}>
                       {task.title}
                     </p>
-                    <div className="flex items-center gap-3 mt-0.5">
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                      {task.assignee && (
+                        <span className="text-xs text-faint">
+                          {task.assignee.firstName} {task.assignee.lastName}
+                          {task.assignee.id === currentUser.id && ' (moi)'}
+                        </span>
+                      )}
                       {task.dueDate && (
                         <span className={`flex items-center gap-1 text-xs ${overdue ? 'text-danger' : 'text-faint'}`}>
                           <Calendar size={11} />
@@ -333,8 +503,8 @@ export function Tasks() {
                     </div>
                   </div>
 
-                  {/* Assignee */}
-                  <div className="shrink-0 flex items-center gap-2">
+                  {/* Assignee avatar */}
+                  <div className="shrink-0">
                     {task.assignee ? (
                       <Avatar
                         src={task.assignee.avatarUrl ?? undefined}
@@ -343,7 +513,7 @@ export function Tasks() {
                         size="sm"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full border-2 border-dashed border-border flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full border-2 border-dashed border-border flex items-center justify-center">
                         <span className="text-[9px] text-faint">—</span>
                       </div>
                     )}
@@ -368,6 +538,7 @@ export function Tasks() {
         <TaskModal
           task={modal === 'new' ? null : modal}
           members={members}
+          groups={groups}
           currentUserId={currentUser.id}
           orgId={orgId}
           onClose={() => setModal(null)}

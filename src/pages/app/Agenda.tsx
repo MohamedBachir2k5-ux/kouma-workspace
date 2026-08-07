@@ -352,6 +352,7 @@ export function Agenda() {
   const [minutesEvent, setMinutesEvent] = useState<Event | null>(null)
   const [minutesMap, setMinutesMap] = useState<Record<string, MeetingMinutes>>({})
   const [pendingDoneId, setPendingDoneId] = useState<string | null>(null)
+  const [viewMinutes, setViewMinutes] = useState<MeetingMinutes | null>(null)
   const [rsvpToast, setRsvpToast] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -683,11 +684,15 @@ export function Agenda() {
                       )}
                       {/* Meeting minutes link for done events */}
                       {event.status === 'done' && minutesMap[event.id] && (
-                        <div className="flex items-center gap-1.5 mt-2">
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); setViewMinutes(minutesMap[event.id]) }}
+                          className="flex items-center gap-1.5 mt-2 hover:opacity-70 transition-opacity"
+                        >
                           <ClipboardList size={12} className="text-indigo shrink-0" />
                           <span className="text-xs text-indigo font-medium">{t('minutes.title')}</span>
                           <span className="text-xs text-muted">· {minutesMap[event.id].actions?.length ?? 0} action{(minutesMap[event.id].actions?.length ?? 0) !== 1 ? 's' : ''}</span>
-                        </div>
+                        </button>
                       )}
 
                       {/* RSVP for participants (non-creator) */}
@@ -765,6 +770,90 @@ export function Agenda() {
           onClose={() => { setShowCreate(false); setEditEvent(null) }}
           onSave={form => (editEvent ? updateEvent(editEvent.id, form) : createEvent(form))}
         />
+      )}
+
+      {/* Meeting minutes viewer */}
+      {viewMinutes && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full sm:max-w-2xl bg-surface rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl max-h-[90dvh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-2.5">
+                <ClipboardList size={18} className="text-indigo" />
+                <div>
+                  <p className="font-bold text-navy text-sm leading-tight">{viewMinutes.title}</p>
+                  <p className="text-xs text-faint mt-0.5">
+                    {new Date(viewMinutes.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewMinutes(null)}
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-bg text-muted transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {viewMinutes.objective && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1.5">{t('minutes.objective')}</p>
+                  <p className="text-sm text-ink leading-relaxed">{viewMinutes.objective}</p>
+                </div>
+              )}
+              {viewMinutes.summary && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1.5">{t('minutes.summary')}</p>
+                  <p className="text-sm text-ink leading-relaxed">{viewMinutes.summary}</p>
+                </div>
+              )}
+              {viewMinutes.decisions && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1.5">{t('minutes.decisions')}</p>
+                  <p className="text-sm text-ink leading-relaxed">{viewMinutes.decisions}</p>
+                </div>
+              )}
+              {viewMinutes.notes && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1.5">{t('minutes.notes')}</p>
+                  <p className="text-sm text-ink leading-relaxed">{viewMinutes.notes}</p>
+                </div>
+              )}
+              {(viewMinutes.actions?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-faint mb-2">{t('minutes.actions')}</p>
+                  <div className="space-y-2">
+                    {viewMinutes.actions!.map(action => {
+                      const assignee = orgUsers.find(u => u.id === action.assigneeId)
+                      return (
+                        <div key={action.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${action.done ? 'border-border bg-bg' : 'border-border bg-surface'}`}>
+                          <CheckCircle2 size={16} className={`shrink-0 mt-0.5 ${action.done ? 'text-success' : 'text-faint'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${action.done ? 'line-through text-muted' : 'text-ink'}`}>{action.description}</p>
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                              {assignee && (
+                                <div className="flex items-center gap-1.5">
+                                  <Avatar firstName={assignee.firstName} lastName={assignee.lastName} src={assignee.avatarUrl} size="sm" />
+                                  <span className="text-xs text-muted">{assignee.firstName} {assignee.lastName}</span>
+                                </div>
+                              )}
+                              {action.dueDate && (
+                                <span className="flex items-center gap-1 text-xs text-faint">
+                                  <Calendar size={10} />
+                                  {new Date(action.dueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {minutesEvent && pendingDoneId && (
