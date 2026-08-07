@@ -1,6 +1,23 @@
 // Application-level types — UI-friendly interfaces.
 // Database-level types (matching Supabase rows) live in database.types.ts.
 
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+
+export interface Task {
+  id: string
+  orgId: string
+  title: string
+  assigneeId: string | null
+  assignee: { id: string; firstName: string; lastName: string; avatarUrl: string | null } | null
+  createdBy: string
+  status: 'todo' | 'in_progress' | 'done' | 'waiting'
+  dueDate: string | null
+  source: 'manual' | 'meeting' | 'assistant'
+  sourceId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 // ── Core entities ─────────────────────────────────────────────────────────────
 
 export interface Organization {

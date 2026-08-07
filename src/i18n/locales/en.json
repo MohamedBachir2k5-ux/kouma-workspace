@@ -36,7 +36,8 @@
     "agenda": "Calendar",
     "teams": "Teams",
     "assistant": "Assistant",
-    "profile": "Me"
+    "profile": "Me",
+    "tasks": "Tasks"
   },
   "assistant": {
     "title": "AI Assistant",
@@ -1444,5 +1445,29 @@
     "s8p2": "In the event of a significant change, we will notify active users by email or in-app notification. The last updated date shown at the top of this page will always be current.",
     "s9Title": "Contact",
     "s9pre": "For any questions regarding this policy or to exercise your rights:"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "empty": "No tasks yet",
+    "emptyFilter": "No tasks in this category",
+    "newTask": "New task",
+    "editTask": "Edit task",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Describe the task…",
+    "assignee": "Assigned to",
+    "assigneeNone": "Unassigned",
+    "dueDate": "Due date",
+    "noDueDate": "No due date",
+    "status": "Status",
+    "todo": "To do",
+    "inProgress": "In progress",
+    "waiting": "On hold",
+    "done": "Done",
+    "filterAll": "All",
+    "create": "Create",
+    "save": "Save",
+    "delete": "Delete",
+    "overdue": "Overdue",
+    "me": "Me"
   }
 }

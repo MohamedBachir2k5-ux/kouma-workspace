@@ -1879,6 +1879,70 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          id: string
+          org_id: string
+          title: string
+          assignee_id: string | null
+          created_by: string
+          status: 'todo' | 'in_progress' | 'done' | 'waiting'
+          due_date: string | null
+          source: 'manual' | 'meeting' | 'assistant'
+          source_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          title: string
+          assignee_id?: string | null
+          created_by: string
+          status?: 'todo' | 'in_progress' | 'done' | 'waiting'
+          due_date?: string | null
+          source?: 'manual' | 'meeting' | 'assistant'
+          source_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          title?: string
+          assignee_id?: string | null
+          created_by?: string
+          status?: 'todo' | 'in_progress' | 'done' | 'waiting'
+          due_date?: string | null
+          source?: 'manual' | 'meeting' | 'assistant'
+          source_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_sessions: {
         Row: {
           browser: string | null

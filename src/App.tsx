@@ -35,6 +35,7 @@ import { AdminSettings } from './pages/admin/Settings'
 import { AdminPermissions } from './pages/admin/Permissions'
 import { AdminAnnouncements } from './pages/admin/Announcements'
 import { Assistant } from './pages/app/Assistant'
+import { Tasks } from './pages/app/Tasks'
 export default function App() {
   return (
     <BrowserRouter>
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="annonces" element={<Announcements />} />
           <Route path="documents" element={<Documents />} />
           <Route path="agenda" element={<Agenda />} />
+          <Route path="taches" element={<Tasks />} />
           <Route path="equipes" element={<Teams />} />
           <Route path="assistant" element={<Assistant />} />
           <Route path="profil" element={<Profile />} />

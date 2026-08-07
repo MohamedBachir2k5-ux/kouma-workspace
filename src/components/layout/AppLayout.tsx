@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { NavLink, Outlet, useNavigate, Navigate, useLocation } from 'react-router-dom'
-import { MessageSquare, FileText, Calendar, Users, User, Megaphone, Sparkles, MoreHorizontal, X } from 'lucide-react'
+import { MessageSquare, FileText, Calendar, Users, User, Megaphone, Sparkles, MoreHorizontal, X, CheckSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -47,16 +47,17 @@ const NAV_ITEMS = [
   { to: '/app/annonces',  icon: Megaphone,     key: 'nav.announcements' },
   { to: '/app/documents', icon: FileText,      key: 'nav.documents' },
   { to: '/app/agenda',    icon: Calendar,      key: 'nav.agenda' },
+  { to: '/app/taches',    icon: CheckSquare,   key: 'nav.tasks' },
   { to: '/app/equipes',    icon: Users,         key: 'nav.teams' },
   { to: '/app/assistant', icon: Sparkles,      key: 'nav.assistant' },
   { to: '/app/profil',    icon: User,          key: 'nav.profile' },
 ]
 
 const NAV_ITEMS_MOBILE_MAIN = NAV_ITEMS.filter(i =>
-  ['/app/messages', '/app/agenda', '/app/documents', '/app/equipes'].includes(i.to)
+  ['/app/messages', '/app/agenda', '/app/taches', '/app/documents'].includes(i.to)
 )
 const NAV_ITEMS_MOBILE_MORE = NAV_ITEMS.filter(i =>
-  !['/app/messages', '/app/agenda', '/app/documents', '/app/equipes'].includes(i.to)
+  !['/app/messages', '/app/agenda', '/app/taches', '/app/documents'].includes(i.to)
 )
 
 function FullPageSpinner() {

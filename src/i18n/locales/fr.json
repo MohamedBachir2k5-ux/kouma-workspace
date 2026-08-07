@@ -36,7 +36,8 @@
     "agenda": "Agenda",
     "teams": "Équipes",
     "assistant": "Assistant",
-    "profile": "Moi"
+    "profile": "Moi",
+    "tasks": "Tâches"
   },
   "assistant": {
     "title": "Assistant IA",
@@ -1456,5 +1457,29 @@
     "s8p2": "En cas de modification significative, nous en informerons les utilisateurs actifs par e-mail ou notification dans l'application. La date figurant en haut de cette page sera toujours à jour.",
     "s9Title": "Contact",
     "s9pre": "Pour toute question relative à cette politique ou pour exercer vos droits :"
+  },
+  "tasks": {
+    "title": "Tâches",
+    "empty": "Aucune tâche pour le moment",
+    "emptyFilter": "Aucune tâche dans cette catégorie",
+    "newTask": "Nouvelle tâche",
+    "editTask": "Modifier la tâche",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "Décrire la tâche…",
+    "assignee": "Assigné à",
+    "assigneeNone": "Non assigné",
+    "dueDate": "Échéance",
+    "noDueDate": "Sans échéance",
+    "status": "Statut",
+    "todo": "À faire",
+    "inProgress": "En cours",
+    "waiting": "En attente",
+    "done": "Terminée",
+    "filterAll": "Toutes",
+    "create": "Créer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "overdue": "En retard",
+    "me": "Moi"
   }
 }
