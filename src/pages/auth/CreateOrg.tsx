@@ -170,24 +170,26 @@ export function CreateOrg() {
 
       <div className="w-full max-w-md">
         {/* Stepper */}
-        <div className="flex items-center mb-10">
-          {steps.map((s, i) => (
-            <div key={s} className="flex items-center flex-1 last:flex-none">
-              <div className="flex items-center gap-2 shrink-0">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                  i < step ? 'bg-success text-white' : i === step ? 'bg-navy text-white' : 'bg-border text-muted'
+        <div className="relative mb-10">
+          <div className="absolute top-3.5 left-3.5 right-3.5 h-px bg-border" />
+          <div
+            className="absolute top-3.5 left-3.5 h-px bg-success transition-all duration-500"
+            style={{ width: step === 0 ? '0%' : `${(step / (steps.length - 1)) * 100}%` }}
+          />
+          <div className="relative flex justify-between">
+            {steps.map((s, i) => (
+              <div key={s} className="flex flex-col items-center gap-2">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                  i < step ? 'bg-success text-white' : i === step ? 'bg-navy text-white' : 'bg-bg border-2 border-border text-muted'
                 }`}>
-                  {i < step ? <Check size={13} /> : i + 1}
+                  {i < step ? <Check size={12} /> : i + 1}
                 </div>
-                <span className={`text-xs font-medium hidden sm:block transition-colors ${
+                <span className={`text-[10px] font-medium text-center leading-tight max-w-[56px] transition-colors ${
                   i === step ? 'text-navy' : i < step ? 'text-success' : 'text-faint'
                 }`}>{s}</span>
               </div>
-              {i < steps.length - 1 && (
-                <div className={`flex-1 h-px mx-3 transition-colors ${i < step ? 'bg-success' : 'bg-border'}`} />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div className="bg-surface rounded-2xl border border-border p-6 md:p-8 overflow-hidden">

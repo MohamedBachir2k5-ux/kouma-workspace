@@ -113,7 +113,7 @@ export function Landing() {
 
           <div className="hidden md:flex items-center gap-3">
             <Link to="/connexion" className="px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors">
-              Connexion
+              Accéder à mon espace
             </Link>
             <Link to="/creer" className="px-4 py-2 bg-white text-navy text-sm font-semibold rounded-full hover:bg-white/90 transition-colors shadow-md">
               Créer mon espace
@@ -148,7 +148,7 @@ export function Landing() {
               <Link to="/tarifs" onClick={() => setMobileOpen(false)} className="flex items-center min-h-[48px] px-3 text-sm text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors">Tarifs</Link>
               <Link to="/resources" onClick={() => setMobileOpen(false)} className="flex items-center min-h-[48px] px-3 text-sm text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors">Ressources</Link>
               <div className="h-px bg-white/10 my-1" />
-              <Link to="/connexion" onClick={() => setMobileOpen(false)} className="flex items-center min-h-[48px] px-3 text-sm text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors">Connexion</Link>
+              <Link to="/connexion" onClick={() => setMobileOpen(false)} className="flex items-center min-h-[48px] px-3 text-sm text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors">Accéder à mon espace</Link>
               <Link to="/creer" onClick={() => setMobileOpen(false)} className="block w-full py-3.5 bg-white text-navy text-sm font-semibold rounded-xl text-center mt-1">
                 Créer mon espace
               </Link>
@@ -194,53 +194,36 @@ export function Landing() {
         />
 
         <div className="relative z-10 max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: EASE }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/5 border border-white/10 rounded-full mb-8"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-light" />
-            <span className="text-xs text-white/50 font-medium">L'espace de travail nouvelle génération</span>
-          </motion.div>
-
           <motion.h1
             initial={{ opacity: 0, y: 55 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.2, ease: EASE }}
-            className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold leading-tight tracking-tight mb-6"
+            transition={{ duration: 0.85, delay: 0.15, ease: EASE }}
+            className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.05] tracking-tight mb-6"
           >
-            Votre organisation,
+            Le quartier général
             <br />
-            <span className="text-indigo-light">enfin à votre hauteur.</span>
+            <span className="text-indigo-light">de vos équipes.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.38, ease: EASE }}
-            className="text-lg sm:text-xl text-white/50 max-w-lg mx-auto mb-10 leading-relaxed"
+            transition={{ duration: 0.7, delay: 0.32, ease: EASE }}
+            className="text-xl sm:text-2xl text-white/40 max-w-md mx-auto mb-12 font-light"
           >
-            Un espace de travail sécurisé, pensé pour les équipes qui ne font pas de compromis.
+            Sécurisé. Élégant. Fait pour durer.
           </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.52, ease: EASE }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3"
+            transition={{ duration: 0.6, delay: 0.46, ease: EASE }}
           >
             <Link
               to="/creer"
-              className="flex items-center gap-2 px-7 py-3.5 bg-white text-navy font-semibold rounded-full text-sm hover:bg-white/90 transition-all shadow-lg shadow-black/25"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-navy font-semibold rounded-full text-base hover:bg-white/90 transition-all shadow-xl shadow-black/30"
             >
-              Créer mon espace <ArrowRight size={16} />
-            </Link>
-            <Link
-              to="/tarifs"
-              className="flex items-center gap-2 px-7 py-3.5 border border-white/20 text-white/70 font-medium rounded-full text-sm hover:border-white/40 hover:text-white transition-all"
-            >
-              Voir les tarifs
+              Créer mon espace <ArrowRight size={17} />
             </Link>
           </motion.div>
         </div>
@@ -272,10 +255,10 @@ export function Landing() {
         />
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <FadeUp>
-            <p className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-snug text-white">
+            <p className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-snug text-white">
               Certaines équipes communiquent.
               <br />
-              <span className="text-white/25">Les vôtres avancent.</span>
+              <span className="text-white/20">Les vôtres construisent.</span>
             </p>
           </FadeUp>
         </div>
@@ -284,41 +267,33 @@ export function Landing() {
       {/* ─── PILLARS ─── */}
       <section className="py-24 px-4 bg-navy">
         <div className="max-w-5xl mx-auto">
-          <FadeUp>
-            <div className="text-center mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-                Tout ce dont vos équipes ont besoin.
-              </h2>
-              <p className="text-white/40 text-base">Rien de superflu. Tout l'essentiel.</p>
-            </div>
-          </FadeUp>
           <div className="grid md:grid-cols-3 gap-5">
             {[
               {
                 icon: <Shield size={22} />,
-                title: 'Communiquer en confiance',
-                body: "Des échanges fluides et sécurisés pour l'ensemble de vos collaborateurs, où qu'ils soient.",
+                title: 'La parole privée.',
+                body: 'Vos échanges ne regardent que vous.',
                 delay: 0,
               },
               {
                 icon: <Users size={22} />,
-                title: 'Organiser sans friction',
-                body: "Documents, agendas, équipes — tout ce dont vous avez besoin, au même endroit, dans l'ordre.",
+                title: 'Tout, au même endroit.',
+                body: 'Plus de dispersion. Un seul espace pour toute l\'organisation.',
                 delay: 0.1,
               },
               {
                 icon: <Zap size={22} />,
-                title: 'Décider rapidement',
-                body: 'Des informations claires, des actions concrètes. Moins de bruit, plus d\'impact au quotidien.',
+                title: "De l'intention à l'action.",
+                body: 'Des décisions claires. Des résultats concrets.',
                 delay: 0.2,
               },
             ].map(p => (
               <FadeUp key={p.title} delay={p.delay}>
-                <div className="group p-7 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-indigo/30 transition-all cursor-default h-full">
-                  <div className="w-10 h-10 rounded-xl bg-indigo/15 flex items-center justify-center text-indigo-light mb-5 group-hover:bg-indigo/25 transition-colors">
+                <div className="group p-8 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-indigo/30 transition-all cursor-default h-full">
+                  <div className="w-11 h-11 rounded-xl bg-indigo/15 flex items-center justify-center text-indigo-light mb-6 group-hover:bg-indigo/25 transition-colors">
                     {p.icon}
                   </div>
-                  <h3 className="text-base font-semibold text-white mb-2">{p.title}</h3>
+                  <h3 className="text-lg font-bold text-white mb-2">{p.title}</h3>
                   <p className="text-sm text-white/40 leading-relaxed">{p.body}</p>
                 </div>
               </FadeUp>
@@ -332,22 +307,22 @@ export function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <FadeUp>
             <h2 className="text-3xl sm:text-4xl font-bold text-navy mb-4">
-              La confiance n'est pas une option.
+              Vos secrets restent les vôtres.
             </h2>
-            <p className="text-muted text-lg max-w-lg mx-auto mb-12 leading-relaxed">
-              Kouma est conçu avec la sécurité au cœur — pas comme une case à cocher.
+            <p className="text-muted text-lg max-w-md mx-auto mb-12">
+              La sécurité n'est pas une promesse chez Kouma. C'est une architecture.
             </p>
           </FadeUp>
           <FadeUp delay={0.1}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               {[
-                'Vos échanges, rien que vos échanges.',
-                'Accès maîtrisé par votre organisation.',
-                'Vos données restent sous votre contrôle.',
+                'Privé par conception.',
+                'Accès maîtrisé.',
+                'Données sous votre contrôle.',
               ].map(item => (
                 <div
                   key={item}
-                  className="flex items-center gap-2.5 px-5 py-3 bg-bg border border-border rounded-full text-sm font-medium text-ink"
+                  className="flex items-center gap-2.5 px-5 py-3 bg-bg border border-border rounded-full text-sm font-semibold text-ink"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
                   {item}
@@ -366,8 +341,9 @@ export function Landing() {
         />
         <div className="max-w-2xl mx-auto text-center relative z-10">
           <FadeUp>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
-              Rejoignez les organisations<br />qui ont fait le choix Kouma.
+            <p className="text-sm font-semibold text-indigo-light uppercase tracking-widest mb-5">Rejoignez le mouvement</p>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-10 leading-tight">
+              Kouma attend<br />vos équipes.
             </h2>
             <Link
               to="/creer"
@@ -415,7 +391,7 @@ export function SiteFooter() {
             ))}
           </nav>
 
-          <p className="text-xs text-white/25">© 2025 Syli taa</p>
+          <p className="text-xs text-white/25">© 2026 Syli taa</p>
         </div>
       </footer>
   )
