@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, CheckCircle2, Circle, Clock, PauseCircle, Trash2, X, Calendar, ChevronDown, Loader2 } from 'lucide-react'
+import { Plus, CheckCircle2, Circle, PauseCircle, Trash2, X, Calendar, ChevronDown, Loader2, Clock } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { TaskService } from '../../services/task.service'
+import { UserService } from '../../services/user.service'
 import { supabase } from '../../lib/supabase'
 import { Avatar } from '../../components/ui/Avatar'
-import type { Task } from '../../lib/types'
+import type { Task, User } from '../../lib/types'
 
 type Status = Task['status']
 type Filter = 'all' | Status
 
-interface Member { id: string; firstName: string; lastName: string; avatarUrl: string | null }
+type Member = Pick<User, 'id' | 'firstName' | 'lastName' | 'avatarUrl'>
 
 const STATUS_ORDER: Status[] = ['todo', 'in_progress', 'waiting', 'done']
 
@@ -208,18 +209,9 @@ export function Tasks() {
     load()
 
     // Fetch org members for assignee dropdown
-    supabase
-      .from('organization_members')
-      .select('user_id, profiles!organization_members_user_id_fkey(id, first_name, last_name, avatar_url)')
-      .eq('organization_id', orgId)
-      .eq('status', 'active')
-      .then(({ data }) => {
-        const list = (data ?? []).map((r: Record<string, unknown>) => {
-          const p = r.profiles as { id: string; first_name: string; last_name: string; avatar_url: string | null }
-          return { id: p.id, firstName: p.first_name, lastName: p.last_name, avatarUrl: p.avatar_url }
-        })
-        setMembers(list)
-      })
+    UserService.getByOrganizationWithRole(orgId).then(users => {
+      setMembers(users.filter(u => u.status === 'active'))
+    })
 
     // Realtime
     const ch = supabase.channel(`tasks-${orgId}`)

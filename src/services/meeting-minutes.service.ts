@@ -89,6 +89,19 @@ export const MeetingMinutesService = {
           .select()
 
         savedActions = (aRows ?? []).map(r => toAction(r as Record<string, unknown>))
+
+        // Mirror each action as a task (source: 'meeting') so it appears in the Tasks module
+        const taskRows = savedActions.map(a => ({
+          org_id: data.organizationId,
+          title: a.description,
+          assignee_id: a.assigneeId ?? null,
+          due_date: a.dueDate ?? null,
+          created_by: data.createdBy,
+          status: 'todo' as const,
+          source: 'meeting' as const,
+          source_id: a.id,
+        }))
+        await supabase.from('tasks').insert(taskRows)
       }
     }
 
