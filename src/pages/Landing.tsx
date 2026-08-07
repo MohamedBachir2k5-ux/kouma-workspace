@@ -112,11 +112,8 @@ export function Landing() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/connexion" className="px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors">
+            <Link to="/connexion" className="px-4 py-2 bg-white text-navy text-sm font-semibold rounded-full hover:bg-white/90 transition-colors shadow-md">
               Accéder à mon espace
-            </Link>
-            <Link to="/creer" className="px-4 py-2 bg-white text-navy text-sm font-semibold rounded-full hover:bg-white/90 transition-colors shadow-md">
-              Créer mon espace
             </Link>
           </div>
 
@@ -148,9 +145,8 @@ export function Landing() {
               <Link to="/tarifs" onClick={() => setMobileOpen(false)} className="flex items-center min-h-[48px] px-3 text-sm text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors">Tarifs</Link>
               <Link to="/resources" onClick={() => setMobileOpen(false)} className="flex items-center min-h-[48px] px-3 text-sm text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors">Ressources</Link>
               <div className="h-px bg-white/10 my-1" />
-              <Link to="/connexion" onClick={() => setMobileOpen(false)} className="flex items-center min-h-[48px] px-3 text-sm text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors">Accéder à mon espace</Link>
-              <Link to="/creer" onClick={() => setMobileOpen(false)} className="block w-full py-3.5 bg-white text-navy text-sm font-semibold rounded-xl text-center mt-1">
-                Créer mon espace
+              <Link to="/connexion" onClick={() => setMobileOpen(false)} className="block w-full py-3.5 bg-white text-navy text-sm font-semibold rounded-xl text-center mt-1">
+                Accéder à mon espace
               </Link>
             </motion.div>
           )}
